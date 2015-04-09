@@ -1,0 +1,39 @@
+<?php
+// $Id: pear.install,v 1.9 2008/05/06 23:06:39 mepcotterell Exp $
+
+/**
+ * @file
+ * The Pear module installer.
+ *
+ * By default, the installer creates a PEAR environment in the
+ * "files/pear/" directory. This could be overridden if the
+ * installer was interactive. However, the Pear module will 
+ * provide a wizard for migrating the environment to a different 
+ * directory.
+ * 
+ * @author Michael Cotterell <mepcotterell@gmail.com>
+ * 
+ * @todo Look into the possibility of an interactive installer
+ * @todo add logging to the installer
+ * @todo add more error checking
+ */
+
+/**
+ * Define the installer revision
+ */
+define('PEAR_INSTALLER_REVISION', '$Revision: 1.9 $');
+
+/**
+ * Install the Pear module
+ */
+function pear_install() {
+	$installer_target_path = 'sites/all/modules/pear/pear/';
+	variable_set('pear_pear_path', $installer_target_path);
+	drupal_set_message(t('The path to PEAR is @path', array('@path' => $pear_path)));
+	db_query("UPDATE system SET weight = '-50' WHERE NAME = 'pear'");
+}
+
+function pear_uninstall() {
+	variable_del('pear_pear_path');
+}
+

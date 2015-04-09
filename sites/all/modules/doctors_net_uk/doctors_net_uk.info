@@ -1,0 +1,3 @@
+name = Doctors Net UK
+description = "Custom module to integrate with doctors.net.uk."
+core = 6.x

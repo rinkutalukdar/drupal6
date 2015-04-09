@@ -1,0 +1,13 @@
+core = 6.x
+name = JnJ Content Workflow
+description = "Controls the content approval workflow"
+package = JnJ
+version = "6.x"
+
+dependencies[] = trigger
+dependencies[] = workflow
+dependencies[] = revisioning
+dependencies[] = views
+dependencies[] = module_grants
+dependencies[] = token
+dependencies[] = htmlmail

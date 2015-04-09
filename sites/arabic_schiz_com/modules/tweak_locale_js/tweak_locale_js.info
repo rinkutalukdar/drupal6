@@ -1,0 +1,9 @@
+; $Id$
+name = tweak locale js
+description = Provides locale admin pages with buttons to rebuild/invalidate js translations.
+version = 0.1
+package = arhak - tweaks
+core = 6.x
+project = tweaks
+
+dependencies[] = locale

@@ -1,0 +1,743 @@
+<?php 
+
+// $Id: framework_1_5.module,v 1.892.2.5 2008/11/26 21:48:28 Prav Exp $
+
+/**
+ * Implementation of hook_menu().
+ * Building the menu for the testimonial module for user and webadmin part.
+ * return the menu link of this module
+ */
+function framework_1_5_menu() {
+    $items = array();
+
+    $access_config = array('administer site configuration');
+
+    $items['admin/settings/framework_1_5'] = array(
+        'title' => t('Framework configuration'),
+        'description' => t('Configuration options for framework_1_5.'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('framework_1_5_generalsettings_form'),
+        'access arguments' => array('Configure framework_1_5 settings'),
+    );
+
+    $items['admin/settings/framework_1_5/generalsettings'] = array(
+        'title' => t('General settings'),
+        'description' => t('framework_1_5 General settings'),
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'access arguments' => array('Configure framework_1_5 settings'),
+    );
+
+    $items['admin/settings/changesuperadmin'] = array(
+      'title' => t('Change Super Admin'),
+      'description' => t('Allows you to change the super admin username.'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('changesuperadmin_form'),
+      'access arguments' => array('administer changesuperadmin'),
+    );
+    return $items;
+}
+
+
+/**
+ * Implementation of hook_perm()
+ */
+
+function framework_1_5_perm() {
+    return array('Configure framework_1_5 settings');
+}
+
+/*
+ * Perform setup tasks. See also, hook_init.
+
+ * This hook is run at the beginning of the page request. It is typically used to set up global parameters which are needed later in the request.
+
+ * Only use this hook if your code must run even for cached page views.This hook is called before modules or most include files are loaded into memory. It happens while Drupal is still in bootstrap mode
+
+ */
+function framework_1_5_boot() {
+//Load context
+//Cannot load context here.. at boot stage, Drupal cannot recognize methods required to make service call
+//echo '<!-- Framework boot -->';
+
+}
+
+function p($text) {
+    echo "<pre>";
+    print_r ($text);
+    echo "</pre>";
+}
+
+function framework_1_5_init() {
+  global $itrinno_site_id;
+  $itrinno_site_id = variable_get('framework_1_5_siteid','');
+
+  //require_once('HTTP/Request.php');
+
+   if (php_sapi_name() == 'cli') {
+		$root_dir = (dirname(realpath(basename(getenv("SCRIPT_NAME")))));
+   }
+   else {
+	$root_dir = dirname(dirname(realpath(basename(getenv("SCRIPT_NAME")))));
+   }	
+	
+	$global_filename = $root_dir.'/.framework/website/global.inc';
+
+	if (file_exists($global_filename)) {
+		require_once($global_filename); // Included in the root Directory as per the Requirement.
+	}
+  else {
+	  echo "The configuration file $global_filename does not exist, Please contact administrator";
+	  exit;
+	}
+
+	include_once(drupal_get_path('module', 'framework_1_5').'/classes/common/lib/JSON.php'); 
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/SiteInfo.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/ITrInnoWebAppContext.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/ITrInnoWebAppContextMgr.php');
+
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/ContextService.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/_Constants.php');
+
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/CustomFieldInfo.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/IRestServiceAPI.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/JSONSerializer.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/PearRESTServiceAPI.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/RestServiceFactory.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/ServiceInfo.php');
+    
+
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/ServiceRegistryMgr.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/CryptService.php');
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/GlobalSettings.php');	
+    require_once(drupal_get_path('module', 'framework_1_5').'/classes/common/Response.php');
+
+    loadContext();
+}
+
+/**
+ * Implementation of hook_form().
+ * Form will display the admin settings form element.
+ * @return
+ * @param
+ */
+
+function framework_1_5_generalsettings_form() {
+
+    $form['framework_1_5_gs'] = array(
+        '#title' => t('General Settings'),
+        '#type' => 'fieldset',
+    );
+
+    $form['framework_1_5_gs']['framework_1_5_siteid'] = array(
+        '#type' => 'textfield',
+        '#title' => t('SiteId'),
+        '#default_value' => variable_get('framework_1_5_siteid',''),
+        '#size' => 10,
+        '#maxlength' => 15,
+        '#description' =>  t('Site Identification..'),
+    );
+
+    $form['framework_1_5_gs']['framework_1_5_authkey'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Authorization key'),
+        '#default_value' => encrypt_decrypt(variable_get('framework_1_5_authkey','')),
+        '#size' => 32,
+        '#maxlength' => 50,
+        '#description' =>  t('Authorization key for site..'),
+    );
+
+    $form['framework_1_5_gs']['framework_1_5_google_api'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Google Map API key'),
+        '#default_value' => encrypt_decrypt(variable_get('framework_1_5_google_api','')),
+        '#size' => 32,
+        '#description' =>  t('Provide the API key for Google Map. Please take from <a href="http://code.google.com/apis/maps/signup.html" target="_blank">http://code.google.com/apis/maps/signup.html</a>'),
+    );
+
+    //Field to override the default service url
+
+    $form['framework_1_5_overrides'] = array(
+        '#title' => t('Override Global Settings'),
+        '#type' => 'fieldset',
+    );
+
+    //Field to override the default service url
+    $form['framework_1_5_overrides']['framework_1_5_service_registry_url'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Override the Service registry url'),
+        '#default_value' => variable_get('framework_1_5_service_registry_url',GLOBALS_REGISTRY_URL),
+        '#size' => 100,
+        '#maxlength' => 255,
+        '#description' =>  t('Provide the service registry url.<br/>Current default value [<b>'.GLOBALS_REGISTRY_URL.'</b>]'),
+    );
+
+    //Field to override the default cas url
+    $form['framework_1_5_overrides']['framework_1_5_cas_service_domain'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Override the CAS Service url'),
+        '#default_value' => (variable_get('framework_1_5_cas_service_domain',GLOBALS_CAS_SERVER_URL)),
+        '#size' => 50,
+        '#maxlength' => 50,
+        '#description' =>  t('Provide the CAS service domain.<br/>Current default value [<b>'.GLOBALS_CAS_SERVER_URL.'</b>]'),
+    );
+
+    //Field to override the default cas port
+    $form['framework_1_5_overrides']['framework_1_5_cas_service_port'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Override the CAS PORT'),
+        '#default_value' => (variable_get('framework_1_5_cas_service_port',GLOBALS_CAS_PORT)),
+        '#size' => 50,
+        '#maxlength' => 50,
+        '#description' =>  t('Provide the CAS port.<br/>Current default value [<b>'.GLOBALS_CAS_PORT.'</b>]'),
+    );
+
+    //Field to override the default cas uri
+    $form['framework_1_5_overrides']['framework_1_5_cas_service_uri'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Override the CAS URI'),
+        '#default_value' => (variable_get('framework_1_5_cas_service_uri',GLOBALS_CAS_URI)),
+        '#size' => 30,
+        '#maxlength' => 30,
+        '#description' =>  t('Provide the CAS URI. <br/>Current default value [<b>'.GLOBALS_CAS_URI.'</b>]'),
+    );
+
+    $form['framework_1_5_overrides']['reset_gs'] = array(
+        '#type'  => 'submit',
+        '#value' => t('Reset to defaults'),
+    );
+
+    $form['submit_gs'] = array(
+        '#type' => 'submit',
+        '#value' => t('Save configuration'),
+    );
+   return $form;
+}
+
+
+/**
+ * Implementation of hook_form_submit().
+ * Store the values to appropriate tables.
+ * @return success
+ * @param
+ */
+function framework_1_5_generalsettings_form_validate($form_id, &$form_state) {
+    $op = $form_state['clicked_button']['#value'];
+    switch ($op) {
+        case "Save configuration":
+            $encrypt_string = encrypt_decrypt($form_state['values']['framework_1_5_authkey']);
+            if($form_state['values']['framework_1_5_siteid'] == '') {
+				form_set_error($form_state['values']['framework_1_5_siteid'], 'SiteId is required');
+			}
+            if(encrypt_string == '') {
+				form_set_error($form_state['values']['framework_1_5_authkey'], 'Authorization key is required');
+			}
+           if($form_state['values']['framework_1_5_service_registry_url'] == '') {
+				form_set_error($form_state['values']['framework_1_5_service_registry_url'], 'Service registry url is required');
+			}
+			if($form_state['values']['framework_1_5_cas_service_domain'] == '') {
+				form_set_error($form_state['values']['framework_1_5_cas_service_domain'], 'CAS Service url is required');
+			}
+			if($form_state['values']['framework_1_5_cas_service_port'] == '') {
+				form_set_error($form_state['values']['framework_1_5_cas_service_port'], 'CAS PORT is required');
+			}
+			if($form_state['values']['framework_1_5_cas_service_uri'] == '') {
+				form_set_error($form_state['values']['framework_1_5_cas_service_uri'], 'CAS URI is required');
+			}
+            break;
+    }
+  
+    
+}
+
+ 
+function framework_1_5_generalsettings_form_submit($form_id, &$form_state) {
+    $op = $form_state['clicked_button']['#value'];
+    switch ($op) {
+        case "Save configuration":
+            $encrypt_string = encrypt_decrypt($form_state['values']['framework_1_5_authkey']);
+            variable_set('framework_1_5_authkey', $encrypt_string);
+            variable_set('framework_1_5_siteid', $form_state['values']['framework_1_5_siteid']);
+            variable_set('framework_1_5_google_api', $form_state['values']['framework_1_5_google_api']);
+
+            variable_set('framework_1_5_service_registry_url', $form_state['values']['framework_1_5_service_registry_url']);
+            variable_set('framework_1_5_cas_service_domain', $form_state['values']['framework_1_5_cas_service_domain']);
+            variable_set('framework_1_5_cas_service_port', $form_state['values']['framework_1_5_cas_service_port']);
+            variable_set('framework_1_5_cas_service_uri', $form_state['values']['framework_1_5_cas_service_uri']);
+
+            drupal_set_message("The configuration options have been saved.");
+            break;
+        case "Reset to defaults":
+            resetGlobalSettings();
+          break;
+    }
+  
+    
+}
+
+
+function resetGlobalSettings(){
+    variable_del('framework_1_5_service_registry_url');
+    variable_del('framework_1_5_cas_service_domain');
+    variable_del('framework_1_5_cas_service_port');
+    variable_del('framework_1_5_cas_service_uri');
+    drupal_set_message(t('The configuration options have been reset to their default values.'));
+}
+
+
+function encrypt_decrypt($string_covert) {
+    return $string_covert;
+}
+
+
+function loadContext() {
+
+    $siteInfo = ContextService::loadSiteInfo();
+    
+    $ctx = new ITrInnoWebAppContext($siteInfo);
+    
+    ITrInnoWebAppContextMgr::setCurrent($ctx);
+
+//print_r(ITrInnoWebAppContextMgr::getCurrent());
+
+}
+
+if (!function_exists('json_decode') ){
+	function json_decode($content, $assoc=false){
+		if ($assoc){
+			$json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
+		} else {
+			$json = new Services_JSON;
+		}
+			return $json->decode($content);
+	}
+}
+
+if (!function_exists('json_encode') ){
+	function json_encode($content){
+		$json = new Services_JSON;
+		return $json->encode($content);
+	}
+}
+
+if (!function_exists('ctype_alnum')) {
+  function ctype_alnum($text) {
+    return preg_match('/^\w*$/', $text);
+  }
+}
+
+
+if (!function_exists('is_none')) {
+  function is_none($text) {
+    return $text;
+  }
+}
+
+/**
+* Get the current page URL
+*/
+
+function curPageURL() { 
+	
+	$pageURL = 'http';
+	if ($_SERVER["HTTPS"] == "on") {$pageURL .= "s";}
+	$pageURL .= "://";
+	
+	if ($_SERVER["SERVER_PORT"] != "80") {
+	  $pageURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"];
+	 
+	} 
+	else {
+	  $pageURL .= $_SERVER["SERVER_NAME"];
+	  
+	}
+	return $pageURL;
+}
+
+/**
+	 * get the property file details
+	 * @param $filename is the property file name of current need
+	 * @param $param particular property name
+	 *
+	*/
+  function getFileDetails($filename, $param = NULL){
+    $mod_path = drupal_get_path('module', restapi);   // Get restapi module's path
+    $name = $mod_path.'/propertyfiles/'.$filename;    // Property file name
+    $fp = fopen($name, 'rb');
+    while(!feof($fp)){
+      $asd = fgets($fp);
+      if($asd{0} != ';'){
+        $Parameters = split('=', $asd);
+        $properties[$Parameters[0]] = $Parameters[1];
+      }
+    }
+    if($param != NULL){
+      return $properties[$param];
+    }else{
+      return $properties;
+    }
+  }
+
+/**
+ *  Form for changing Super Admin
+ */
+function changesuperadmin_form() {
+  // Create fieldset for the body:
+  $form['field_set'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Super Admin settings'),
+  );
+  // Text box for Registry Url
+  $form['field_set']['super_admin_user_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Super Admin User Name'),
+    '#required' => TRUE,
+    '#weight' => 1,
+    '#description' => t('Form to change the super user admin name'),
+  );
+  // Submit button
+  $form['field_set']['username_submit'] = array(
+			'#type' => 'submit',
+			'#value' => t('Submit'),
+			'#weight' => 4,
+      '#attributes' => array('onclick' => 'return confirmation_msg()'),
+	);
+  return $form;
+}
+/**
+ *  Submit function for changing super admin
+ *  @param $form
+ *  @param &$form_state
+ */
+function changesuperadmin_form_submit($form,&$form_state) {
+  $super_admin_name = $form_state['values']['super_admin_user_name'];  // Get the name from prev page entered by the user
+
+  // In user table
+  // Select users whose name matches with name provided by the user
+  $select_user_sql = "SELECT uid FROM {users} WHERE name = '%s'";
+  $select_user_exe = db_query($select_user_sql,$super_admin_name);
+  $select_user_fetch = db_fetch_object($select_user_exe);
+
+  // Get the uid of the user
+  $select_user_id = $select_user_fetch->uid;
+  if ($select_user_id == 1) {
+    // User is already a Super admin. Do nothing.
+    drupal_set_message($super_admin_name.t(' is already a super admin'));
+  }
+  else {
+    if ($select_user_id != '') {
+      // Already an user exists with same name. So delete the existing record
+      $del_user_exists_sql = "DELETE FROM {users} WHERE uid = %d";
+      $del_user_exists_exe = db_query($del_user_exists_sql,$select_user_id);
+    }
+    // Update the name of uid-1's record
+    $update_user_exists_sql = "UPDATE {users} SET NAME = '%s' WHERE uid = %d";
+    $update_user_exists_exe = db_query($update_user_exists_sql,$super_admin_name,1);
+    drupal_set_message(t('Super admin name has been updated.'));
+  }
+
+  // In authmap table
+  // Select users whose name matches with name provided by the user
+  $auth_select_user_sql = "SELECT uid FROM {authmap} WHERE authname = '$super_admin_name'";
+  $auth_select_user_exe = db_query($auth_select_user_sql);
+  $auth_select_user_fetch = db_fetch_object($auth_select_user_exe);
+
+  // Get the uid of the user
+  $auth_select_user_id = $auth_select_user_fetch->uid;
+
+  if ($auth_select_user_id == 1) {
+    // User is already a Super admin and present in authmap. Do nothing.
+  }
+  else {
+    if ($auth_select_user_id != '') {
+      // Already an user exists with same name. So delete the existing record
+      $auth_del_user_exists_sql = "DELETE FROM {authmap} WHERE uid = %d";
+      $auth_del_user_exists_exe = db_query($auth_del_user_exists_sql,$auth_select_user_id);
+
+      // Update the name of uid-1's record
+      $auth_update_user_exists_sql = "UPDATE {authmap} SET authname = '%s' WHERE uid = %d";
+      $auth_update_user_exists_exe = db_query($auth_update_user_exists_sql,$super_admin_name,1);
+    }
+    else {
+      // Check whether uid 1 exists
+      $auth_uid_exists_sql = "SELECT COUNT(uid) AS uid_count FROM authmap WHERE uid = %d";
+      $auth_uid_exists_exe = db_query($auth_uid_exists_sql,1);
+      $auth_uid_exists_fetch = db_fetch_object($auth_uid_exists_exe);
+      $auth_uid_exists_count = $auth_uid_exists_fetch->uid_count;
+
+      if ($auth_uid_exists_count > 0) {
+        // Already an user exists with uid = 1. So delete the existing record
+        $auth_del_user_exists_sql = "DELETE FROM {authmap} WHERE uid = %d";
+        $auth_del_user_exists_exe = db_query($auth_del_user_exists_sql,1);
+      }
+      // Insert a new record with new user name with id as 1
+      $auth_insert_user = "INSERT INTO {authmap} (uid,authname,module) VALUES (%d,'%s','%s')";
+      $auth_insert_exe = db_query($auth_insert_user,1,$super_admin_name,'cas');
+    }
+  }
+}
+
+
+/*
+*	Implementation of templateengine_preprocess_hook 
+*	For changing the filter format of the form fields
+*/
+function phptemplate_form_element($element, $value) {
+$allowed_tags = preg_split('/\s+|<|>/', variable_get("allowed_html_1", '<a> <em> <strong> <cite> <code> <ul> <ol> <li> <dl> <dt> <dd>'), -1, PREG_SPLIT_NO_EMPTY);
+
+
+
+  // This is also used in the installer, pre-database setup.
+  $t = get_t();
+
+  $output = '<div class="form-item"';
+  if (!empty($element['#id'])) {
+    $output .= ' id="'. $element['#id'] .'-wrapper"';
+  }
+  $output .= ">\n";
+  $required = !empty($element['#required']) ? '<span class="form-required" title="'. $t('This field is required.') .'">*</span>' : '';
+
+  if (!empty($element['#title'])) {
+    $title = $element['#title'];
+    if (!empty($element['#id'])) {
+      $output .= ' <label for="'. $element['#id'] .'">'. $t('!title: !required', array('!title' => $title, '!required' => $required)) ."</label>\n";
+    }
+    else {
+      $output .= ' <label>'. $t('!title: !required', array('!title' => $title, '!required' => $required)) ."</label>\n";
+    }
+  }
+
+  $output .= " $value\n";
+
+  if (!empty($element['#description'])) {
+    $output .= ' <div class="description">'. $element['#description'] ."</div>\n";
+  }
+
+
+
+  $output .= "</div>\n";
+
+  return $output;
+
+}
+
+
+/*
+*Implememtation of hook_elements
+*
+*/
+
+function framework_1_5_elements(){
+
+  $type['sourceTargetList'] = array(
+    '#input' => TRUE,
+    '#default_value' => array(),
+	'#element_validate' => array('sourceTargetList_validate'),
+	'#process' => array('sourceTargetList_expand')
+
+  );
+  $type['warmSubElement'] = array(
+    '#input' => TRUE,
+    '#default_value' => array(),
+	'#element_validate' => array('warmSubElement_validate'),
+	'#process' => array('warmSubElement_expand')
+
+  );
+
+
+  return $type;
+
+}
+
+
+function sourceTargetList_expand($element, $form_state){
+
+	if (empty($element['#value'])) {
+		$elementValue = $element['#post'][$element['#name'].'_list'];
+		if(is_array($elementValue)){
+			
+			foreach($elementValue as $key => $value){
+				$element['#value'][$value] = $value;
+			}
+			
+		}
+		else{
+			$element['#value'] = $elementValue;
+			/*$element['#value'] = array(
+										$element['#name'].'_source' => '',
+										$element['#name'].'_list' => '',
+								  );*/
+		}
+  }
+	return $element;
+
+}
+
+
+
+function sourceTargetList_validate($element, &$form_state){
+//$element['#parents']
+	//print_r($element['#post'][$element['#parents'][0].'_list']);
+	
+	//print_r($element);
+	if($element['#required']===TRUE && 
+		(empty($element['#post'][$element['#parents'][0].'_list']))){
+			
+			form_error($element, t($element['#title'].' field is required.'));
+		
+	}
+	
+	
+	if(!empty($element['#post'][$element['#parents'][0].'_list'])){
+		
+		$form_state['values'][$element['#parents'][0]] = $element['#post'][$element['#parents'][0].'_list'];
+		$element['#value'] = $element['#post'][$element['#parents'][0].'_list'];
+	}
+	
+	
+	
+	//print_r($form_state);
+	
+	
+}
+
+function warmSubElement_expand(&$element, $form_state){
+	//p($form_state);exit;
+	//p($element);exit;
+	if($element['#post']){
+		$elementValue = $element['#options'];
+		$element['#value'] = array();
+		foreach($elementValue as $key => $value){
+			if($element['#post'][$element['#name'].'_'.$key])
+			$element['#value'][$key] = $element['#post'][$element['#name'].'_emailAddr_'.$key];
+		}
+		//p($element);exit;
+		return $element;
+	}
+	
+	//p($element['#value']);exit;
+	if (empty($element['#value'])) {
+		$elementValue = $element['#post'][$element['#name'].'_list'];
+		if(is_array($elementValue)){
+			
+			foreach($elementValue as $key => $value){
+				$element['#value'][$value] = $value;
+			}
+			
+		}
+		else{
+			$element['#value'] = $elementValue;
+			/*$element['#value'] = array(
+										$element['#name'].'_source' => '',
+										$element['#name'].'_list' => '',
+								  );*/
+		}
+  }
+	return $element;
+
+}
+
+
+
+function warmSubElement_validate($element, &$form_state){
+//$element['#parents']
+	//print_r($element['#post'][$element['#parents'][0].'_list']);
+	
+	//print_r($element);
+	if($element['#required']===TRUE && 
+		(empty($element['#post'][$element['#parents'][0].'_list']))){
+			
+			form_error($element, t($element['#title'].' field is required.'));
+		
+	}
+	
+	
+	if(!empty($element['#post'][$element['#parents'][0].'_list'])){
+		
+		$form_state['values'][$element['#parents'][0]] = $element['#post'][$element['#parents'][0].'_list'];
+		$element['#value'] = $element['#post'][$element['#parents'][0].'_list'];
+	}
+	
+	
+	
+	//print_r($form_state);
+	
+	
+}
+
+
+
+/*
+*Implementation of theme for the Source-Target List
+*
+*/
+
+
+function theme_sourceTargetList($element){
+	$class = array('form-text');
+  	$extra = '';
+  	$output = '';
+	
+	drupal_add_js(drupal_get_path('module', 'framework_1_5') .'/script/source_target_list.js');
+  
+  _form_set_class($element, $class);
+  $output .= theme('source_list', $element);
+
+  return theme('form_element', $element, $output) . $extra;
+
+
+}
+
+/*
+*Implementation of theme for the warmSubElement
+*
+*/
+
+
+function theme_warmSubElement($element){
+	$class = array('form-text');
+  	$extra = '';
+  	$output = '';
+	
+  _form_set_class($element, $class);
+  $output .= theme('warmSubElement_list', $element);
+	unset($element['#description']);
+  return theme('form_element', $element, $output) . $extra;
+
+
+}
+
+
+
+/*
+*Implementation of hook_theme
+*
+*/
+
+function framework_1_5_theme(){
+
+  return array(
+    'sourceTargetList' => array(
+      							'arguments' => array('element' => NULL),
+    					  ),
+						  
+	'source_list' => array(
+							'template' => 'source-list',
+							'arguments' => array('element' => NULL)
+						  ),
+						  
+	'warmSubElement' => array(
+								'arguments' => array('element' => NULL),
+							),
+	'warmSubElement_list' => array(
+							'template' => 'warmSubElement-list',
+							'arguments' => array('element' => NULL)
+							),
+						  
+
+  );
+}
+
+function _framework_private()
+{
+	//echo 'Private methods call';
+}

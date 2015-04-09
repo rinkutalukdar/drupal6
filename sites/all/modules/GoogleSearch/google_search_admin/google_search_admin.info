@@ -1,0 +1,12 @@
+; $Id: google_search_admin.info,v 1.0 2008/09/18 12:53:10 Exp $
+name = Google Search: Admin
+description = Provide the ability search against the index created by any search engine and display search results.
+package = Itrinno Framework
+dependencies[] = google_appliance
+core = 6.x
+
+; Information added by JnJ packaging script on 2008-09-18
+version = "6.x"
+core = "6.x"
+project = "google_appliance"
+datestamp = "1203739506"

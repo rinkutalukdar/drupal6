@@ -1,0 +1,98 @@
+<?php
+// $Id: walking_log.install,v 1.0 2010/11/02 14:00:10 Exp $
+
+/**
+ * Implementation of hook_schema().
+ */
+function walking_log_schema() {
+	//wl_no_times_each_week, wl_duration_each_walk, wl_total_weeks, wl_user_id, wl_created
+  $schema['walking_log'] = array(
+    'description' => 'For storing new walking log details.',
+    'fields' => array(
+  	  'wl_id' => array(
+        'type' => 'serial',
+  	  'unsigned' => TRUE,
+        'null' => TRUE,
+        'description' => t('Walking Log ID, e.g. node ID for nodes.')
+      ),
+	'wl_miles_walked' => array(
+        'description' => 'How far did you walk',
+        'type' => 'varchar',
+	  'length' => 255,
+        'null' => TRUE
+      ),
+      'wl_walk_hours' => array(
+        'description' => 'How long did it take to walk',
+        'type' => 'int',
+        'default' => 0,
+        'null' => TRUE
+      ),
+      'wl_walk_minutes' => array(
+        'description' => 'How long did it take to walk',
+        'type' => 'int',
+        'default' => 0,
+        'null' => TRUE
+      ),
+      'wl_walk_duration' => array(
+        'description' => 'How long did it take to walk',
+        'type' => 'varchar',
+	  'length' => 255,
+        'null' => TRUE
+      ),
+      'wl_walk_month' => array(
+        'description' => 'How long did it take to walk',
+        'type' => 'varchar',
+        'length' => 255,
+        'null' => TRUE
+      ),
+      'wl_how_user_felt' => array(
+        'description' => 'How did you feel during?',
+        'type' => 'varchar',
+	  'length' => 255,
+        'null' => TRUE
+      ),
+      'wl_how_user_felt_later' => array(
+        'type' => 'varchar',
+        'description' => t("How did you feel afterwards?"),
+	  'length' => 255,
+        'null' => TRUE
+      ),
+      'wl_weather' => array(
+        'type' => 'varchar',
+	  'length' => 255,
+        'null' => TRUE,
+        'description' => t("What was the weather like?")
+      ),
+      'wl_created' => array(
+        'type' => 'int',
+        'null' => TRUE,
+        'description' => t('The Unix timestamp when the walking log was created.')
+      ),
+      
+      'wl_last_modified_by' => array(
+        'type' => 'int',
+        'null' => TRUE,
+        'description' => t('Last modified by.')
+      ),
+    ),
+    'indexes' => array(
+      'wl_created'        	=> array('wl_created')
+    ),
+    'primary key' => array('wl_id'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function walking_log_install() {
+  drupal_install_schema('walking_log');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function walking_log_uninstall() {
+ drupal_uninstall_schema('walking_log');
+}

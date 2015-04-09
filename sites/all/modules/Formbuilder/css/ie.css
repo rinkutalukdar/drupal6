@@ -1,0 +1,35 @@
+#formbuilder_leftCol { width:200px;  }
+#formbuilder_buttons { width:100px; float:left; vertical-align:top; }
+#formbuilder_properties { vertical-align:top; } 
+ 
+.formbuilder_columnHead { margin:0px; display:table-column; }
+
+/* Modified by Dinesh */
+/*.formbuilder_sortable {
+    color:black;
+    position:relative;
+    width:-10px;
+    overflow:visible;
+    background-color: red;
+    list-style: none;
+    left:-40px;
+    padding-bottom: 10px;
+    padding-top: 10px;
+    padding-right:0px;
+    float: left;
+    border:2px solid red;
+}*/
+
+.formbuilder_sortable {
+	background-color:white;
+	border:2px solid #FFCC99;
+	color:black;
+	float:left;
+	list-style-image:none;
+	list-style-position:outside;
+	list-style-type:none;
+	overflow:visible;
+	padding:10px 0 10px 5px;
+	position:relative;
+	width:210px;
+}

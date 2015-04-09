@@ -1,0 +1,10 @@
+; $Id: $
+name = Google Search
+description =  Enables internet/site-wide keyword searching.
+package = Itrinno Framework
+core = 6.x
+; Information added by drupal.org packaging script on 2008-02-23
+version = "6.3"
+core = "6.x"
+project = "Internet Search"
+datestamp = "1203739506"

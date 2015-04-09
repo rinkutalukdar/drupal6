@@ -1,0 +1,16 @@
+; $Id: checkbox_validate.info,v 1.1 2008/05/25 00:02:17 MegaGrunt Exp $
+name = Checkbox Validate
+description = Makes checkbox fields that have been specified as required behave as required (corrects core bug).
+core = 6.x
+package= Itrinno Framework
+
+
+
+; Information added by drupal.org packaging script on 2008-05-29
+version = "Itrinno-Gold1.0 (6.x-1.1)"
+core = "6.x"
+project = "checkbox_validate"
+datestamp = "1212071414"
+
+; Framework info
+;fwk_module_type= OOTB, Not Modified

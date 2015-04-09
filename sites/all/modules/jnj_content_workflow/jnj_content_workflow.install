@@ -1,0 +1,340 @@
+<?php
+
+/**
+ * Implementation of hook_install().
+ */
+function jnj_content_workflow_install() {
+  module_load_include('inc', 'jnj_content_workflow', 'includes/jnj_content_workflow.util');
+  module_load_include('module', 'workflow', 'workflow');
+
+  // create workflow
+  $wid = workflow_create('content_management');
+  $workflow = workflow_load($wid);
+  $states = array_keys(workflow_get_states($wid));
+  // the creation state is the first state of the workflow
+  $creation_sid = $states[0];
+  variable_set('jnj_content_workflow_sid_creation', $creation_sid);
+
+  variable_set('jnj_content_workflow_wid', $wid);
+
+  // create workflow states (workflow_state_save)
+  _jnj_content_workflow_create_state('Draft', 'draft', $wid, 0 , 0);
+  _jnj_content_workflow_create_state('Disapproved', 'disapproved', $wid, 5 , 0);
+  _jnj_content_workflow_create_state('Submitted', 'submitted', $wid, 10 , 0);
+  _jnj_content_workflow_create_state('Approved', 'approved', $wid, 20 , 0);
+  _jnj_content_workflow_create_state('Published', 'published', $wid, 30 , 0);
+  _jnj_content_workflow_create_state('Unpublished', 'unpublished', $wid, 30 , 0);
+  
+  // create roles 
+  $rids = _jnj_content_workflow_create_roles(array(
+    'editor' => 'Editor',
+    'approver' => 'Approver',
+    'publisher' => 'Publisher',
+  ));
+
+  // update workflow roles
+  workflow_update($wid, $workflow->name, $rids, $workflow->options);
+
+  // editor permissions
+  _jnj_content_workflow_set_permissions($rids['editor'], array(
+    'access administration menu',
+    'access content',
+    'view revisions',
+    'edit revisions',
+    'view revision status messages',
+    'access workflow summary views',
+    'schedule workflow transitions',
+  	'access workflow landing page',
+  	'access all views',
+  	'create url aliases',
+  	'access fckeditor',
+  	'allow fckeditor file uploads',
+  ));
+  
+  // approver permissions
+  _jnj_content_workflow_set_permissions($rids['approver'], array(
+    'access administration menu',
+    'access content',
+    'view revisions',
+    'view revision status messages',
+    'access workflow summary views',
+    'schedule workflow transitions',
+  	'access workflow landing page',
+  	'access all views',
+  ));
+
+  // publisher permissions
+  _jnj_content_workflow_set_permissions($rids['publisher'], array(
+    'access administration menu',
+    'access content',
+    'view revisions',
+    'view revision status messages',
+    'access workflow summary views',
+    'schedule workflow transitions',
+  	'access workflow landing page',
+    'Publish Approved Content',
+    'revert revisions',
+  	'access all views',
+  ));
+
+
+
+  // set workflow transitions
+  // creation => draft
+  // roles: author, editor
+  workflow_transition_add_role($creation_sid, variable_get('jnj_content_workflow_sid_draft', NULL), 'author');
+  workflow_transition_add_role($creation_sid, variable_get('jnj_content_workflow_sid_draft', NULL), $rids['editor']);
+  
+  // draft => submitted
+  // roles: editor
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_draft', NULL),
+          variable_get('jnj_content_workflow_sid_submitted', NULL), $rids['editor']);
+
+  // unpublished => published
+  // roles: publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_unpublished', NULL),
+          variable_get('jnj_content_workflow_sid_published', NULL), $rids['publisher']);
+  
+  // submitted => unpublished
+  // roles: publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_submitted', NULL),
+          variable_get('jnj_content_workflow_sid_unpublished', NULL), $rids['publisher']);
+          
+  // submitted => disapproved
+  // roles: approver, publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_submitted', NULL),
+          variable_get('jnj_content_workflow_sid_disapproved', NULL), $rids['approver']);
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_submitted', NULL),
+          variable_get('jnj_content_workflow_sid_disapproved', NULL), $rids['publisher']);
+          
+  // submitted => approved
+  // roles: approver, publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_submitted', NULL),
+          variable_get('jnj_content_workflow_sid_approved', NULL), $rids['approver']);
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_submitted', NULL),
+  		  variable_get('jnj_content_workflow_sid_approved', NULL), $rids['publisher']);
+          
+  // submitted => published
+  // roles: publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_submitted', NULL),
+          variable_get('jnj_content_workflow_sid_published', NULL), $rids['publisher']);
+          
+  // approved => unpublished
+  // roles: publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_approved', NULL),
+          variable_get('jnj_content_workflow_sid_unpublished', NULL), $rids['publisher']);
+  // approved => published
+  // roles: publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_approved', NULL),
+          variable_get('jnj_content_workflow_sid_published', NULL), $rids['publisher']);
+          
+  // publisher => unpublished
+  // roles: publisher
+  workflow_transition_add_role(variable_get('jnj_content_workflow_sid_published', NULL),
+          variable_get('jnj_content_workflow_sid_unpublished', NULL), $rids['publisher']);
+          
+  // create actions
+  // Change the node state to "Draft"
+  $to_draft_aid = actions_save('workflow_select_given_state_action', 'node', array(
+    'target_sid' => variable_get('jnj_content_workflow_sid_draft', NULL),
+    'state_name' => 'Draft',
+    'force' => TRUE,
+    'workflow_comment' => 'Action set %title to %state.',
+  ), 'Change workflow state of post to "Draft"');
+  variable_set('jnj_content_workflow_aid_to_draft', $to_draft_aid);
+
+  _jnj_content_workflow_set_action('nodeapi', 'insertRevision', $to_draft_aid);
+  _jnj_content_workflow_set_action('nodeapi', 'insert', $to_draft_aid);
+  
+
+  // Redirect to Landing Page
+  _jnj_content_workflow_create_redirect_action('landing_page', 'content/display', 'Redirect to Landing Page');
+
+  // set action on the triggers
+  _jnj_content_workflow_set_action('user', $rids['editor'] .'Login',
+          variable_get('jnj_content_workflow_aid_goto_landing_page_content', NULL));
+  _jnj_content_workflow_set_action('user', $rids['approver'] .'Login',
+          variable_get('jnj_content_workflow_aid_goto_landing_page_content', NULL));
+  _jnj_content_workflow_set_action('user', $rids['publisher'] .'Login',
+          variable_get('jnj_content_workflow_aid_goto_landing_page_content', NULL));
+
+  db_query("UPDATE {system} SET weight = 10 WHERE name = '%s'", 'jnj_content_workflow');
+
+
+   //mapping existing content types to workflow.
+  module_load_include('inc', 'jnj_content_workflow', 'includes/jnj_content_workflow.util');
+
+  $old_man_types = array();
+  
+  $types = node_get_types();
+  $new_man_types = array_keys($types);
+  $temp_new_man_types = array();
+  foreach($new_man_types as $type) {
+  	$temp_new_man_types[$type] = $type;
+  }
+  $new_man_types = $temp_new_man_types;
+/*  echo '<pre>';
+  print_r($new_man_types);
+  echo '</pre>';
+  exit;*/
+
+  $result = db_fetch_array(db_query("SELECT * FROM {workflow_transitions} w WHERE sid = %d AND target_sid = %d",
+          variable_get('jnj_content_workflow_sid_approved', 0),
+          variable_get('jnj_content_workflow_sid_published', 0)));
+  $tid = $result['tid'];
+
+  $result = db_fetch_array(db_query("SELECT * FROM {workflow_transitions} w WHERE sid = %d AND target_sid = %d",
+          variable_get('jnj_content_workflow_sid_submitted', 0),
+          variable_get('jnj_content_workflow_sid_published', 0)));
+  $tid2 = $result['tid'];
+
+  $result = db_fetch_array(db_query("SELECT * FROM {workflow_transitions} w WHERE sid = %d AND target_sid = %d",
+          variable_get('jnj_content_workflow_sid_unpublished', 0),
+          variable_get('jnj_content_workflow_sid_published', 0)));
+  $tid3 = $result['tid'];
+  
+  $result = db_fetch_array(db_query("SELECT * FROM {workflow_transitions} w WHERE sid = %d AND target_sid = %d",
+          variable_get('jnj_content_workflow_sid_submitted', 0),
+          variable_get('jnj_content_workflow_sid_unpublished', 0)));
+  $tid4 = $result['tid'];
+  
+  $result = db_fetch_array(db_query("SELECT * FROM {workflow_transitions} w WHERE sid = %d AND target_sid = %d",
+          variable_get('jnj_content_workflow_sid_approved', 0),
+          variable_get('jnj_content_workflow_sid_unpublished', 0)));
+  $tid5 = $result['tid'];
+  
+  $result = db_fetch_array(db_query("SELECT * FROM {workflow_transitions} w WHERE sid = %d AND target_sid = %d",
+          variable_get('jnj_content_workflow_sid_published', 0),
+          variable_get('jnj_content_workflow_sid_unpublished', 0)));
+  $tid6 = $result['tid'];
+  
+  // remove types
+  $remove = array_diff($old_man_types, $new_man_types);
+
+  $remove_perms = array();
+
+  foreach ($remove as $item) {
+    db_query("DELETE FROM {workflow_type_map} WHERE type = '%s'", $item);
+    db_query("DELETE FROM {trigger_assignments} WHERE op LIKE '%s%%'", 'workflow-'. $item);
+    $remove_perms[] = 'create '. $item .' content';
+    $remove_perms[] = 'edit any '. $item .' content';
+    variable_del('node_options_'. $item);
+    variable_del('new_revisions_'. $item);
+    variable_del('revisioning_auto_publish_'. $item);
+  }
+
+  $add_perms = array();
+
+  // Add type to workflow
+  $add = array_diff($new_man_types, $old_man_types);
+  foreach ($add as $item_key  => $item) {
+    if ($item === $item_key) {
+      db_query("DELETE FROM {workflow_type_map} WHERE type = '%s'", $item);
+      db_query("INSERT INTO {workflow_type_map} (type, wid) VALUES ('%s', %d)",
+              $item, variable_get('jnj_content_workflow_wid', 0));
+
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid,
+              'revisioning_publish_latest_revision_action');
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid2,
+              'revisioning_publish_latest_revision_action');
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid3,
+              'revisioning_publish_latest_revision_action');
+      
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid4,
+              'node_unpublish_action', 1);
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid5,
+              'node_unpublish_action', 1);
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid6,
+              'node_unpublish_action', 1);
+      
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid4,
+              'node_save_action', 2);
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid5,
+              'node_save_action', 2);
+      _jnj_content_workflow_set_action('workflow', 'workflow-'. $item .'-'. $tid6,
+              'node_save_action', 2);
+      $add_perms[] = 'create '. $item .' content';
+      $add_perms[] = 'edit any '. $item .' content';
+
+      $node_options = array(
+        'revision' => 'revision',
+        'revision_moderation' => 'revision_moderation',
+      );
+      variable_set('node_options_'. $item, $node_options);
+      variable_set('new_revisions_'. $item, 1);
+      variable_set('revisioning_auto_publish_'. $item, 0);
+      
+	$sql = "SELECT nid FROM {node} WHERE status <> 0 AND type IN ('%s')";
+	$query = db_query($sql, $item);
+	$nodes = array();
+	$creation_sid = variable_get('jnj_content_workflow_sid_creation', NULL);
+	//$draft_sid = db_result(db_query("SELECT sid FROM {workflow_states} ws WHERE ws.state = '%s' AND ws.wid = 1", 'Draft'));
+	$draft_sid = variable_get('jnj_content_workflow_sid_draft', NULL);
+	//$submitted_sid = db_result(db_query("SELECT sid FROM {workflow_states} ws WHERE ws.state = '%s' AND ws.wid = 1", 'Submitted'));
+	$submitted_sid = variable_get('jnj_content_workflow_sid_submitted', NULL);
+	//$approved_sid = db_result(db_query("SELECT sid FROM {workflow_states} ws WHERE ws.state = '%s' AND ws.wid = 1", 'Approved'));
+	$approved_sid = variable_get('jnj_content_workflow_sid_approved', NULL);
+	//$published_sid = db_result(db_query("SELECT sid FROM {workflow_states} ws WHERE ws.state = '%s' AND ws.wid = 1", 'Published'));
+	$published_sid = variable_get('jnj_content_workflow_sid_published', NULL);
+	while($rs = db_fetch_array($query)) {
+		$nodes[] = node_load($rs['nid']);
+	}
+	foreach($nodes as $node) {
+		if($node->_workflow == $creation_sid) {
+			//workflow_execute_transition($node, $draft_sid, NULL, TRUE);
+			//workflow_execute_transition($node, $submitted_sid, NULL, TRUE);
+			//workflow_execute_transition($node, $approved_sid, NULL, TRUE);
+			workflow_execute_transition($node, $published_sid, 'Published while installing', TRUE);
+		}
+	}
+    }
+  }
+  variable_set('jnj_content_workflow_manageable_types', $new_man_types);
+
+  // set permissions to add / edit the mapped content types
+  _jnj_content_workflow_set_permissions(variable_get('jnj_content_workflow_role_editor', 0),
+          $add_perms, $remove_perms);
+	
+
+
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function jnj_content_workflow_uninstall() {
+  module_load_include('inc', 'jnj_content_workflow', 'includes/jnj_content_workflow.util');
+  module_load_include('module', 'workflow', 'workflow');
+
+  // delete workflow
+  workflow_deletewf(variable_get('jnj_content_workflow_wid', NULL));
+  db_query("DELETE FROM {workflow_states} WHERE wid = %d", variable_get('jnj_content_workflow_wid', NULL));
+  variable_del('jnj_content_workflow_wid');
+  
+  $states_names = array(
+    'draft',
+    'disapproved',
+    'submitted',
+    'approved',
+    'published',
+  );
+  foreach ($states_names as $state_name) {
+    variable_del('jnj_content_workflow_sid_'. $state_name);
+  }
+
+  // delete roles
+  _jnj_content_workflow_delete_roles(array(
+    'editor',
+    'approver',
+    'publisher',
+  ));
+
+  // delete action (actions_delete)
+  _jnj_content_workflow_delete_actions(array(
+    'landing_page',
+  ));
+  actions_delete(variable_get('jnj_content_workflow_aid_to_draft', NULL));
+  variable_del('jnj_content_workflow_aid_to_draft');
+
+  variable_del('jnj_content_workflow_manageable_types');
+}

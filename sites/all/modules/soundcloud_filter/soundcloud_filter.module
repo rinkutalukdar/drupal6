@@ -1,0 +1,363 @@
+<?php
+
+/**
+ * Implementation of hook_filter().
+ */
+function soundcloud_filter_filter($op, $delta = 0, $format = -1, $text = '', $cache_id = 0) {
+  switch($op) {
+    case 'list':
+      return array(
+      0 => t('SoundCloud filter')
+      );
+
+    case 'description':
+      return t('Description: replaces [soundcloud:URL] with embedded code');
+
+    case 'settings':
+      return soundcloud_filter_settings($format);
+
+    case 'no cache':
+      // Disable caching
+      return TRUE;
+
+    case 'prepare':
+      return $text;
+
+    case 'process':
+      return soundcloud_filter_process($text, $format);
+
+    default:
+      return $text;
+  }
+}
+
+/**
+ * Implementation of hook_filter_tips().
+ */
+function soundcloud_filter_filter_tips($delta, $format, $long = FALSE) {
+  if ($long) {
+    return t('
+            <p>SoundCloud filter</p>
+            <p>Insert SoundCloud track or set with <code>[soundcloud:URL]</code> tag.</p>
+            <p>Optional parameters can be set to override default player settings: </p>
+            <ul>
+                <li>width: <code>[soundcloud:http://soundcloud.com/blumarten/blu-mar-ten-she-moves-through-asc-remix width=100]</code></li>
+                <li>height: <code>[soundcloud:http://soundcloud.com/blumarten/blu-mar-ten-she-moves-through-asc-remix height=81]</code></li>
+                <li>showcomments: <code>[soundcloud:http://soundcloud.com/blumarten/blu-mar-ten-she-moves-through-asc-remix showcomments=false]</code></li>
+                <li>autoplay: <code>[soundcloud:http://soundcloud.com/blumarten/blu-mar-ten-she-moves-through-asc-remix autoplay=true]</code></li>
+                <li>color: <code>[soundcloud:http://soundcloud.com/blumarten/blu-mar-ten-she-moves-through-asc-remix color=ff7700]</code></li>
+            </ul>
+        ');
+  } else {
+    return t('Insert SoundCloud track or set with the [soundcloud:URL] tag.');
+  }
+}
+
+/**
+ *  Process callback
+ */
+function soundcloud_filter_process($text, $format = -1) {
+  if (preg_match_all('/\[soundcloud(\:(.+))?( .+)?\]/isU', $text, $matches)) {
+    $r = array();
+    foreach ($matches[0] as $c => $code) {
+      $sound = array(
+                'url'           => $matches[2][$c],
+                'width'         => variable_get('soundcloud_filter_width_' . $format, 100),
+                'height'        => variable_get('soundcloud_filter_height_' . $format, 81),
+                'setheight'     => variable_get('soundcloud_filter_setheight_' . $format, 305),
+                'showcomments'  => (variable_get('soundcloud_filter_showcomments_' . $format, 0)) ? 'true' : 'false',
+                'autoplay'      => (variable_get('soundcloud_filter_autoplay_' . $format, 0)) ? 'true' : 'false',
+                'showplaycount' => (variable_get('soundcloud_filter_showplaycount_' . $format, 0)) ? 'true' : 'false',
+                'showartwork'   => (variable_get('soundcloud_filter_showartwork_' . $format, 0)) ? 'true' : 'false',
+                'color'         => variable_get('soundcloud_filter_color_' . $format, '0678be'),
+                'html5'         => variable_get('soundcloud_filter_html5_' . $format, 0),
+      );
+      
+      $encoded_url = urlencode($sound['url']);
+      $parsed_url = parse_url($sound['url']);
+
+      if ($matches[3][$c] && preg_match_all('/\s+([a-z]+)\=([^\s]+)/i', $matches[3][$c], $override_params)) {
+        foreach ($override_params[0] as $p => $par) {
+          $sound[$override_params[1][$p]] = $override_params[2][$p];
+        }
+      }
+
+      // Check that the user has permission to use autoplay
+      if (!user_access('use soundcloud filter autoplay')) {
+        $sound['autoplay'] = 'false';
+      }
+
+      switch ($sound['html5']) {
+        case 0:
+          $splitted_url = explode("/", $parsed_url['path']);
+          
+          if ($splitted_url[2] != 'sets') {
+            $params = 'url=' . $encoded_url .
+                      '&amp;show_comments=' . $sound['showcomments'] .
+                      '&amp;auto_play=' . $sound['autoplay'] .
+                      '&amp;color=' . $sound['color'];
+
+            $r = theme('soundcloud_filter_embed', $params, $sound['height'], $sound['width'], $parsed_url['host']);
+          } 
+          else {
+            $params = 'url=' . $encoded_url .
+                      '&amp;show_comments=' . $sound['showcomments'] .
+                      '&amp;auto_play=' . $sound['autoplay'] .
+                      '&amp;show_playcount=' . $sound['showplaycount'] .
+                      '&amp;show_artwork=' . $sound['showartwork'] .
+                      '&amp;color=' . $sound['color'];
+                      // '&amp;color=' . str_replace('#', '', $sound['color']);
+
+            $r = theme('soundcloud_filter_embed', $params, $sound['setheight'], $sound['width'], $parsed_url['host']);
+          }
+
+          break;
+        case 1:
+          $r = theme('soundcloud_filter_embed_html5', $sound);
+          break;
+      }
+      
+      $text = str_replace($code, $r, $text);
+    }
+  }
+  return $text;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function soundcloud_filter_theme() {
+  return array(
+    'soundcloud_filter_embed' => array(
+      'arguments' => array(
+        'params' => NULL,
+        'height' => NULL,
+        'widht' => NULL,
+        'host' => NULL,
+      ),
+    ),
+    'soundcloud_filter_embed_html5' => array(
+      'arguments' => array(
+        'sound' => NULL,
+      ),
+    ),
+    'soundcloud_filter_wysiwyg_popup' => array(
+      'arguments' => array(
+        'path' => NULL,
+        'tinymce_path' => NULL,
+        'tinymce_js' => NULL,
+      ),
+      'template' => 'soundcloud-filter-wysiwyg-popup',
+      'path' => drupal_get_path('module', 'soundcloud_filter') . '/theme',
+    ),
+  );
+}
+
+
+/**
+ * Function that outputs the <object> element for tracks
+*/
+function theme_soundcloud_filter_embed($params, $height, $width, $host) {
+  $output = '';
+
+  $output .= '<object height="' . $height . '" width="' . $width . '%"><param name="movie" value="https://player.' . $host . '/player.swf?' . $params . '"></param>';
+  $output .= '<param name="allowscriptaccess" value="always"></param><embed allowscriptaccess="always" height="' . $height . '" src="http://player.' . $host . '/player.swf?' . $params . '" type="application/x-shockwave-flash" width="' . $width . '%"></embed></object>';
+
+  return $output;
+}
+
+/**
+ * Function that outputs the HTML5 player
+ */
+function theme_soundcloud_filter_embed_html5($sound) {
+  $output = '';
+
+  $oembed_endpoint = 'http://soundcloud.com/oembed';
+  $encoded_url = urlencode($sound['url']);
+
+  $oembed_url = $oembed_endpoint . '?iframe=true&url=' . $encoded_url;
+  $oembed = simplexml_load_string(soundcloud_filter_curl_get($oembed_url));
+
+  // Replace player default settings with our settings
+  $final_iframe = preg_replace('/(width=)"([^"]+)"/', 'width="' . $sound['width'] . '%"', $oembed->html);
+
+  if (preg_match('/auto_play=(true|false)/', $final_iframe)) {
+    $final_iframe = preg_replace('/auto_play=(true|false)/', 'auto_play=' . $sound['autoplay'], $final_iframe);
+  }
+  else {
+    $final_iframe = preg_replace('/">/', '&auto_play=' . $sound['autoplay'] . '">', $final_iframe);
+  }
+
+  if (preg_match('/show_artwork=(true|false)/', $final_iframe)) {
+    $final_iframe = preg_replace('/show_artwork=(true|false)/', 'show_artwork=' . $sound['showartwork'], $final_iframe);
+  }
+  else {
+    $final_iframe = preg_replace('/">/', '&show_artwork=' . $sound['showartwork'] . '">', $final_iframe);
+  }
+
+  if (preg_match('/color=([a-zA-Z0-9]{6})/', $final_iframe)) {
+    $final_iframe = preg_replace('/color=([a-zA-Z0-9]{6})/', 'color=' . $sound['color'], $final_iframe);
+  }
+  else {
+    $final_iframe = preg_replace('/">/', '&color=' . $sound['color'] . '">', $final_iframe);
+  }
+
+  $output = html_entity_decode($final_iframe);  // '$oembed->html' for original embed
+
+  return $output;
+}
+
+
+function soundcloud_filter_settings($format) {
+  $form['soundcloud_filter'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('SoundCloud filter'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_html5_' . $format] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use HTML5 player'),
+    '#description' => t('Use HTML5 player instead of flash player.'),
+    '#default_value' => variable_get('soundcloud_filter_html5_' . $format, FALSE),
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_width_' . $format] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default width'),
+    '#description' => t('Player width in percent(%), default is 100'),
+    '#default_value' => variable_get('soundcloud_filter_width_' . $format, 100),
+    '#maxlength' => 3,
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_height_' . $format] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default height for tracks'),
+    '#description' => t('Player height for tracks, default is 81'),
+    '#default_value' => variable_get('soundcloud_filter_height_' . $format, 81),
+    '#maxlength' => 3,
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_setheight_' . $format] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default height for sets'),
+    '#description' => t('Player height for sets, default is 305'),
+    '#default_value' => variable_get('soundcloud_filter_setheight_' . $format, 305),
+    '#maxlength' => 3,
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_showcomments_' . $format] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show comments'),
+    '#description' => t('Default show comment setting.'),
+    '#default_value' => variable_get('soundcloud_filter_showcomments_' . $format, FALSE),
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_autoplay_' . $format] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Autoplay'),
+    '#description' => t('Default autoplay setting.'),
+    '#default_value' => variable_get('soundcloud_filter_autoplay_' . $format, FALSE),
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_showplaycount_' . $format] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show playcount'),
+    '#description' => t('Default show playcount setting.'),
+    '#default_value' => variable_get('soundcloud_filter_showplaycount_' . $format, FALSE),
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_showartwork_' . $format] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show artwork'),
+    '#description' => t('Default show artwork setting.'),
+    '#default_value' => variable_get('soundcloud_filter_showartwork_' . $format, FALSE),
+  );
+
+  $form['soundcloud_filter']['soundcloud_filter_color_' . $format] = array(
+    '#type' => module_exists('jquery_colorpicker') ? 'colorpicker' : 'textfield',
+    // '#type' => (module_exists('jquery_colorpicker') ? 'colorpicker_' : '') . 'textfield', 
+    '#title' => t('Default color'),
+    '#description' => t('Please enter a color value in the form RRGGBB. Turn on the jquery_colorpicker module if available.'),    
+    '#default_value' => variable_get('soundcloud_filter_color_' . $format, '0678be'),
+    '#maxlength' => 7,
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Implementation of hook_menu().
+ *
+ * @return An array of menu items.
+ */
+function soundcloud_filter_menu() {
+  $items = array();
+
+  $items['soundcloud-filter/wysiwyg'] = array(
+    'title' => 'WYSIWYG Popup',
+    'page callback' => 'soundcloud_filter_wysiwyg_popup',
+    'access arguments' => array('access soundcloud filter wysiwyg popup'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ *
+ * @return array An array of valid permissions for the soundcloud_filter module
+ */
+function soundcloud_filter_perm() {
+  return array('access soundcloud filter wysiwyg popup', 'use soundcloud filter autoplay');
+}
+
+/**
+ * Load the WYSIWYG popup window.
+ *
+ * @return NULL
+ */
+function soundcloud_filter_wysiwyg_popup() {
+  $path = base_path() . drupal_get_path('module', 'soundcloud_filter');
+  $tinymce_path = base_path() .'sites/all/libraries';
+  $tinymce_js = $tinymce_path .'/tinymce/jscripts/tiny_mce/tiny_mce_popup.js';
+
+  echo theme('soundcloud_filter_wysiwyg_popup', $path, $tinymce_path, $tinymce_js);
+
+  return NULL;
+}
+
+/**
+ * Implementation of hook_wysiwyg_plugin().
+ */
+function soundcloud_filter_wysiwyg_plugin($editor, $version) {
+  switch ($editor) {
+    case 'tinymce':
+      if ($version > 3) {
+        return array(
+          'soundcloud_filter' => array(
+            'path' => drupal_get_path('module', 'soundcloud_filter') .'/wysiwyg/tinymce/editor_plugin.js',
+            'buttons' => array('soundcloud_filter' => t('SoundCloud filter')),
+            'url' => 'http://drupal.org/project/soundcloud_filter',
+            'load' => TRUE,
+          ),
+        );
+      }
+      break;
+  }
+}
+
+/*
+ * Curl helper function
+ */
+function soundcloud_filter_curl_get($url) {
+    $curl = curl_init($url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($curl, CURLOPT_TIMEOUT, 30);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+    $return = curl_exec($curl);
+    curl_close($curl);
+    return $return;
+}

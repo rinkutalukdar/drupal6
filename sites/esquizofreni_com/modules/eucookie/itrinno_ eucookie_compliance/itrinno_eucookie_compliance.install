@@ -1,0 +1,243 @@
+<?php
+
+/**
+ * @file
+ * Installation file.
+ */
+
+/**
+ * Implements hook_enable().
+ */
+function itrinno_eucookie_compliance_enable() { 
+   global $language;
+  $lang = ($language->language) ? $language->language : 'en';
+  $ui_settings['cookie_banner']['position']='1';
+  $ui_settings['cookie_banner']['popup'] =  '0';
+  $ui_settings['cookie_banner']['height'] =  '120';
+  $ui_settings['cookie_banner']['bgcolor'] =  '000000';
+  $ui_settings['cookie_banner']['fontcolor'] =  'FFFFFF';
+  $ui_settings['cookie_banner']['transparency'] =  '0.5';
+  $ui_settings = array (
+    'position' => '1',
+    'popup' => '0',
+    'height' => '120',
+    'bgcolor' => '#000000',
+    'fontcolor' => '#FFFFFF',
+	'transparency' => '0.5',
+	'implied_consent' =>  '<p>This site uses cookies as described in our Cookie Policy (link). To see what cookies we serve and set your own preferences, please check our !cookie_link. Otherwise, if you agree to our use of cookies, please continue to use our site. When you refuse the use of - 1st or 3rd party - cookies, this site will not behave as designed due to the unavailability of cookies. The information from this session will not be stored. Any collected data will be discarded.</p>',
+	
+    'explicit_consent' =>  '<p>Explicit This site uses cookies as described in our !cookie_link. To see what cookies we serve and set your own preferences, please check our Cookie Settings Panel (popup). Otherwise, if you agree to our use of cookies, please continue to use our site.</p><p class="cookieWarning">When you refuse the use of - 1<sup>st</sup> or 3<sup>rd</sup> party - cookies, this site will not behave as designed due to the unavailability of cookies. The information from this session will not be stored. Any collected data will be discarded.</p>',
+	  
+    'cookie_panel' => '<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut
+		labore et dolore magna aliqua. Ut enim ad minim veniam.</p>
+		<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit,</p>
+		<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit,</p>
+		<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit,</p>
+		3rd Party cookies:
+		<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, external link for cookie mgt.
+		Lorem ipsum dolor sit amet, consectetur adipisicing elit, external link for cookie mgt.
+		Lorem ipsum dolor sit amet, consectetur adipisicing elit, external link for cookie mgt.
+		When you refuse the use of - 1<sup>st</sup> or 3<sup>rd</sup> party - cookies, this site will not behave
+		as designed due to the unavailability of cookies.</p>',
+	  
+    'explicit_functional_warning' => '<p>This site will not behave as designed due to the unavailability of cookies. The information from this session will not be stored. Any collected data will be discarded.</p>',
+    
+    'country_explicit_consent_info' =>'<p>To use this section of the website, you need to accept the use of cookies. See the !cookie_link for more details.</p>',
+  );	
+  
+  $cookie_settings = array (
+    'site_impact_level' => '0',
+    'set_page_impact_level' => array(
+	  'implied_pages' => '',
+	  'explicit_pages' => '<front>
+admin
+admin*' ,	  
+	  ),
+	'explicit_consent_country_codes' => 'IN',
+	'country_banner' =>'NL
+FR
+PT
+TV' ,  );
+
+  // to set text for third parties
+   $text_settings = array (
+                'analytical' => array(
+							'GA' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our site. We use the information to compile reports and to help us improve the site. The cookies collect information in an anonymous form, including the number of visitors to the site, where visitors have come to the site from and the pages they visited.",
+                                'expire' => "Some of the cookies set for this purpose are automatically removed from your device once you close your browser.
+Others may last for a period of up to 24 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Google Analytics by visiting: http://tools.google.com/dlpage/gaoptout?hl=en-GB .",
+								),
+							
+                            'CB' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our site. We use the information to compile reports and to help us improve the site. The cookies collect information in an anonymous form, including the number of visitors to the site, where visitors have come to the site from and the pages they visited.",
+                                'expire' => "Some of the cookies set for this purpose are automatically removed from your device once you close your browser.
+Others may last for a period of up to 24 months from your last visit to our site.",				
+							    'block' => "While ChartBeat does not currently offer the ability to refuse ChartBeat tracking, you can always refuse cookies by changing your browser settings.  If you want to learn more about ChartBeat's data collection practices, please visit: http://chartbeat.com/privacy/",
+								),
+							'WT' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our site. We use the information to compile reports and to help us improve the site. The cookies collect information in an anonymous form, including the number of visitors to the site, where visitors have come to the site from and the pages they visited.",
+                                'expire' => "These cookies may last for a period of up to 122 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Webtrends by visiting: https://ondemand.webtrends.com/support/optout.asp?action=out",
+								),
+							'CE' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our site. We use the information to compile reports and to help us improve the site. The cookies collect information in an anonymous form, including the number of visitors to the site, where visitors have come to the site from and the pages they visited.",
+                                'expire' => "Cookies set for this purpose are automatically removed from your device once you close your browser.",				
+							    'block' => "You can opt out of tracking by Crazy Egg by e-mailing contact@crazyegg.com.  For more information about Crazy Egg's data collection practices, please visit http://www.crazyegg.com/privacy .",
+								),
+							'OM' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our site. We use the information to compile reports and to help us improve the site. The cookies collect information in an anonymous form, including the number of visitors to the site, where visitors have come to the site from and the pages they visited",
+                                'expire' => "These cookies may last for a period of up to 61 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Omniture (Adobe Web Analytics) by visiting: http://www.omniture.com/en/privacy/product#optout",
+								),
+							'IC' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our site. We use the information to compile reports and to help us improve the site. The cookies collect information in an anonymous form, including the number of visitors to the site, where visitors have come to the site from and the pages they visited.",
+                                'expire' => "Some of the cookies set for this purpose are automatically removed from your device once you close your browser.
+Others may last for a period of up to 24 months from your last visit to our site.",				
+							    'block' => "While InSites Consulting does not currently offer the ability to refuse InSites Consulting cookies, you can always refuse cookies by changing your browser settings.  If you want to learn more about InSites Consulting's data collection practices, please visit: http://insites.eu/privacy.aspx .",
+								),
+							'PG' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our site. We use the information to compile reports and to help us improve the site. The cookies collect information in an anonymous form, including the number of visitors to the site, where visitors have come to the site from and the pages they visited.",
+                                'expire' => "Some of the cookies set for this purpose are automatically removed from your device once you close your browser.
+Others may last for a period of up to 24 months from your last visit to our site.
+",				
+							    'block' => "While Performance Horizon Group does not currently offer the ability to refuse Performance Horizon Group tracking, you can always refuse cookies by changing your browser settings.  If you want to learn more about Performance Horizon Group's data collection practices, please visit: http://performancehorizon.com/privacy.php .",
+								),
+							),	
+                   
+			'adv' => array(								
+							'AN' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by  AppNexus by visiting:  http://www.appnexus.com/platform-policy#choices ",
+								),
+							'IM' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Invite Media by visiting: http://assets.invitemedia.com/opt-out.html",
+								),
+							'PM' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Pubmatic by visiting: http://www.pubmatic.com/opt-out",
+								),
+							'DC' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by DoubleClick by visiting: http://www.google.com/ads/preferences/html/intl/en/plugin/",
+								),
+							'GD' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Google AdWords by visiting: http://www.google.com/ads/preferences/html/intl/en/plugin/",
+								),
+							'MM' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by MediaMath by visiting: http://www.mediamath.com/privacy/",
+								),
+							'MA' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Microsoft Advertising by visiting: http://choice.live.com/advertisementchoice/",
+								),
+							'SL' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Skimlinks by visiting: http://skimlinks.com/opt-out",
+								),
+							'SM' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Specific Media by visiting: http://www.specificmedia.com/privacy",
+								),
+							'VN' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by VoiceFive Networks by visiting: https://www.voicefive.com/OptOutConfirmation.aspx",
+								),
+							'IVD' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 122 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Imagini (VisualDNA) by visiting: http://my.visualdna.com/permissions",
+								),
+							'RM' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by Right Media by visiting: http://info.yahoo.com/privacy/us/yahoo/opt_out/targeting/details.html",
+								),
+							'GNS' => array(
+							    'purpose' => "These cookies are used to collect information about how visitors use our website in order to provide them with advertising that is better tailored to their interests on our site and/or on other websites.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 12 months from your last visit to our site.",				
+							    'block' => "While Genius does not currently offer the ability to refuse Genius tracking, you can learn more about Genius' data collection practices by visiting: http://www.genius.com/about/PrivacyPolicy.php",
+								),					
+							),
+	'content_sharing' => array(								
+							'AT' => array(
+							    'purpose' => "These cookies and technologies enable you to share pages and content that interests you on our site through third party social networking or other websites.
+The companies that serve these cookies and technologies may share your information with third parties and/or use your information to serve targeted advertising to you on other websites.
+
+Some of the cookies set for this purpose may last for a period of up to 24 months from your last visit to our site.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 24 months from your last visit to our site.",				
+							    'block' => "You can opt out of tracking by AddThis by visiting: http://www.addthis.com/advertising-choices",
+								),
+							'FB' => array(
+							    'purpose' => "These cookies and technologies enable you to share pages and content that interests you on our site through third party social networking or other websites.
+The companies that serve these cookies and technologies may share your information with third parties and/or use your information to serve targeted advertising to you on other websites.
+
+Some of the cookies set for this purpose may last for a period of up to 24 months from your last visit to our site.",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 24 months from your last visit to our site.",				
+							    'block' => "Facebook does not serve cookies for this purpose, but may use other technologies (such as website scripts or tracking pixels) to record your interaction with our site.  You can learn more about Facebook's data collection practices at: http://www.facebook.com/privacy/explanation",
+								),
+							'TW' => array(
+							    'purpose' => "These cookies and technologies enable you to share pages and content that interests you on our site through third party social networking or other websites.
+The companies that serve these cookies and technologies may share your information with third parties and/or use your information to serve targeted advertising to you on other websites.
+",
+                                'expire' => "Some of the cookies set for this purpose may last for a period of up to 24 months from your last visit to our site.",				
+							    'block' => "Twitter does not currently provide the ability to opt out of tracking.  However, you can learn more about Twitter's data collection practices at http://twitter.com/privacy",
+								),
+		                ),
+        'website' => array(						
+							'YT' => array(
+							    'purpose' => "These cookies are used to provide functionality on our website that is supplied by third parties.  Without these cookies, certain website functionality will be unavailable to our visitors. The data collected by our service providers for this purpose may be shared on an anonymised basis with third parties, and may be used for targeted advertising purposes.",
+                                'expire' => 'YouTube uses Adobe Flash files (or "Flash cookies") for this purpose.  These are stored indefinitely on your device, but can be removed by following the instructions for blocking. Other cookies set by YouTube for this purpose may last for a period of up to 8 months from your last visit to our site.',				
+							    'block' => "You can choose to accept or refuse Flash cookies by visiting Adobe's web settings manager at: http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager07.html. 
+You can opt out of tracking by YouTube by visiting: http://googleads.g.doubleclick.net/ads/preferences/naiv0optout. 
+",
+								),
+							'SS' => array(
+							    'purpose' => "These cookies are used to provide functionality on our website that is supplied by third parties.  Without these cookies, certain website functionality will be unavailable to our visitors.",
+                                'expire' => "Some of the cookies set for this purpose are automatically removed from your device once you close your browser. Others may last for a period of up to 24 months from your last visit to our site.",				
+							    'block' => "While SlideShare does not currently offer the ability to refuse SlideShare tracking, you can always refuse cookies by changing your browser settings.  If you want to learn more about SlideShare's data collection practices, please visit: http://www.slideshare.net/privacy.",
+								),
+						),
+	'security' => array(
+							'MF' => array(
+							    'purpose' => "These cookies are used to improve the security of our site and to protect our site against malicious visitor activity.  The data collected by our service providers for this purpose may be shared on an anonymised basis with third parties, and may be used for targeted advertising purposes.",
+                                'expire' => 'McAfee uses Adobe Flash files (or "Flash cookies") for this purpose.  These are stored indefinitely on your device, but can be removed by following the instructions to block .',				
+							    'block' => "You can choose to accept or refuse Flash cookies by visiting Adobe's web settings manager at: http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager07.html . 
+Alternatively, to learn more about McAfee's data collection practices by visiting: http://www.mcafee.com/us/about/legal/privacy.aspx
+",
+								),
+	                  ),						
+							
+			);	
+ 				 
+
+
+  variable_set('eu_cookie_settings_' . $lang, $cookie_settings);
+  variable_set('eu_cookie_ui_settings_' . $lang, $ui_settings);
+  variable_set('eu_cookie_tp_text_settings_' . $lang, $text_settings);	
+}
+
+ /**
+ * Implements hook_uninstall().
+ */
+function itrinno_eucookie_compliance_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE '%eu_cookie_settings_%'");
+  db_query("DELETE FROM {variable} WHERE name LIKE '%eu_cookie_ui_settings_%'");
+  db_query("DELETE FROM {variable} WHERE name LIKE '%eu_cookie_text_settings_%'");
+  db_query("DELETE FROM {variable} WHERE name = 'add_languages'");
+  db_query("DELETE FROM {variable} WHERE name = 'add_languages_code'");
+  cache_clear_all('variables', 'cache');
+}

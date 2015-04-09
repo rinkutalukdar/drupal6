@@ -1,0 +1,10 @@
+; $Id: walking_log.info,v 1.0 2010/11/02 14:00:10 Exp $
+name = Walking Log
+description = Creates New log, Edit log, print Walking Logs
+core = 6.x
+
+; Information added by JnJ packaging script on 2010-11-02
+version = "6.3"
+core = "6.x"
+project = "walking_log"
+datestamp = "1257192000"

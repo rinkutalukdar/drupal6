@@ -1,0 +1,16 @@
+; $Id: survey.info,v 1.2 2007/12/05 21:19:31 babinlal Exp $
+name = Survey
+description = "Display list of Assessment and Survey Questions and collects responses from user"
+package = "ITrInno Framework"
+version = 6.3
+core = 6.x
+dependencies[] = jquery_ui
+dependencies[] = modalframe
+dependencies[] = restapi
+dependencies[] = framework_1_5
+
+; Information added by drupal.org packaging script on 2008-28-09
+version = "6.3"
+project = "drupal"
+datestamp = "1197045313"
+

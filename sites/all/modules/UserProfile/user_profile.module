@@ -1,0 +1,1723 @@
+<?php
+define(SITE_AUTH_NAME, 'SampleSite');
+define(SMSSO_Manager, 'SMSSO_Manager');
+
+$authId     =   $_POST['authId'];
+$authUserId =   $_POST['authUserId'];
+if (module_exists(SMSSO_Manager)) {
+  $authId     =   $_SESSION['AuthId'];
+  $authUserId =   $_SESSION['AuthUserId'];
+}
+if (arg(0) == 'user') {
+  drupal_add_js(drupal_get_path('module', 'user_profile'). '/user_profile.js');
+}
+$message    =   variable_get('userConsentVersion', null);
+  require_once('classes/UserProfileData.php');
+  require_once('classes/UserProfileService.php');
+  //require_once('classes/UserProfilePearRestAPI.php');
+  include_once('user_profile.fields.inc');
+  include_once('thirdPartyarray.php');
+/**
+* Implementation of hook_init().
+*/
+function user_profile_init() {
+
+  global $user;
+  if ($user->uid && $user->uid != 1 && arg(0) != 'checkuserversion' && arg(0) != 'logout') {
+  	$user_login_timestamp = db_result(db_query("SELECT timestamp FROM {sessions} WHERE uid = %d", $user->uid));
+  	// $user_consent_version = $user->consent;
+  	$data = db_result(db_query("SELECT data FROM {users} WHERE uid=%d", $user->uid));
+  	$auth_arr = unserialize($data);
+  	if (isset($auth_arr['user_consent_version'])) {
+  	  $user_consent_version = $auth_arr['user_consent_version'];
+  	}
+  	if (empty($user_consent_version)) {
+  	  user_profile_load_user_profile($user);
+  	  $user_consent_version = $user->user_consent_version;
+  	}
+  
+    $current_consent_version = db_result(db_query("SELECT consent_version FROM {consent} where status = %d", 1));
+    $current_consent_modified = db_result(db_query("SELECT modified FROM {consent} where status = %d", 1));
+    if ($current_consent_version && ($user_login_timestamp > $current_consent_modified) && $current_consent_version != $user_consent_version) {
+      $consent_redirect_url = 'checkuserversion/'. $user_consent_version .'/'. $current_consent_version .'/'. $user->access;
+      drupal_goto($consent_redirect_url);
+    }
+	else if(isset($auth_arr['is_accessed'])){
+		unset($auth_arr['is_accessed']);
+		$data1   =   serialize($auth_arr);
+		$updateQry = db_query("update {users} set `data` = '%s' where uid = %d",$data1, $user->uid);
+		//drupal_set_message("Now you have logged in with auto generated password. You can your password here.");
+		drupal_goto('user/'.$user->uid.'/edit');
+	}
+  }
+}
+
+/**
+* Implementation of hook_user().
+*/
+function user_profile_user($type, &$edit, &$user, $category = NULL) {
+  switch ($type) {
+  	case 'load':
+  	  return user_profile_load_user_profile($user);
+  	case 'register':
+  	  return user_profile_form_profile($edit, $user, $category, TRUE);
+  	case 'update':
+  	  return user_profile_save_profile($edit, $user, $category);
+  	case 'insert':
+  	  return user_profile_save_profile($edit, $user, $category, TRUE);
+  	case 'view':
+  	  return user_profile_view_profile($user);
+  	case 'form':
+  	  return user_profile_form_profile($edit, $user, $category);
+  	case 'validate':
+  	  return user_profile_validate_profile($edit, $category);
+  	case 'categories':
+  	  return user_profile_categories();
+  	/*case 'delete':
+  	  return user_profile_delete();*/
+  }
+}
+
+function user_profile_form_profile($edit, $user, $category, $register = FALSE) {
+  if ($category == 'user_profile' || $register) {
+    if ($register) {
+  	  $authId     =   $_SESSION['AuthId'];
+  	  $authUserId =   $_SESSION['AuthUserId'];
+  	}
+  	else {
+  	  $data = db_result(db_query("SELECT data FROM {users} WHERE uid=%d", $user->uid));
+  	  $auth_arr = unserialize($data);
+  	  if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  	$authid = $auth_arr['AuthId'];
+  	  	$authUserId = $auth_arr['AuthUserId'];
+  	  }
+  	}
+  	$getResponseBody    =   $_SESSION['fbgetResponseBody'];
+  	$category           =   'user_profile';
+  	$fields[$category]  =   array('#type' => 'fieldset', '#title' => 'User Profile', '#weight' => 2);
+  	$result             =   _user_profile_get_fields();
+  	
+  	foreach ($result as $key => $value) {
+  	  if ($value["#type"] != null) {
+  	  	$value['#default_value']        =   isset($edit[$key]) ? $edit[$key] : '';
+  	  	if ($key == FIRSTNAME && is_array($getResponseBody)) {
+  	  	  $value['#default_value']    =   $getResponseBody['itrinno_fname'];
+  	  	  $fields[$category][$key]    =   $value;
+  	  	}
+  	  	else if ($key == LASTNAME && is_array($getResponseBody)) {
+  	  	  $value['#default_value']    =   $getResponseBody['itrinno_lname'];
+  	  	  $fields[$category][$key]    =   $value;
+  	  	}
+  	  	else if ($key == 'authId') {
+  	  	  //$value['#value'] = $authId;
+  	  	  $fields[$category][$key] = array('#type' => 'hidden', '#value' => $authId);
+  	  	}
+  	  	else if($key == 'authUserId') {
+  	  	  //$value['#value'] = $authUserId;
+  	  	  $fields[$category][$key] = array('#type' => 'hidden', '#value' => $authUserId);
+  	  	}
+  	  	else if($value['#type'] == 'date') {
+  	  	  $value['#default_value']    =   unserialize($value['#default_value']);
+  	  	  $fields[$category][$key]    =   $value;
+  	  	}
+  	  	else if ($value['#type'] == 'checkboxes' || $value['#type'] == 'select' || $value['#type'] == 'radios') {
+  	  	  $options = $value['#options'];
+  	  	  $options_updated = array();
+  	  	  foreach ($options as $optkey => $optvalue) {
+  	  	  	$options_updated["$optvalue"] = $optvalue;
+  	  	  }
+  	  	  $value['#options'] = $options_updated;
+  	  	  $options_default = $value['#default_value'];
+  	  	  $options_default_updated = array();
+  	  	  if (!empty($options_default)) {
+  	  	  	if ($value['#type'] == 'radios') {
+  	  	  	  $options_default_updated = $options_default;
+  	  	  	}
+  	  	  	else {
+  	  	  	  $options_default_updated = explode(',', $options_default);
+  	  	  	}
+  	  	  	$value['#default_value'] = $options_default_updated;
+  	  	  }
+  	  	  $fields[$category][$key]    =   $value;
+  	  	}
+  	  	else {
+  	  	  $fields[$category][$key]    =   $value;
+  	  	}
+  	  }
+  	}
+  }
+  return $fields;
+}
+
+function user_profile_save_profile(&$edit, &$user, $category, $register = FALSE) {
+  global $temp_user;
+  $temp_user = $user;
+  $data1		= '';
+  // registration & update profile flow 
+  if ($category == 'user_profile' || $register) {
+  	if ($register) {
+  	  $authId     =   $_SESSION['AuthId'];
+  	  $authUserId =   $_SESSION['AuthUserId'];
+  	}
+  	else {
+  	  $data = db_result(db_query("SELECT data FROM {users} WHERE uid=%d", $user->uid));
+  	  $auth_arr = unserialize($data);
+  	  if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  	$authid = $auth_arr['AuthId'];
+  	  	$authUserId = $auth_arr['AuthUserId'];
+  	  }
+  	}
+  	$fields = _user_profile_get_fields();
+  	// Invoke the user profile presave hook
+  	user_profile_module_invoke("presave", $edit, $user, $category);
+  	
+  	$objUsrProfData = new UserProfileData();
+  	$objUsrProfData->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  	
+  	// conditions to build service identity and service method for registration and edit account flow
+  	if ($register || (!$edit["userProfileId"] || $edit["userProfileId"] == null)) {
+  	  $objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_CREATE);
+  	  if ($authId != 'null' && $authUserId != 'null') {
+  	  	$objUsrProfData->SetSearchCriteria($user->mail, $user->name, $authId, $authUserId);
+  	  }
+  	  $objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_POST);
+  	}
+  	else {
+  	  $objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_UPDATE);
+  	  $objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_PUT);
+  	}
+  	// set the site id
+  	$objUsrProfData->SetSiteId(UserProfileService::getSiteId());
+  	// to verify
+  	$objUsrProf =   new UserProfile();
+  	
+  	foreach ($fields as $key => $value) {
+  	  if ($key == "userProfileId") {
+  	  	$objUsrProf =   new UserProfile($edit[$key]);
+  	  }
+  	  else if($value["#type"] != null && ($key != '#id' && $key != '#method')) {
+  	  	// CODE FOR RETRIEVING VALUES OF CHECKBOXES [ MULTIPLE ]  -- ADDED BY GIRI SHANKAR R dated 06/10/2010
+  	  	if ($value["#type"] == 'checkboxes') {
+  	  	  foreach ($edit[$key] AS $keyName => $val) {
+  	  	  	if ($myCboVals != '')
+  	  	  	  $myCboVals  .=  ',' . $val;
+  	  	  	else
+  	  	  	  $myCboVals  .=  $val;
+  	  	  }
+  	  	  $edit[$key] =   $myCboVals;
+  	  	}
+  	  	else {
+  	  	  $edit[$key] = _user_profile_field_serialize($value["#type"]) ? serialize($edit[$key]) : $edit[$key];
+  	  	}
+  	  	// $objUsrProf->addUserProfileInfo($key, $edit[$key], ($value['#encryption'] == 1? TRUE: FALSE));
+  	  	if (property_exists($temp_user, $key)) {
+  	  	  $objUsrProf->addUserProfileInfoUpdated($key, $edit[$key], ($value['#encryption'] == 1? TRUE: FALSE), ($user->userProfileId) ? $user->userProfileId : 0);
+  	  	}
+  	  	else {
+  	  	  $objUsrProf->addUserProfileInfoUpdated($key, $edit[$key], ($value['#encryption'] == 1? TRUE: FALSE), 0);
+  	  	}
+  	  }
+  	  $edit[$key] =   NULL;
+  	}
+  	
+  	// set the authid and authuserid
+  	if ($authId && $authUserId) {
+  	  $objUsrProf->{authId}       =   $authId;
+  	  $objUsrProf->{authUserId}   =   $authUserId;
+  	}
+  	else {
+  	  $authId = get_authid_by_sitename();
+  	  // $authUserId = $user->name;
+  	  $objUsrProf->authUserId   =   $user->name;
+  	  $objUsrProfData->SetSearchCriteria($user->mail, $user->name, $authId, $authUserId);
+  	}
+  	
+  	if ($register) {
+  	  $consent_version    =   db_result(db_query("SELECT consent_version FROM {consent} where status = %d", 1));
+  	  $objUsrProf->addUserProfileInfo('consent', $consent_version, TRUE);
+  	  //$objUsrProf->isActive   =   true; // As per the latest changes in user profile service, Sening the isActive = 1; Senthil
+  	}
+  	
+  	if ($category == 'user_profile') {
+  	  $objUsrProf->userId     =   $user->name;
+  	}
+  	
+  	$objUsrProf->emailId     =   $user->mail;
+  	$objUsrProf->authId = $authId;
+  	$objUsrProf->userId     =   $user->name;
+  	$objUsrProf->userProfileId = $user->userProfileId;
+  	$objUsrProf->UserIdentityId = $user->UserIdentityId;
+  	$objUsrProf->siteId     =   UserProfileService::getSiteId();
+	$objUsrProf->isActive   =   true; // As per the latest changes in user profile service, Sening the isActive = 1; Senthil
+  	$objUsrProfData->SetPostedData($objUsrProfData->DataEncode($objUsrProf));
+  	
+  	$objUsrProfSrv          =   new UserProfileService();
+  	$result                 =   $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+  	$result                 =   json_decode($result);
+	
+  	if ($result->Message == 'Failure') {
+  	  // log error to watchdog.
+  	  watchdog("Profile Save", t($result->Error));
+	  if($register){
+		db_query("DELETE FROM {users} WHERE uid = %d",$user->uid);
+	  }
+  	  drupal_set_message("Profile changes have not been saved due to error in service.", "error");
+  	}
+  	
+  	// Invoke the user profile postsave hook
+  	user_profile_module_invoke("postsave", $edit, $user, $category);
+  	
+  	/**
+  	 * Open the drupal session for third party users only. No need to confirm the email. Even we chaged the mail content for third party users
+  	 * */
+  	if ($authId && $authUserId) {
+  	  $data1   =   serialize(array('AuthId' => $authId, 'AuthUserId' => $authUserId));
+  	}
+  	if ($register) {
+  	  if (isset($authUserId)) {
+  	  	global $user;
+  	  	$drupal_username    =   $edit['name']; // initially it was $edit['name'] which always return null
+  	  	$userval            =   db_query("select uid from {users} where name = '%s'", $drupal_username);
+  	  	$fetch              =   db_fetch_object($userval);
+  	  	$userId             =   $fetch->uid;
+  	  	$form_values        =   array("uid" => "$userId");
+  	  	$account            =   user_load($form_values);
+  	  	$user               =   $account;
+  	  	//update the access & login filed in drupal user table
+  	  	$time               =   time();
+  	  	$fill = '';
+  	  	$updateQry          =   db_query("update {users} set `access` = %d, `login` = %d, `data` = '%s' where uid = %d",$time, $time, $data1, $userId);
+  	  	user_authenticate_finalize($form_values);
+  	  }
+  	}
+  }
+  else if ($category == 'account') {
+  	$data = db_result(db_query("SELECT data FROM {users} WHERE uid=%d", $user->uid));
+  	$auth_arr = unserialize($data);
+    if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  $authid = $auth_arr['AuthId'];
+  	  $authUserId = $auth_arr['AuthUserId'];
+  	}
+  	
+  	$objUsrProfData = new UserProfileData();
+  	$objUsrProfData->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  	$objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_UPDATE);
+  	$objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_PUT);
+  	$objUsrProfData->SetSiteId(UserProfileService::getSiteId());
+  	
+  	$objUsrProf =   new UserProfile($user->userProfileId);
+
+  	if ($authId && $authUserId) {
+  	  $objUsrProf->{authId}       =   $authId;
+  	  $objUsrProf->{authUserId}   =   $authUserId;
+  	  $username = $authUserId;
+  	}
+  	else {
+  	  $authId = get_authid_by_sitename();
+  	  if ($user->name != $edit['name']) {
+  	  	$objUsrProf->{authUserId}     =   $edit['name'];
+  	  }
+  	  $username = $user->name;
+  	}
+  	
+  	$objUsrProfData->SetSearchCriteria($user->mail, $username, $authId, $authUserId);
+  	if ($user->mail != $edit['mail']) {
+  	  $objUsrProf->emailId     =   $edit['mail'];
+  	}
+  	else {
+  	  $objUsrProf->emailId     =   $user->mail;
+  	}
+  	if ($user->name != $edit['name']) {
+  	  // to verify
+  	  $objUsrProf->userId     =   $edit['name'];
+  	  $data_details = unserialize($user->data);
+  	  if ($data_details['IDWR']) {
+  	  	unset($data_details['IDWR']);
+  	  	$data2 = serialize($data_details);
+  	  	$updateQry          =   db_query("update {users} set `data` = '%s' where uid = %d", $data2, $user->uid);
+  	  }
+  	}
+  	else {
+  	  $objUsrProf->userId     =   $user->name;
+  	}
+  	
+  	$objUsrProf->authId = $authId;
+  	$objUsrProf->userProfileId = $user->userProfileId;
+  	$objUsrProf->UserIdentityId = $user->UserIdentityId;
+  	$objUsrProf->siteId     =   UserProfileService::getSiteId();
+	$objUsrProf->isActive   =   true; // As per the latest changes in user profile service, Sening the isActive = 1; Senthil
+	
+  	$objUsrProfData->SetPostedData($objUsrProfData->DataEncode($objUsrProf));
+  	
+  	$objUsrProfSrv          =   new UserProfileService();
+  	$result                 =   $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+  	$result                 =   json_decode($result);
+	
+  	if ($result->Message == 'Failure') {
+  	  //Publish error to watch dog.
+  	  watchdog("Account Save", t($result->Error));
+  	  drupal_set_message("Account changes have not been saved due to error in service.", "error");
+  	}
+  }
+  //$updateQry = db_query("UPDATE {users} SET mail = ' ', init = ' ' WHERE uid = %d", $user->uid);
+  unset($_SESSION['hidResetPwd']);
+}
+
+// to verify
+function user_profile_view_profile($user) {
+  user_profile_load_user_profile($user);
+  // Show private fields to administrators and people viewing their own account.
+  if (user_access('administer users') || $GLOBALS['user']->uid == $user->uid) {
+  	$fields = _user_profile_get_fields();
+  	foreach ($fields as $key => $field) {
+  	  if (isset($user->{$key}) && $field["#type"] != 'hidden' && $field["#type"] != null) {
+  	  	$title  =   ($field["#type"] != 'checkbox') ? check_plain($field["#title"]) : NULL;
+  	  	if ($field['#type'] == 'date') {
+  	  	  $title          =   $field['#title'];
+  	  	  $arr            =   unserialize($user->$key);
+  	  	  $user->{$key}   =   t($arr['month']."-".$arr['day']."-".$arr['year']);
+  	  	}
+  	  	// Create a single fieldset for each category.
+  	  	if (!isset($user->content["User Profile"])) {
+  	  	  $user->content["User Profile"] = array(
+  	  	    '#type' => 'user_profile_category',
+  	  	    '#title' => "User Profile",
+  	  	  );
+  	  	}
+  	  	if ($field['#type'] == 'checkboxes') {
+  	  	  $cboMultiVals   =  '';
+  	  	  $uKey           =   str_replace('{','',str_replace('}','',$user->{$key}));
+  	  	  $myCboVals      =   split(',',$uKey);
+  	  	  foreach ($myCboVals As $key => $val) {
+  	  	  	$newVal =   split(':',$val);
+  	  	  	if (is_array($newVal)) {
+  	  	  	  if ($newVal[0] != '0') {
+  	  	  		if ($cboMultiVals != '')
+  	  	  		  $cboMultiVals   .=  ','. str_replace('"','',$newVal[0]);
+  	  	  		else
+  	  	  		  $cboMultiVals   .=  str_replace('"','',$newVal[0]);
+  	  	  	  }
+  	  	  	}
+  	  	  }
+  	  	  //echo '<BR> $cboMultiVals final ? ' . $cboMultiVals;
+  	  	  $user->{$key}   =   $cboMultiVals;
+  	  	  $user->content["User Profile"][$key] = array(
+  	  	    '#type' => 'user_profile_item',
+  	  	    '#title' => $title,
+  	  	    '#value' => $user->{$key},
+  	  	    //'#value' =>  _user_profile_field_serialize($field["#type"]) ? user_profile_view_field(unserialize($user->{$key}), $field['#type']) : ucfirst($user->{$key}),
+  	  	    '#weight' => $field["#weight"],
+  	  	    '#attributes' => array('class' => 'user-profile-'. $key),
+  	  	  );
+  	  	}
+  	  	else {
+  	  	  if ($key != 'password') {
+  	  	  	$user->content["User Profile"][$key] = array(
+  	  	  	  '#type' => 'user_profile_item',
+  	  	  	  '#title' => $title,
+  	  	  	  '#value' => $user->{$key},
+  	  	  	  //'#value' =>  _user_profile_field_serialize($field["#type"]) ? user_profile_view_field(unserialize($user->{$key}), $field['#type']) : ucfirst($user->{$key}),
+  	  	  	  '#weight' => $field["#weight"],
+  	  	  	  '#attributes' => array('class' => 'user-profile-'. $key),
+  	  	  	);
+  	  	  }
+  	  	}
+  	  }
+  	}
+  }
+}
+
+function user_profile_delete($form_id, $form_state) {
+  global $user;
+  if ($user->uid == 1) {
+  	$notify = variable_get('user_mail_status_deleted_notify', 'Drupal');
+  	if ($form_state['values']['form_id'] == 'user_profile_form') {
+  	  $delUserId  =   arg(1);
+  	  user_delete_call($form_state['values']['_account']->mail, $form_state['values']['_account']->name, $notify);
+  	}
+  	else if ($form_state[values][form_id] == 'user_multiple_delete_confirm') {
+  	  $multi = count($form_state[values][accounts]);
+  	  $deleted = 0;
+  	  foreach ($form_state[values][accounts] as $delUserId) {
+  	  	if ($delUserId ==1) {
+  	  	  drupal_set_message("Admin account can not delete",'error');
+  	  	  $multi = $multi-1;
+  	  	  continue;
+  	  	}
+  	  	else {
+  	  	  $result =   db_query("select name,mail FROM {users} WHERE uid = %d",$delUserId);
+  	  	  $res    =   db_fetch_object($result);
+  	  	  $mail   =   $res->mail;
+  	  	  $name   =   $res->name;
+  	  	  $status = user_delete_call($mail, $name, $notify, $multi);
+  	  	  if ($status) {
+  	  	  	$deleted=$deleted+1;
+  	  	  }
+  	  	}
+  	  }
+  	  if ($deleted == $multi) {
+  	  	drupal_set_message("Accounts has been deleted successfully",'status');
+  	  }
+  	  else {
+  	  	drupal_set_message("Some accounts has not been deleted due to error in service",'status');
+  	  }
+  	  drupal_goto('admin/user/user');
+  	}
+  }
+  else if($user->uid != 1 && $user->uid == arg(1)) {
+  	drupal_goto('confirmUserDelete');
+  }
+}
+
+function confirm_user_profile_delete() {
+  global $user;
+  $form['name'] =array(
+    '#type' => 'hidden',
+    '#value' => "$user->name",
+  );
+  $form['mail'] = array(
+    '#type'=> 'hidden',
+    '#value' => "$user->mail",
+  );
+  return confirm_form($form, t('Are you sure you want to delete your account?'), "user/$user->uid/edit", t('This action cannot be undone.'), t('Delete Account'), t('Cancel'));
+}
+
+function confirm_user_profile_delete_submit($form, &$form_state) {
+  if ($form_state['values']['confirm']) {
+  	user_delete_call($form_state['values']['mail'], $form_state['values']['name']);
+  }
+}
+
+function user_delete_call($delUserMail, $delUserName, $notify = 0, $multi = 0) {
+  global $base_url, $user;
+  // to verify
+  $user_det = user_load(array('name' => $delUserName, 'status' => 1));
+  $user_det = user_profile_load_profile($user_det);
+  if ($user_det->UserIdentityId) {
+  	//$data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $user_det->name));
+  	$auth_arr = unserialize($user_det->data);
+    if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  $authid=$auth_arr['AuthId'];
+  	  $authUserId=$auth_arr['AuthUserId'];
+  	  if ($authUserId) {
+  	  	$username = $authUserId;
+  	  }
+  	}
+  	else {
+  	  $authid = get_authid_by_sitename();
+  	  $username = $user_det->name;
+  	}
+	
+  	$objUsrProfData1 =   new UserProfileData();
+  	$objUsrProfData1->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  	$objUsrProfData1->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_DELETE);
+  	$objUsrProfData1->SetServiceMethod(UserProfileService::SERVICE_METHOD_DELETE);
+	$objUsrProfData1->SetSearchCriteria(null, $username, $authid, null);
+  	$objUsrProfData1->SetSiteId(UserProfileService::getSiteId());
+  	$objUsrProfData1->SetRemove(true);
+  	
+  	$objUsrProfSrv = new UserProfileService();
+  	$result1 = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData1);
+  	$result1 = json_decode($result1);
+	
+  	if ($result1->Message == "Success") {
+  	  $flag=2;
+  	}
+  }
+  else {
+  	$flag = 0;
+  }
+  if ($flag == 2) {
+  	if ($user->uid == 1 && $notify == 1) {
+  	  global $language;
+  	  $params = array('lang' => $language, 'type' => 'notification');
+  	  $params['name'] = $delUserName;
+  	  if ($flag == 2) {
+  	  	$email = $user_det->mail;
+  	  }
+  	  else {
+  	  	$email = $delUserMail;
+  	  }
+  	  $mail = drupal_mail('user_profile', 'notification', $email, $language, $params);
+  	}
+  	$q = db_query("DELETE FROM {users} WHERE name='%s'",$delUserName);
+  	if ($user->uid != 1) {
+  	  session_destroy();
+  	  drupal_anonymous_user();
+  	  $query = array("delUserMsg" => 1);
+  	  drupal_goto('',$query);
+  	}
+  	else if ($multi) {
+  	  return 1;
+  	}
+  	else {
+  	  drupal_set_message("Account has been deleted successfully");
+  	  drupal_goto('admin/user/user');
+  	}
+  }
+  else {
+  	if (!$multi) {
+  	  if ($user->uid == 1) {
+  	  	$user_name = $delUserName;
+  	  }
+  	  drupal_set_message("Can not delete account $delUserName. Sorry! for the inconvenience, Please try again.");
+  	}
+  	else {
+  	  return 0;
+  	}
+  }
+}
+
+function user_profile_validate_profile($edit, $category) {
+  if ($category == 'account') {
+  	if ($error = user_profile_validate_name($edit['name'])) {
+  	  form_set_error('name', $error);
+  	}
+  }
+}
+
+function user_profile_validate_name($name) {
+  if (strpos($name, ' ') !== FALSE)
+    return t('The username cannot contain spaces in between.');
+}
+
+function user_profile_categories() {
+  $data = array();
+  $data[] = array(
+    'name' => "user_profile",
+    'title' => drupal_ucfirst("User Profile"),
+    'weight' => 3,
+  );
+  return $data;
+}
+
+// to verify
+
+function user_profile_load_profile(&$user) {
+  static $userProfile = null;
+ /********** To avoid profile loading multiple times with in the a single request - For performance optimization ***********/
+  if ($user->uid && (!$userProfile || $userProfile->userId != $user->name)) {
+  	$data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $user->name));
+  	$auth_arr = unserialize($data);
+    if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  $authid=$auth_arr['AuthId'];
+  	  $authUserId=$auth_arr['AuthUserId'];
+  	  if ($authUserId) {
+  	  	$username = $authUserId;
+  	  }
+  	}
+  	else {
+  	  $authid = get_authid_by_sitename();
+  	  $username = $user->name;
+  	}
+  	// Get the user profile data
+  	$userProfile = fetch_user_profile($user->mail, $username, $authid, $authUserId);
+  	if ($userProfile && (($userProfile->userId) || ($userProfile->userId == 'null' && $authUserId == $userProfile->authUserId))) {
+  	  $user->{userProfileId} = $userProfile->userProfileId;
+  	  $user->siteId = $userProfile->siteId;
+  	  $user->mail = $userProfile->emailId;
+  	  $user->authId = $userProfile->authId;
+  	  $user->authUserId = $userProfile->authUserId;
+  	  $user->UserIdentityId = $userProfile->userIdentityId;
+  	  
+  	  foreach ($userProfile->userProfileInfo as $value) {
+  	  	if ($value->fieldName != '' && $value->fieldName != null) {
+  	  	  $user->{$value->fieldName} = $value->fieldValue;
+  	  	  if ($value->fieldName == 'consent') {
+  	  	  	$user->user_consent_version = $value->fieldValue;
+  	  	  	$auth_arr['user_consent_version'] = $value->fieldValue;
+  	  	  	db_query("UPDATE {users} set data = '%s' WHERE name = '%s'", serialize($auth_arr), $user->name);
+  	  	  }
+  	  	}
+  	  }
+  	}
+  }
+  return $user;
+}
+
+function user_profile_load_user_profile(&$user) {
+  static $userProfile = null;
+  static $userFlag = TRUE;
+  /********** To avoid profile loading multiple times with in the a single request - For performance optimization ***********/
+  if ($user->uid && $userFlag && (!$userProfile || $userProfile->userId != $user->name)) {
+  	$data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $user->name));
+  	$auth_arr = unserialize($data);
+    if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  $authid=$auth_arr['AuthId'];
+  	  $authUserId=$auth_arr['AuthUserId'];
+  	  if ($authUserId) {
+  	  	$username = $authUserId;
+  	  }
+  	}
+  	else {
+  	  $authid = get_authid_by_sitename();
+  	  $username = $user->name;
+  	}
+  	// Get the user profile data
+  	$userProfile = fetch_user_profile($user->mail, $username, $authid, $authUserId);
+  	if ($userProfile && (($userProfile->userId) || ($userProfile->userId == 'null' && $authUserId == $userProfile->authUserId))) {
+  	  $user->{userProfileId} = $userProfile->userProfileId;
+  	  $user->siteId = $userProfile->siteId;
+  	  $user->mail = $userProfile->emailId;
+  	  $user->authId = $userProfile->authId;
+  	  $user->authUserId = $userProfile->authUserId;
+  	  $user->UserIdentityId = $userProfile->userIdentityId;
+  	  
+  	  foreach ($userProfile->userProfileInfo as $value) {
+  	  	if ($value->fieldName != '' && $value->fieldName != null) {
+  	  	  $user->{$value->fieldName} = $value->fieldValue;
+  	  	  if ($value->fieldName == 'consent') {
+  	  	  	$user->user_consent_version = $value->fieldValue;
+  	  	  	$auth_arr['user_consent_version'] = $value->fieldValue;
+  	  	  	db_query("UPDATE {users} set data = '%s' WHERE name = '%s'", serialize($auth_arr), $user->name);
+  	  	  }
+  	  	}
+  	  }
+  	}
+  	$userFlag = FALSE;
+  }
+}
+
+/**
+ * * Implementation of hook_menu().
+ * *
+ * * @return - Array
+ * */
+function user_profile_menu() {
+  $items = array();
+  $items['admin/settings/formbuilder/user_profile'] = array(
+    'title' => t('ITrInno User Profile Form'),
+    'access arguments' => array('Configure user profile form'),
+    'description' => t('Client side User Interface for building and editing Drupal forms'),
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'formbuilder_page'
+  );
+  
+  $items['admin/settings/consent/configuration'] = array(
+    'title' => 'Consent Configuration ',
+    'description' => t('Manage Consent Contents'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('consent_form'),
+    'access arguments' => array('consent content'),
+    'type' => MENU_NORMAL_ITEM
+  );
+  
+  $items['consent'] = array(
+    'page callback' => 'admin_consent',
+    'access callback' => true,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/settings/userconsentlist'] = array(
+    'title' => t('User Consent Version'),
+    'page callback' => 'user_consent_list',
+    'description' => t('User consent version admin configuration settings.'),
+    'access arguments' => array('administer users'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  
+  $items['checkuserversion'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('check_consent_form'),
+    'access arguments' => array('delete own profile'),
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['confirmUserDelete'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('confirm_user_profile_delete'),
+    'access arguments' => array('delete own profile'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/user/user/Deactivate_account_deletion'] = array(
+    'title' => t('Deactivated account deletion'),
+    'description' => t('Account deletion settings.'),  
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('deactivated_account_deletion'),
+    'access arguments' => array('administer users'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of user_profile_perm().
+ */
+function user_profile_perm() {
+  return array('Configure user profile form', 'delete own profile');
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+function user_profile_theme() {
+  return array(
+    'user_profile_block' => array(
+      'arguments' => array('user_profile' => NULL, 'fields' => array()),
+      'template' => 'user-profile-block',
+    ),
+    'user_consent_version_form' => array(
+      'arguments' => array('form' => NULL),
+      'template' => 'consent-form',
+    ),
+    'user_consent_theme' => array(
+      'arguments'=> array('form' => array(), 'list' => NULL),
+      'template' => 'consent-add',
+    ),
+    'user_profile_sample_login' => array(
+      'arguments'=> array('form' => array()),
+      'template' => 'user-profile-form',
+    ),
+  );
+}
+
+/**
+ * Process variables for user-profile-block.tpl.php.
+ *
+ * The $variables array contains the following arguments:
+ * - $account
+ * - $fields
+ *
+ * @see profile-block.tpl.php
+ */
+function template_preprocess_user_profile_block(&$variables) {
+  $variables['user_profile'] = array();
+  // Supply filtered version of $fields that have values.
+  foreach ($variables['fields'] as $field) {
+  	if ($field->value) {
+  	  $variables['user_profile'][$field->name]->title = check_plain($field->title);
+  	  $variables['user_profile'][$field->name]->value = $field->value;
+  	  $variables['user_profile'][$field->name]->type = $field->type;
+  	}
+  }
+}
+
+/**
+ * Implementation of hook_hook_info().
+ */
+function user_profile_hook_info() {
+  return array(
+    'user_profile' => array(
+      'user_profile' => array(
+        'presave' => array(
+          'runs when' => t("Before a user's profile account has been saved"),
+        ),
+        'postsave' => array(
+          'runs when' => t("After a user's profile has been saved"),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Invokes hook_user_profile() in every module.
+ *
+ * We cannot use module_invoke() for this, because the arguments need to
+ * be passed by reference.
+ */
+
+function user_profile_module_invoke($type, &$array, &$user, $category = NULL) {
+  foreach (module_list() as $module) {
+  	// to verify
+  	$function = $module .'_user_profile';
+  	if (function_exists($function)) {
+  	  $function($type, $array, $user, $category);
+  	}
+  }
+}
+
+function _user_profile_get_fields() {
+  global $user;
+  $authId = $_SESSION['AuthId'];
+  $authUserId = $_SESSION['AuthUserId'];
+  
+  $data = db_result(db_query("SELECT data FROM {users} WHERE uid=%d", $user->uid));
+  $auth_arr = unserialize($data);
+  if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	$authid = $auth_arr['AuthId'];
+  	$authUserId = $auth_arr['AuthUserId'];
+  }
+  	  
+  if (isset($authUserId) && isset($authId)) {
+  	$defaultFields = array('userProfileId' => array('#type' => 'hidden'), 'authId' => array('#type' => 'hidden'), 'authUserId' => array('#type' => 'hidden'));
+  }
+  else {
+  	$defaultFields = array('userProfileId' => array('#type' => 'hidden'));
+  }
+  define("ITRINNO_USER_PROFILE_FORM_TYPE", 'user_profile');
+  // Code for fetching the Current Form selected by the admin -- Added BY GIRI SHANKAR R dated 05/10/2010
+  $result = db_query("SELECT form FROM {formbuilder_form} WHERE form_type = '%s' AND active=%d", constant("ITRINNO_USER_PROFILE_FORM_TYPE"),1); //Modified to fetch the form id based on the current argument and default status
+  
+  while ($form = db_fetch_object($result)) {
+  	$fields =   unserialize($form->form);
+  }
+  // Code for fetching the Current Form selected by the admin -- Added BY GIRI SHANKAR R dated 05/10/2010
+  $fields = array_merge($defaultFields, $fields);
+  return $fields;
+}
+
+function user_profile_menu_alter(&$items) {
+  $items['user/register']['access callback'] = 'ssl_certification';
+  $items['user/%user/delete']['access callback'] = 'user_profile_delete_access';
+  $items['user/%user/delete']['access arguments'] = array(1);
+}
+
+function ssl_certification() {
+  if ($_SERVER["HTTPS"] != "off")
+    return user_is_anonymous() && variable_get('user_register', 1);
+  else
+    drupal_set_message("SSL Certification is not available, Please go through the document.", "error");
+}
+
+function user_profile_form_alter(&$form, $form_state, $form_id, $category = 'account') {
+  global $user;
+  switch ($form_id) {
+    case 'user_pass':
+  	  $form['#validate'][0] = 'user_profile_pass_validate';
+  	  break;
+  	case 'user_admin_account': 
+  	  $form['#submit'][0]='check_user_deactivate';
+  	  unset($form['options']['operation']['#options']['unblock']);
+  	  break;
+    case 'user_register':
+      if (isset($_GET['sso_register']) && $_GET['sso_register'] == 1) {
+      	$authId = $_SESSION['AuthId'];
+      	$authUserId = $_SESSION['AuthUserId'];
+      }
+      else {
+      	unset($_SESSION['AuthId']);
+      	unset($_SESSION['AuthUserId']);
+      	unset($_SESSION['fbgetResponseBody']);
+      	unset($_SESSION['thrdType']);
+      }
+      
+      $form['user_profile']['consent'] = array(
+        '#type' => 'checkbox',
+        '#required' => TRUE,
+        '#title' => 'Consent & Release statement',
+        '#description' => t('"I have read and agree to the <a href="'.consentUrl().'" target="_blank">consent statement</a> in !site."', array("!site" => variable_get('site_name', 'Drupal'))),
+        '#weight' => 99
+      );
+      if (isset($authId) && (isset($authUserId)) && module_exists(SMSSO_Manager)) {
+      	$form['cancel'] = array(
+      	  '#type' => "markup",
+      	  '#prefix' => '<span id="registerCancel">',
+      	  '#suffix' => '</span>',
+      	  '#value' => t("Continue as guest"),
+      	  '#weight' => 100
+      	);
+      }
+      $form['#submit'][] = 'userAuthsubmit';
+      $form['#validate'][] = 'userAuthvalidate';
+  	  break;
+    case 'user_profile_form':
+      if (preg_match("/AuthId/i", $user->data)) {
+      	unset($form['account']['cpass']);
+      	unset($form['account']['pass']);
+      }
+      $form['#validate'][] = 'userAuthvalidate';
+      $form['#submit'][] = 'userMailDelete';
+      $form['#redirect'][] = '';
+      unset($form['account']['status']['#options'][1]);
+      // delete user by admin or user deletes his own account
+      if (user_access('delete own profile') && arg(2) == 'edit') {
+      	if (arg(1) == $user->uid || (arg(0) =='user' && arg(2) == 'edit')) {
+      		if (arg(3) == 'user_profile') {
+      		  $form['#validate'][] = 'user_profile_user_register_validate';//edit_user_profile_validate';
+      		}
+      		else if ($user->uid == 1) {
+      		  $form['#submit'][] = 'check_user_deactivate';//edit_user_profile_validate';
+      		}
+      		if (arg(1) == 1) {
+      		  drupal_add_js("$(document).ready(function(){ $('#edit-delete').hide('fast'); });",'inline');
+      		}
+      		
+      		if ($user->uid == 1) {
+      		  $title = t("Delete user");
+      		}
+      		else {
+      		  $title = t('Cancel my registration');
+      		}
+      		
+      		$edit_account = user_load(array('name' => $form['account']['name']['#default_value'], 'status' => 1));
+      		$form['delete'] = array(
+      		  '#type' => 'submit',
+      		  '#value' => $title,
+      		  '#weight' => 100,
+      		  '#submit' => array('user_profile_delete'),//user_edit_delete_submit
+      		'#validate' => array(''),//user_edit_delete_submit
+      		);
+      	}
+      }
+      break;
+    case 'user_multiple_delete_confirm':
+      unset($form['#submit']);
+      $form['#submit'][] = 'user_profile_delete';
+      break;
+  }
+  
+  // to verify
+  $form['submitted']['hidPwdLevel'] = array(
+    '#type' => 'hidden',
+    '#value' => variable_get('password_level', ''),
+  );
+  // to verify
+  if (arg(1) == 'reset') {
+    $_SESSION['hidResetPwd']    =   'Yes';
+  }
+  if ($form_state['values']['DOB']) {
+  	$form['#validate'] = 'user_profile_user_register_validate';
+  }
+}
+
+function check_user_deactivate($form, $form_state) {
+  global $user;
+  if ($form_state['values']['form_id'] == 'user_admin_account' && $form_state['values']['operation'] == 'block') {
+  	$accounts = $form_state['values']['accounts'];
+  	$multi = count($accounts);
+  	$success = 0;
+  	foreach ($accounts as $uid) {
+  	  $account = user_load(array('uid' => $uid));
+  	  $success_res = user_deactivate_call($account, $multi);
+  	  $success += $success_res;
+  	}
+  	if ($success == $multi) {
+  	  drupal_set_message(t("Accounts updated successfully"), 'status');
+  	}
+  	else {
+  	  drupal_set_message(t("Some accounts not updated due to error in service"), 'error');
+  	}
+  }
+  else if ($form_state['values']['status'] == 0 && $form['_account']['#value']->status == 1) {
+  	$account = user_load(array('name' => $form_state['values']['name']));
+  	$account = user_profile_load_profile($account);
+  	user_deactivate_call($account);
+  }
+}
+
+function user_deactivate_call($account, $multi = 0) {
+  if ($account) {
+  
+	//$data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $account->name));
+  	$auth_arr = unserialize($account->data);
+    if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  $authid=$auth_arr['AuthId'];
+  	  $authUserId=$auth_arr['AuthUserId'];
+  	  if ($authUserId) {
+  	  	$username = $authUserId;
+  	  }
+  	}
+  	else {
+  	  $authid = get_authid_by_sitename();
+  	  $username = $account->name;
+  	}
+  
+	$objUsrProfSrv = new UserProfileService();
+  	$objUsrProfData1 =   new UserProfileData();
+  	$objUsrProfData1->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  	$objUsrProfData1->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_DELETE);
+  	$objUsrProfData1->SetServiceMethod(UserProfileService::SERVICE_METHOD_DELETE);
+  	$objUsrProfData1->SetSiteId(UserProfileService::getSiteId());
+	$objUsrProfData1->SetSearchCriteria(null, $username, $authid, null);
+  	//$objUsrProfData1->SetUserIdentityId($account->UserIdentityId);
+  	$result1 = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData1);
+  	$result1 = json_decode($result1);
+  	if ($result1->Message == "Success") {
+  	  $q = db_query("UPDATE {users} SET status = 0 and mail = ' ' WHERE uid = %d",$account->uid);
+  	  if ($multi) {
+  	  	return 1;
+  	  }
+  	}
+  	else {
+  	  if ($multi) {
+  	  	return 0;
+  	  }
+  	}
+  }
+  else {
+  	drupal_goto('admin/user/user');
+  }
+}
+
+function userAuthvalidate($form_id, $form_state) {
+  global $user;
+  user_profile_load_user_profile($user);
+  if ($form_state['values']['mail'] != '' ) {
+  	//$email_isvalid      =   checkMail($form_state['values']['mail']);
+  	$result = ereg("^[^@ ]+@[^@ ]+\.[^@ ]+$", $form_state['values']['mail'], $trashed);
+  	if (!$result) {
+  	  form_set_error('mail','The email is not valid. Enter a valid email id.');
+  	}
+  	else {
+  	  $data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $user->name));
+  	  $auth_arr = unserialize($data);
+  	  if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  	$authid = $auth_arr['AuthId'];
+  	  	$authUserId = $auth_arr['AuthUserId'];
+  	  }
+  	  else {
+  	  	$authid = get_authid_by_sitename();
+  	  	$authUserId = '';
+  	  }
+  	  // Get the user profile data
+  	  // $userProfile = fetch_user_profile($form_state['values']['mail'], '', $authid, $authUserId);
+  	  // validate unique email id for each user profile data
+  	  if ($user->uid == 0) {
+  	    $profile_flag = validate_user_profile($form_state['values']['mail'], '', $authid, $authUserId, TRUE);
+  	    if ($profile_flag) {
+  	      form_set_error('mail','Email id already exists.');
+  	    }
+  	  }
+  	  else {
+  	  	$profile_flag = validate_user_profile($form_state['values']['mail'], '', $authid, $authUserId, FALSE);
+  	  	if ($profile_flag) {
+  	      form_set_error('mail','Email id is already in use.');
+  	    }
+  	  }
+  	}
+  }
+  if ($form_state['values']['consent'] == 0 && $user->uid == 0) {
+  	form_set_error('consent','You should accept the consent statement.');
+  }
+  if (isset($form_state['values']['DOB']) && $user->uid == 0) {
+  	$preferred_date = mktime(0, 0, 0, $form_state['values']['DOB']['month'], $form_state['values']['DOB']['day'], $form_state['values']['DOB']['year']);
+  	if ($preferred_date) {
+  	  your_check_for_valid_dateofbirth($preferred_date);
+  	}
+  }
+}
+
+// to verify
+function userAuthsubmit($form_id, $form_state) {
+  global $user, $base_url, $temp_user;
+  if (isset($_COOKIE['AuthId'])) {
+  	$authId     =   $_COOKIE['AuthId'];
+  	$authUserId =   $_COOKIE['AuthUserId'];
+  }
+  else {
+  	$authId     =   $_SESSION['AuthId'];
+  	$authUserId =   $_SESSION['AuthUserId'];
+  }
+  
+  $userId =   $user->uid;
+  $data = serialize(array('AuthId' => $authId, 'AuthUserId' => $authUserId));
+  if (isset($_COOKIE['thirdPartyType']) || isset($_SESSION['thrdType'])) {
+  	if($user->uid == 0) {
+  	  $userId         =   $temp_user->uid;
+  	  $form_values    =   array("uid" => "$userId");
+  	  $account        =   user_load($form_values);
+  	  $user           =   $account;
+  	  user_authenticate_finalize($form_values);
+  	}
+  }
+  if (isset($authUserId)) {
+  	$time = time();
+  	$updateQry = db_query("update {users} set `access` = %d, `login` = %d, `mail` = ' ', `init` = ' ', `data` = '%s' where uid = %d",$time, $time, $data, $userId);
+	unset($_SESSION['messages']);
+	drupal_set_message("your account has been created successfully");
+  }
+  else{
+	$data1   =   serialize(array('is_accessed' => 'N'));
+	$updateQry = db_query("update {users} set `mail` = ' ', `init` = ' ', `data` = '%s' where uid = %d",$data1, $form_state['user']->uid);
+  }
+}
+
+function userMailDelete($form, $form_state) {
+  $name = $form_state['values']['name'];
+  $updateQry = db_query("UPDATE {users} SET `mail` = ' ' WHERE name = '%s'", $name);
+}
+
+// Perform your own validation
+function user_profile_user_register_validate($form, &$form_state) {
+  if (isset($form_state['values']['DOB'])) {
+  	$preferred_date = mktime(0, 0, 0, $form_state['values']['DOB']['month'], $form_state['values']['DOB']['day'], $form_state['values']['DOB']['year']);
+  	if ($preferred_date) {
+  	  your_check_for_valid_dateofbirth($preferred_date);
+  	}
+  }
+}
+
+function your_check_for_valid_dateofbirth($preferred_date) {
+  $valid_date = time() - (18 * 12 * 30 * 24 * 60 * 60);
+  if ($preferred_date > $valid_date && (arg(1) == t('register') || arg(3) == t('user_profile'))) {
+  	form_set_error('DOB', t('You should be atleast 18 years old to sign up for itrinno.'));
+  }
+}
+
+function user_profile_mail($key, &$message, $params1) {
+  // to verify
+  $thrdUsername = $_SESSION['AuthUserId'];
+  global $base_url;
+  $params = $message['params']['account'];
+  
+  if ($thrdUsername != '') {
+  	switch ($message['id']) {
+  	  case 'user_register_no_approval_required':
+  	  	$message['body'][0] = t("Dear !username,\n\nThank you for registering at !site. You may now log in to !uri.\n\n\n--  !site team", array("!username" =>$params->name, "!site" => variable_get('site_name', 'Drupal'), "!uri" => $base_url, "!site team" => variable_get('site_name', 'ITrInno Sample Site - ITrInno Framework')));
+  	  	break;
+  	}
+  }
+  if ($key == 'notification') {
+  	global $base_url;
+  	$lang = $params1['lang'];
+  	$message['subject'] .= t(variable_get('user_mail_status_deleted_subject', 'Drupal'),array('!site' => variable_get('site_name', 'Drupal'), '!username' => $params1['name']),$lang);
+  	$message['body'][] = t(variable_get('user_mail_status_deleted_body', 'Drupal'), array('!site' => variable_get('site_name', 'Drupal'), '!username' => $params1['name'], '!url' => url("$base_url", array('absolute' => TRUE))), $lang);
+  }
+}
+
+function _user_profile_field_serialize($type = NULL) {
+  return $type == 'date';
+}
+
+function user_profile_view_field($user, $field) {
+  if ($user && $field) {
+  	switch ($field) {
+  	  case 'date':
+  	  	$format = substr(variable_get('date_format_short', 'M d,Y - H:i'), 0, 5);
+  	  	// Note: Avoid PHP's date() because it does not handle dates before
+        // 1970 on Windows. This would make the date field useless for e.g.
+        // birthdays.
+        $replace = array(
+          'd' => sprintf('%02d', $user['day']),
+          'j' => $value['day'],
+          'm' => sprintf('%02d', $user['month']),
+          'M' => map_month($user['month']),
+          'Y' => $user['year'],
+          'H:i' => NULL,
+          'g:ia' => NULL,
+        );
+        return strtr($format, $replace);
+  	}
+  }
+}
+
+function user_profile_delete_access($account) {
+  return $account && $account->uid && (
+    // Always let users view their own profile.
+    ($GLOBALS['user']->uid == $account->uid) || 
+    // Administrators can view all accounts.
+    user_access('administer users') || 
+    // The user is not blocked and logged in at least once.
+    ($account->access && $account->status && user_access('access user profiles'))
+  );
+}
+
+function user_profile_pass_validate($form, &$form_state) {
+  $name = trim($form_state['values']['name']);
+  $account = user_load(array('name' => $name, 'status' => 1));
+  if (!$account) {
+  	$authid = get_authid_by_sitename();
+  	
+  	$objUsrProfData = new UserProfileData();
+  	$objUsrProfData->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  	$objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_LOAD);
+  	$objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_GET);
+  	$objUsrProfData->SetSiteId(UserProfileService::getSiteId());
+  	$objUsrProfData->SetMethod('GET');
+  	$objUsrProfData->SetSearchCriteria($name, '', $authid, $authUserId);
+  	$objUsrProfSrv = new UserProfileService();
+  	$result = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+  	$result = json_decode($result);
+  	if (count($result->user)) {
+  	  $userName = $result->user[0]->userId;
+  	  $account = user_load(array('name' => $userName, 'status' => 1));
+  	}
+  }
+  if (isset($account->uid)) {
+  	form_set_value(array('#parents' => array('account')), $account, $form_state);
+  }
+  else {
+  	form_set_error('name', t('Sorry, %name is not recognized as a user name or an e-mail address.', array('%name' => $name)));
+  }
+}
+
+function user_profile_block($op = 'list', $delta = 0, $edit = array()) {
+  global $user;
+  if ($op == 'list') {
+    $blocks[0]['info'] = t('Samplesite User login');
+	return $blocks;
+  } else{
+    $block = array();
+    $block['subject'] = t('');
+    $block['content'] = drupal_get_form('user_profile_sample_login');
+    return $block;
+  }
+}
+
+function user_profile_sample_login() {
+  $form['name'] = array('#type' => 'textfield',
+    '#maxlength' => 60,
+    '#size' => 15,
+	'#title' => 'Username',
+    '#required' => TRUE,
+	'#default_value' => $_COOKIE['name'],
+  );
+  $form['pass'] = array('#type' => 'password',
+    '#maxlength' => 60,
+    '#size' => 15,
+    '#required' => TRUE,
+	'#title'   =>'Password',
+	'#default_value' =>  $_COOKIE['pass'],
+  );
+  if(isset($_COOKIE['name']) && isset($_COOKIE['pass'])) {
+	  $checked = 1;
+  }  else {
+  	  $checked = 0;
+  }
+  $form['rememberme'] = array(
+  '#type' => 'checkbox',
+  '#title' => t('Remember Me'),
+  '#default_value' => $checked,
+  );
+  $form['#validate'] = user_profile_sample_login_default_validators();
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Login'));
+  return $form;
+}
+function user_profile_sample_login_default_validators() {
+  return array('user_profile_sample_login_name_validate', 'user_profile_sample_login_authenticate_validate', 'user_profile_sample_login_final_validate');
+}
+function user_profile_sample_login_name_validate($form, &$form_state) {
+  if (isset($form_state['values']['name'])) {
+    if (user_is_blocked($form_state['values']['name'])) {
+      // blocked in user administration
+      form_set_error('name', t('The username %name has not been activated or is blocked.', array('%name' => $form_state['values']['name'])));
+    }
+    else if (drupal_is_denied('user', $form_state['values']['name'])) {
+      // denied by access controls
+      form_set_error('name', t('The name %name is a reserved username.', array('%name' => $form_state['values']['name'])));
+    }
+  }
+}
+
+function user_profile_sample_login_authenticate_validate($form, &$form_state) {
+  user_authenticate($form_state['values']);
+}
+
+function user_profile_sample_login_final_validate($form, &$form_state) {
+  global $user;
+  if (!$user->uid) {
+    form_set_error('name', t('Sorry, unrecognized username or password. <a href="@password">Have you forgotten your password?</a>', array('@password' => url('user/password'))));
+  }
+}
+
+function user_profile_sample_login_submit($form, &$form_state) {
+  global $user;
+  if ($form_state['values']['rememberme']) {
+  	setcookie("name", $form_state['values']['name'] , time() + 3600 * 24 * 365, "/");
+  	setcookie("pass", $form_state['values']['pass'] , time() + 3600 * 24 * 365, "/");
+  }
+  else {
+  	setcookie("name", $form_state['values']['name'] , time() - 3600 * 24 * 365, "/");
+  	setcookie("pass", $form_state['values']['pass'] , time() - 3600 * 24 * 365, "/");
+  }
+}
+	
+function get_authid_by_sitename($site_authname = SITE_AUTH_NAME) {
+  $objUsrProfData = new UserProfileData();
+  $objUsrProfData->SetServiceName(UserProfileService::SERVICE_NAME);
+  $objUsrProfData->SetServiceIdentity('getAuthenticator');
+  $objUsrProfData->SetMethod('get');
+  $objUsrProfData->SetSiteId($siteId);
+  
+  $objUsrProfSrv = new UserProfileService();
+  $result = $objUsrProfSrv->ExecuteUserProfileReqDecoded($objUsrProfData);
+  foreach ($result->authList as $key=>$value) {
+  	if ($value->name == $site_authname) {
+  	  $authId = $value->authId;
+  	}
+  }
+  return $authId;
+}
+
+/* helper function to fetch the user profile
+ * $user_mail  - mail id of the user
+ * $username   - $user->name - defaults to drupal username in the normal user profile flow.
+ * 			     $authUserId - $authUserId is used as the username in the sso flow
+ * $authid     - 
+ * $authUserId -  
+ */
+function fetch_user_profile($user_mail, $username, $auth_id, $auth_user_id) {
+  $objUsrProfData = new UserProfileData();
+  $objUsrProfData->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  $objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_LOAD);
+  $objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_GET);
+  $objUsrProfData->SetSiteId(UserProfileService::getSiteId());
+  $objUsrProfData->SetMethod('GET');
+  $objUsrProfData->SetSearchCriteria($user_mail, $username, $auth_id, $auth_user_id);
+  
+  $objUsrProfSrv = new UserProfileService();
+  $result = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+  $result = json_decode($result);
+  if (count($result->user)) {
+  	$userProfile = $result->user[0];
+  }
+  return $userProfile;
+}
+
+
+/* helper function to validate the user profile for existing mail id
+ * $user_mail  - mail id of the user
+ * $username   - $user->name - defaults to drupal username in the normal user profile flow.
+ * 			     $authUserId - $authUserId is used as the username in the sso flow
+ * $authid     - 
+ * $authUserId -  
+ * $register   - Flag to identify registration and edit profile flow
+ */
+function validate_user_profile($user_mail, $username, $auth_id, $auth_user_id, $register = FALSE) {
+  global $user;
+  $objUsrProfData = new UserProfileData();
+  $objUsrProfData->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  $objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_LOAD);
+  $objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_GET);
+  $objUsrProfData->SetSiteId(UserProfileService::getSiteId());
+  $objUsrProfData->SetMethod('GET');
+  $objUsrProfData->SetSearchCriteria($user_mail, $username, $auth_id, $auth_user_id);
+  
+  $objUsrProfSrv = new UserProfileService();
+  $result = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+  $result = json_decode($result);
+  if (count($result->user)) {
+  	$userProfile = $result->user[0];
+  	if ($register && $userProfile) {
+  	  return TRUE;
+  	}
+  	else if (!$register && $userProfile->UserIdentityId != $user->UserIdentityId && $user->uid != 1) {
+  	  return TRUE;
+  	}
+  	else {
+  	  return FALSE;
+  	}
+  }
+  return FALSE;
+}
+
+/**
+ * List available consents
+ * @return An
+ */
+function user_consent_list() {
+  if (arg(3)) {
+  	$id = arg(3);
+  	$status = 0;
+  	$upd = "UPDATE {consent} set status = %d";
+  	if (db_query($upd, $status)) {
+  	  $upd = "UPDATE {consent} set status = 1, modified = %d where consent_id = %d";
+  	  if (db_query($upd, strtotime('now'), $id)) {
+  	  	echo "Consent version updating to version $id";
+  	  	exit;
+  	  }
+  	  else {
+  	  	echo "Error setting consent version";
+  	  	exit;
+  	  }
+  	}
+  	else {
+  	  echo "Error in setting consent version.";
+  	  exit;
+  	}
+  }
+  else {
+  	$qry  = "select * from {consent} order by consent_version desc";
+  	$result = db_query($qry);
+  	$form = drupal_get_form('user_consent_version_form');
+  	$output .= theme ('user_consent_theme', $form, $result);
+  	return $output;
+  }
+}
+
+/**
+ * user consent version form - to add a new consent.
+ */
+function user_consent_version_form() {
+  drupal_add_js(drupal_get_path('module', 'user_profile'). '/consent.js');
+  
+  $next_version = 1;
+  $result = db_query("SHOW TABLE STATUS LIKE 'consent'");
+  $version = db_fetch_object($result);
+  $next_version = $version->Auto_increment;
+  
+  $form = array();
+  $form['consentURL'] = array(
+    '#type' => 'textfield',
+	'#title' => 'Consent url',
+    '#size' => 40,
+    '#required' => TRUE,
+  );
+  
+  $form['consentVersion'] = array(
+    '#type' => 'textfield',
+    '#size' => 15,
+    '#default_value' => $next_version,
+    '#disabled' => TRUE,
+  );
+  
+  $form['cVersion'] = array(
+    '#type' => 'hidden',
+    '#default_value' => $next_version,
+  );
+  
+  $form['consentDate'] = array(
+    '#type' => 'textfield',
+    '#required' => TRUE,
+    '#size' => 15,
+    '#default_value' => date('m/d/Y',time()),
+    '#id' => 'datepicker',
+  );
+  
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add new'),
+  );
+  return $form;
+}
+
+function user_consent_version_form_validate($form, &$form_state){
+	if(!valid_url($form_state['values']['consentURL'], true)){
+		form_set_error('consentURL','Please enter a valid url');
+	}
+}
+
+/**
+ * submit hook for user consent version form - to add a new consent.
+ */
+function user_consent_version_form_submit($form, &$form_state) {
+  $url        =   $form_state['values']['consentURL'];
+  $version    =   $form_state['values']['cVersion'];
+  $cdate      =   $form_state['values']['consentDate'];
+  $cdate      =   strtotime("$cdate");
+  $status     =   0;
+  
+  $qry        =   "INSERT INTO {consent} (consent_url, consent_version, consent_date, status) VALUES ('%s', %d, %d, %d)";
+  if (db_query($qry, $url, $version, $cdate, $status)) {
+  	drupal_set_message(t("The consent version configuration have been saved."));
+  } else {
+  	drupal_set_message(t("Error...The consent version configuration not has been saved."));
+  }
+}
+
+/**
+ * user consent form - to update consent title and consent description.
+ */
+function consent_form($form, $form_state) {
+  $form['consent_title'] = array(
+    '#type' => 'textfield',
+    '#default_value' => variable_get('consent_title', ''),
+    '#title' => t('Consent Title'),
+    '#required' => True,
+  );
+  $form['consent_desc'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Consent Description'),
+    '#default_value' => variable_get('consent_desc', ''),
+    '#required' => True,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+  return $form;
+}
+
+function consent_form_submit($form,$form_state) {
+  variable_set('consent_title', $form_state['values']['consent_title']);
+  variable_set('consent_desc', $form_state['values']['consent_desc']);
+  drupal_set_message("The configuration options have been saved.");
+}
+
+function admin_consent(){
+  global $base_url;
+  $content="<table cellpadding='0' cellspacing='0' border='0'>
+    <tr>
+      <td style='font:bold 18px arial;'>". variable_get('consent_title', '') ."</td>
+    </tr>
+    <tr>
+      <td style='font:14px arial;'>". variable_get('consent_desc', '') ."</td>
+    </tr>
+    <tr>
+      <td style='height:10px;'></td>
+    </tr>
+    </table>";
+  return $content;
+}
+
+function consentUrl() {
+  $result	=	db_result(db_query("select consent_url from {consent} where status=1"));
+  if ($result == '') {
+  	$url	=	"/samplesite/consent";
+  }
+  else {
+  	$url	=	$result;
+  }
+  return $url;
+}
+
+function check_consent_form(){
+  $new_version = arg(2);
+  global $base_url;
+  $text = "Our consent statement has been updated. Please read the <a href='".consentUrl()."' target='_blank'>consent statement</a>.<br>";
+  drupal_add_js(drupal_get_path('module', 'user_profile'). '/consent.js');
+  $form['title'] = array(
+    '#value' => $text,
+    '#id' => 'changeConsentTitle',
+  );
+  $form['consent_accept'] = array(
+    '#type' => 'submit',
+    '#value' => t('Accept'),
+    '#description' => t('Chagnge your consent version'),
+    '#id' => 'consentAccept',
+  );
+  $form['consent_reject'] = array(
+    '#type' => 'submit',
+    '#value' => t('Reject'),
+    '#description' => t('De-activates your account'),
+    '#id' => 'consentReject',
+  );
+  return $form;
+}
+
+function check_consent_form_submit($form,&$form_state) {
+  global $user;
+  global $base_url;
+  $new_version = arg(2);
+  $access = arg(3);
+  
+  $authid = '';
+  $authUserId = '';
+  
+  /*$authId = base64_decode($_REQUEST['authId']);
+  $authUserId = base64_decode($_REQUEST['authUserId']);
+  $AuthemptyId = base64_decode($_REQUEST['AuthemptyId']);*/
+  $data = db_result(db_query("SELECT data FROM {users} WHERE uid=%d", $user->uid));
+  $auth_arr = unserialize($data);
+  if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	$authId = $auth_arr['AuthId'];
+  	$authUserId = $auth_arr['AuthUserId'];
+  }
+  /*if ($authUserId == 'drupalit') {
+  	$authUserId = '';
+  }*/
+  
+  $objUsrProfData = new UserProfileData();
+  $objUsrProfData->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  $objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_LOAD);
+  $objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_GET);
+  $objUsrProfData->SetSiteId(UserProfileService::getSiteId());
+  if (!$authUserId) {
+  	$authId = get_authid_by_sitename();
+  	$username = $user->name;
+  }
+  else{
+  	$username = $authUserId;
+  }
+  $objUsrProfData->SetSearchCriteria($user->mail, $username, $authId, $authUserId);
+  $objUsrProfData->SetMethod('GET');
+  $objUsrProfSrv = new UserProfileService();
+  $result = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+  $result = json_decode($result);
+  if (count($result->user)) {
+  	$userProfile = $result->user[0];
+  }
+  
+  $userIdentityId = $userProfile->userIdentityId;
+  $userProfileId = $userProfile->userProfileId;
+  
+  if ($form_state['values']['op'] == "Accept") {
+  	$objUsrProf = new UserProfile($userProfileId);
+  	$objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_UPDATE);
+  	$objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_PUT);
+  	
+  	$objUsrProf->addUserProfileInfo('consent', $new_version, TRUE);
+  	$objUsrProf->userId = $user->name;
+  	$objUsrProf->emailId = $userProfile->emailId;
+  	$objUsrProf->authId = $userProfile->authId;
+  	$objUsrProf->isActive = true;
+  	$objUsrProf->userProfileId = $userProfileId;
+  	$objUsrProf->UserIdentityId = $userIdentityId;
+  	$objUsrProf->siteId = UserProfileService::getSiteId();
+  	$objUsrProfData->SetPostedData($objUsrProfData->DataEncode($objUsrProf));
+  	$result = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+  	$result = json_decode($result);
+  	
+  	if ($result->Message == "Success") {
+  	  $data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $user->name));
+  	  $auth_arr = unserialize($data);
+  	  $auth_arr['user_consent_version'] = $new_version;
+  	  db_query("UPDATE {users} set data = '%s' WHERE name = '%s'", serialize($auth_arr), $user->name);
+  	  
+  	  $_SESSION['acceptConsent'] = 0;
+  	  drupal_set_message(t("Thank you for accepting the consent statement."));
+  	  if ($access == 0) {
+  	  	drupal_goto($base_url. "/user/" . $user->uid ."/edit");
+  	  }
+  	  else {
+  	  	drupal_goto($base_url);
+  	  }
+  	}
+  	else {
+  	  drupal_set_message(t("Sorry! for the inconvenience, Please try again"));
+  	}
+  }
+  else if($form_state['values']['op'] == "Reject") {
+  	$objUsrProfData1 = new UserProfileData();
+  	$objUsrProfData1->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+  	$objUsrProfData1->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_DELETE);
+  	$objUsrProfData1->SetServiceMethod(UserProfileService::SERVICE_METHOD_DELETE);
+  	$objUsrProfData1->SetSiteId(UserProfileService::getSiteId());
+  	$objUsrProfData1->SetUserIdentityId($userIdentityId);
+  	$result1 = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData1);
+  	$result1 = json_decode($result1);
+  	if ($result1->Message == "Success") {
+  	  $q=db_query("UPDATE {users} SET status = 0 WHERE uid = %d", $user->uid);
+  	  drupal_set_message(t("Your account has been deactivated",'status'));
+  	  drupal_goto('logout');
+  	}
+  }
+  $_SESSION['acceptConsent'] = 0;
+}
+
+function user_profile_mail_alter(&$message){
+  $thrdUsername = $_SESSION['AuthUserId'];
+  global $base_url;
+  $params = $message['params']['account'];
+  if ($thrdUsername != '') {
+  	switch ($message['id']) {
+  	  case 'user_register_no_approval_required':
+	    unset($message['body']);
+		$mail_body = variable_get('user_mail_register_no_approval_required_body_sso' , "!username,\n\nThank you for registering at !site. You may now visit our site by clicking on !login_uri.\n\n--  !site team");
+  	  	$message['body'][] = t("$mail_body", array("!username" =>$params->name, "!site" => variable_get('site_name', 'Drupal'), "!login_uri" => $base_url, "!site team" => variable_get('site_name', 'ITrInno Sample Site - ITrInno Framework')));
+  	  	break;
+  	}
+  }
+}
+
+function user_profile_cron(){
+	// -- delelting blocked users after a no.of days configured by admin -- //
+	$span = variable_get('deactivated_account_deletion_span');
+
+	$objUsrProfData1 =   new UserProfileData();
+	$objUsrProfSrv  =   new UserProfileService();
+	$objUsrProfData1->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+	$objUsrProfData1->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_DELETE);
+	$objUsrProfData1->SetServiceMethod(UserProfileService::SERVICE_METHOD_DELETE);
+	$objUsrProfData1->SetSiteId(UserProfileService::getSiteId());
+	$objUsrProfData1->SetRemove(true);
+	$objUsrProfData1->SetDays($span);
+	$result1 = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData1);
+	$result1 = json_decode($result1);
+	if(count($result1->deletedUserIds)){
+		foreach($result1->deletedUserIds as $username) {
+			$q = db_query("DELETE FROM {users} WHERE name='%s'",$username);
+		}
+	}
+}
+
+function deactivated_account_deletion(){
+	$form['deactivated_account_deletion_span'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Number of days to delete the deactivated account'),
+		'#default_value' => variable_get('deactivated_account_deletion_span', 0),
+		'#description' => t('The number of days to delete the deactivated account.'),
+	);
+	return system_settings_form($form);
+}

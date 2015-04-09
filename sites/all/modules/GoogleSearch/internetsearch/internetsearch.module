@@ -1,0 +1,107 @@
+<?php
+// $ Id: $
+
+/**
+ * @file
+ * Enables Internet Search module.
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+function internetsearch_help($section) {
+  switch ($section) {
+    case 'admin/help#internetsearch':
+      $output = '<p>'. t('The Internet Search option.') .'</p>';
+      $output .= '<p>'. t('The user can click the Internet Search option to enable internet search.') .'</p>';
+      return $output;
+  }
+}
+
+function internetsearch_init() {
+  $path = drupal_get_path('module', 'internetsearch');
+  drupal_add_js($path .'/internetsearch.js');
+  drupal_add_js(array('internetsearch' => array('xmlPath' => variable_get('search_auto_complete_location', ''))), 'setting');
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function internetsearch_form() {
+  $suffix = '';
+  static $id;
+  $id = $id != '' ? 'tb' : 'gtb';
+  $value = $id == 'gtb' ? $_REQUEST['search_term'] : '';
+  
+  if (variable_get('search_auto_complete', 0)) {
+    $path = drupal_get_path('module', 'internetsearch');
+    drupal_add_js($path .'/js/actb.js');
+    drupal_add_js($path .'/js/common.js');
+    $suffix = '<div><script>obj = actb(document.getElementById("' . $id . '"), customarray);</script></div>';
+  }
+
+  $form = array(
+    '#action' => url(null, array('query' => 'q=google_appliance')),
+    '#submit' => internetsearch_form_submit(),
+  );
+
+  $form['search_term'] = array(
+    '#type' => 'textfield',
+    '#title' => '',
+    '#id' => $id,
+    '#size' => 20,
+    '#reqired' => true,
+    '#value' => $value,
+    '#suffix' => $suffix,
+  );
+  $form['internet_search'] = array(
+    '#type' => 'checkbox',
+    '#id' => 'edit-internet-check',
+    '#name' => 'chk_is',
+    '#title' => t('Internet Search'),
+    '#value' => 0,
+    '#default_value' => 1,
+    '#suffix' => l(' ', '', array('attributes' => array('class' => 'internetsearch'))),
+  );
+  $form['submit'] = array(
+    '#type' => 'button',
+    '#id' => 'edit-internet-button',
+    '#value' => t('Search'),
+  );
+  return $form;
+}
+
+function internetsearch_form_submit() {
+  $search_form = $_REQUEST;
+  if ( isset($search_form['search_term']) && trim($search_form['search_term']) != '' ) {
+    if ( isset($search_form['chk_is']) && $search_form['chk_is'] ) {
+      $url = 'http://';
+      $url .= 'www.google.com/search?';
+      $url .= 'btnG=Google+Search';
+      $url .= '&query='.urlencode(trim($search_form['search_term']));
+      $url .= '&lr=lang_en';
+      drupal_goto($url);
+    }
+  }
+}
+
+/**
+ * Displays the Internet search block.
+ */
+function internetsearch_block($op = 'list', $delta = 0) {
+  if ($op == 'list') {
+    $blocks[0]['info'] = t('Search');
+    // Not worth caching.
+    $blocks[0]['cache'] = BLOCK_NO_CACHE;
+    return $blocks;
+  }
+  else if ($op == 'view') {
+    $block = array();
+    switch ($delta) {
+      case 0:
+        $block['subject'] = t('Search');
+        $block['content'] = drupal_get_form('internetsearch_form', NULL);
+        return $block;
+    }
+  }
+}

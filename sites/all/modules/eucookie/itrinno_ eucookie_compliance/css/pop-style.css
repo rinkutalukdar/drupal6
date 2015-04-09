@@ -1,0 +1,383 @@
+#yourCookieSettings {
+    color: #8F8A8D;
+    font-family: NewBT Regular,Tahoma,Arial,Verdana;
+    font-size: 14px;
+	width:696px;
+	margin:auto;
+	padding:0 20px 10px;
+}
+
+#yourCookieSettings h1{border-bottom: 1px solid #E5E5E5;
+    color: #000000;
+    font-size: 28px;
+    font-weight: normal;
+    margin: 15px 0;
+    padding-bottom: 15px;
+}
+
+#yourCookieSettings p{margin-bottom: 10px;}
+#cookiesToolbar p, .cookieTooltip p, #yourCookieSettings h2, #yourCookieSettings h3, #yourCookieSettings p, #yourCookieSettings ul {
+    font-size: 1em;
+    text-align: left;
+}
+
+
+
+.clearfix:after {
+    clear: both;
+    content: ".";
+    display: block;
+    height: 0;
+    visibility: hidden;
+}
+
+#yourCookieSettings .clearfix {
+    clear: both;
+    display: block !important;
+}
+
+#cookieWrapper {
+    /*background: url("../images/cookie_wrapper_bg.jpg") repeat-x scroll left top #E6E6E6;*/
+    border: 1px solid #B4B4B4;
+    border-radius: 5px 5px 5px 5px;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.4);
+    margin-top: 20px;
+    overflow: hidden;
+    padding: 20px 20px 20px 33px;
+}
+
+.cookieContainer {
+    margin-bottom: 10px;
+    min-height: 200px;
+    position: relative;
+}
+
+.clearfix {
+    display: block;
+}
+
+.cookieNecessaryPerformance {
+    background: url("../images/cookies_sprite.png") no-repeat scroll 0 -128px transparent;
+    cursor: pointer;
+    float: left;
+    height: 144px;
+    width: 218px;
+}
+
+.cookieNecessaryPerformance label {
+    color: #333333;
+    cursor: pointer;
+    display: block;
+    font-size: 13px;
+    height: 39px;
+    padding: 105px 30px 0;
+    text-align: center;
+    text-decoration: none;
+    width: 148px;
+}
+
+.mask, .maskContainer {
+    height: 144px;
+    left: 208px;
+    overflow: hidden;
+    position: absolute;
+    width: 447px;
+}
+
+#cookiesToolbar p, .cookieTooltip p, #yourCookieSettings h2, #yourCookieSettings h3, #yourCookieSettings p, #yourCookieSettings ul {
+    font-size: 1em;
+    text-align: left;
+}
+
+.cookieSlider, .cookieSliderActive {
+    background: url("../images/cookie_slider_off_bg.jpg") repeat-x scroll 0 0 #DDDDDD;
+    border: 1px solid #CBCFD4;
+    border-radius: 0 5px 5px 0;
+    float: left;
+    height: 144px;
+    left: 0;
+    list-style: none outside none;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    width: 440px;
+}
+
+.cookieSlider li.cookieFunctional {
+    background: url("../images/cookies_sprite.png") no-repeat scroll 0 -294px transparent;
+    width: 206px;
+}
+
+.cookieSlider li, .cookieSliderActive li {
+    float: left;
+    height: 144px;
+    margin: 0;
+    text-align: center;
+}
+
+.cookieSlider li.cookieFunctional label, .cookieSliderActive li.cookieFunctional label {
+    width: 185px;
+}
+
+.cookieSlider li label, .cookieSliderActive li label {
+    color: #333333;
+    cursor: pointer;
+    display: block;
+    float: left;
+    font-size: 13px;
+    height: 34px;
+    padding: 110px 10px 0 15px;
+    text-align: center;
+    text-decoration: none;
+}
+
+.cookieSlider li.cookieSharing {
+    background: url("../images/cookies_sprite.png") no-repeat 0 -650px;
+    width: 234px;
+}
+
+.cookieSlider li.cookieSharing label {
+    width: 218px;
+}
+
+.cookieSlider li.cookieSharing label, .cookieSliderActive li.cookieSharing label {
+    padding-left: 5px;
+    width: 209px;
+}
+
+.cookieSlider li label, .cookieSliderActive li label {
+    color: #333333;
+    cursor: pointer;
+    display: block;
+    float: left;
+    font-size: 13px;
+    height: 34px;
+    padding: 110px 10px 0 15px;
+    text-align: center;
+    text-decoration: none;
+}
+
+#detailsContainer {
+    float: left;
+    width: 656px;
+}
+
+#details {
+    padding: 0;
+    position: relative;
+    z-index: 1;
+}
+
+#details .neccesaryPerformanceList, #details .functionalList, #details .sharingList {
+    background: url("../images/list_bg.jpg") repeat-x scroll left bottom #FFFFFF;
+    overflow: hidden;
+}
+
+#details .neccesaryPerformanceList, #details .functionalList, #details .sharingList {
+    background: url("../images/list_bg.jpg") repeat-x scroll left bottom #FFFFFF;
+    display: none;
+    overflow: hidden;
+}
+
+
+.detailsColumnWill, .detailsColumnWillNot {
+    float: left;
+    width: 328px;
+}
+
+#cookiesToolbar p, .cookieTooltip p, #yourCookieSettings h2, #yourCookieSettings h3, #yourCookieSettings p, #yourCookieSettings ul {
+    font-size: 1em;
+    text-align: left;
+}
+
+h3.will {
+    background: url("../images/cookies_sprite.png") no-repeat scroll 0 -45px transparent;
+    margin: 0 0 15px;
+    width: 237px;
+}
+
+h3.will, h3.willNot {
+    color: #666666;
+    float: left;
+    font-family: NewBT Regular,Tahoma,Arial,Verdana;
+    font-size: 16px;
+    font-weight: normal;
+    height: 30px;
+    padding: 12px 0 3px 91px;
+}
+
+#cookiesToolbar p, .cookieTooltip p, #yourCookieSettings h2, #yourCookieSettings h3, #yourCookieSettings p, #yourCookieSettings ul {
+    font-size: 1em;
+    text-align: left;
+}
+
+.willList {
+    background: url("../images/list_border.png") no-repeat scroll right top transparent;
+    min-height: 200px;
+    width: 268px;
+}
+
+.willList, .willNotList {
+    float: left;
+    margin-top: -20px;
+    padding: 20px 20px 0 40px;
+}
+
+#details div ul li {
+    margin-bottom: 10px;
+}
+
+.willList li {
+    list-style-image: url("../images/tick.png") !important;
+}
+
+.detailsColumnWill, .detailsColumnWillNot {
+    float: left;
+    width: 328px;
+}
+
+h3.willNot {
+    background: url("../images/cookies_sprite.png") no-repeat scroll 0 0 transparent;
+    margin: 0 0 15px;
+    width: 237px;
+}
+
+h3.will, h3.willNot {
+    color: #666666;
+    float: left;
+    font-family: NewBT Regular,Tahoma,Arial,Verdana;
+    font-size: 16px;
+    font-weight: normal;
+    height: 30px;
+    padding: 12px 0 3px 91px;
+}
+
+.detailsColumnWill, .detailsColumnWillNot{
+    float: left;
+    width: 328px;
+}
+
+h3.willNot {
+    background: url("../images/cookies_sprite.png") no-repeat scroll 0 0 transparent;
+    margin: 0 0 15px;
+    width: 237px;
+}
+
+#cookiesToolbar p, .cookieTooltip p, #yourCookieSettings h2, #yourCookieSettings h3, #yourCookieSettings p, #yourCookieSettings ul {
+    font-size: 1em;
+    text-align: left;
+}
+.willNotList {
+    width: 230px;
+}
+.willNotList li {
+    list-style-image: url("../images/cross.png") !important;
+}
+#details div ul li {
+    margin-bottom: 10px;
+}
+
+#cookieNotification .arrow, #cookieFooter .arrow {
+    background: url("../images/css_sprite.png") no-repeat scroll right -226px transparent;
+    font-weight: normal;
+    padding-right: 11px;
+}
+
+#cookiesToolbar a, #cookieNotification a, #cookieFooter a {
+    color: #0263AA;
+    font-family: NewBT Regular,Tahoma,Arial,Verdana;
+    text-decoration: none;
+}
+
+#cookieFooter .cookieButtonBlue {
+    background: url("../images/btn_blue.png") repeat-x scroll left top transparent;
+    border-color: #5789AF;
+    cursor: pointer;
+    float: right;
+}
+
+#cookieFooter .cookieButton {
+    margin: 0;
+}
+
+#cookieNotification .cookieButton, #cookieFooter .cookieButton {
+    border: 1px solid #D9D9D9;
+    border-radius: 3px 3px 3px 3px;
+    font-size: 15px;
+    margin: 10px 0 0;
+    padding: 4px 20px;
+    width: auto;
+}
+
+#cookieFooter {
+    float: left;
+    margin-top: 20px;
+    width: 100%;
+}
+
+#cookieFooter p {
+    float: left;
+    padding-top: 5px;
+}
+
+#yourCookieSettings p {
+    margin-bottom: 10px;
+}
+
+#cookiesToolbar p, .cookieTooltip p, #yourCookieSettings h2, #yourCookieSettings h3, #yourCookieSettings p, #yourCookieSettings ul {
+    font-size: 1em;
+    text-align: left;
+}
+
+.cookieSubmit {
+    float: right;
+}
+
+.cookieSubmit p {
+    border-right: 1px solid #D2D2D2;
+    margin-right: 15px;
+    padding: 5px 15px 5px 0;
+}
+
+div.subNote {
+    clear: both;
+    display: block;
+    margin-bottom: 10px;
+    padding-top: 10px;
+    text-align: right;
+}
+
+/*#cookieFooter .cookieButton input {*/
+#cookieFooter .cookieButton  {
+    background: none repeat scroll 0 0 transparent;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    font-family: NewBT Regular,Tahoma,Arial,Verdana;
+    font-size: 16px;
+    margin: 0;
+    padding: 0;
+}
+
+.cookieSliderActive li.cookieSharing {
+    background: url("../images/cookies_sprite.png") no-repeat scroll 0 -845px transparent;
+    width: 230px;
+}
+
+.cookieSlider li, .cookieSliderActive li {
+    float: left;
+    height: 144px;
+    margin: 0;
+    text-align: center;
+}
+
+.noDisplay{display:none;}
+
+#simplemodal-overlay {
+    background-color: #000000;
+}
+/**==========**/
+#modal-container{
+  width: 780px;
+  margin: 10px;
+}

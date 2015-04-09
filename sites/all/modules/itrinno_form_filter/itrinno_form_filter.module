@@ -1,0 +1,281 @@
+<?php
+// $Id$
+
+/**
+ * Implements hook_help().
+ */
+function itrinno_form_filter_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#itrinno-form-filter':
+      return '<p>'. t("This module is used for preventing hacking code such as <em>&lt;SCRIPT&gt;, &lt;?PHP etc..</em> entered in form fields or URLs. You can also exclude the forms that you want to bypass checking while submitting the form.") .'</p>';
+    case 'admin/settings/itrinno-form-filter':
+    case 'admin/settings/itrinno-form-filter/configuration':
+      return '<p>'. t('This module can be used to prevent vulnerabilties exploitation. It by default checks for all form submitted values and URLs on the site to prevent execution of any suspicious code. Here are some configurable settings to manage the hacking prevention functionality on the site.') .'</p>';
+  }
+}
+
+/**
+ * Implements hook_perm().
+ */
+function itrinno_form_filter_perm() {
+  return array(
+    'configure formfilter module',
+    'toggle form filtering',
+    // the following permission could be set to content admins so that they can input
+    // contents with javascript in it without being prevented to do so by form filter
+    'input unfiltered values',
+  );
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function itrinno_form_filter_init() {
+
+  module_load_include('inc', 'itrinno_form_filter', 'itrinno_form_filter.utils');
+  module_load_include('inc', 'itrinno_form_filter', 'itrinno_form_filter.misc');
+  
+	if (_itrinno_form_filter_is_admin_page() != TRUE) {
+	
+		$form_to_be_excluded = false;
+			
+        if( isset($_POST['form_id']) && isset($_POST['form_build_id']) ) {
+							
+			$form_id = form_clean_id(filter_xss($_POST['form_id']));
+		    $excluded_form_ids = _itrinno_form_filter_get_excluded_form_ids();
+		   
+			if (in_array($form_id, $excluded_form_ids)) {
+				$form_to_be_excluded = true;
+			}
+
+		}
+
+		if($form_to_be_excluded == false) {
+		
+			// check the current requested URI for an attack attempt
+				  
+			
+				switch(variable_get('all-data-sanitize-options', '0')) {
+				
+					case "FILTER_XSS":	
+					
+					   _itrinno_form_filter_process_input_data("filter_xss") ;
+					 
+					  break;
+					  
+					case "CHECK_PLAIN":	  
+					
+						_itrinno_form_filter_process_input_data("check_plain") ;
+					  
+					  break;
+						
+				}
+			}
+       	    			
+	 
+	 /**
+	 * @author pkumarm@its.jnj.com
+	 * @since 24-june-2013
+	 * To include X-Frame-Options based on settings
+	 * Force X-Frame-Options header to prevent CSRF attacks
+	 */
+  
+	if (variable_get('enable-iframe-header', 0)) {		
+		drupal_set_header("X-Frame-Options: " . variable_get('iframe-header-options', '') . " " . variable_get('iframe-header-url', ''));
+	}
+	// Load scripts for X-Frame-Options settings
+	if (_itrinno_form_filter_is_admin_page() == true) {
+		drupal_add_js(drupal_get_path('module', 'itrinno_form_filter') . '/itrinno_form_filter.js');
+	}
+    
+
+   }	   
+    
+}
+
+/**
+ * Implementation of hook_form_alter().
+ * 
+ * THIS FUNCTION WILL ALTER EVERY FORM BY ADDING A CUSTOM VALIDATION FUNCTION
+ * AND ADD A LINK FOR A USER WITH PROPER PERMISSIONS TO EXCLUDE/INCLUDE THE FORM
+ * FROM/TO ITrInno Form Filter CHECK.
+ */
+function itrinno_form_filter_form_alter(&$form, $form_state, $form_id) {
+  $own_forms = array(
+    'itrinno_form_filter_configuration',
+    'itrinno_form_filter_include_exclude_form',
+  );
+  
+  if (!in_array($form_id, $own_forms)) {
+    // those were already included in hook_init, but if not included here again
+    // drush pm-enable fails
+    module_load_include('inc', 'itrinno_form_filter', 'itrinno_form_filter.misc');
+    module_load_include('inc', 'itrinno_form_filter', 'itrinno_form_filter.utils');
+
+    $excluded_form_ids = _itrinno_form_filter_get_excluded_form_ids();
+    if (user_access('toggle form filtering') && !_itrinno_form_filter_is_admin_page()) {
+      if (variable_get('display_link_on_forms', TRUE)) {
+        if (in_array($form_id, $excluded_form_ids)) {
+          $link_caption = variable_get('including_form_message', t('Enable form filtering'));
+          $callback_url = 'admin/settings/itrinno-form-filter/include/' . $form_id;
+          $link_wrapper_classes = array('prevent-hacking-link', 'exclude-form');
+        }
+        else {
+          $link_caption = variable_get('excluding_form_message', t('Disable form filtering'));
+          $callback_url = 'admin/settings/itrinno-form-filter/exclude/' . $form_id;
+          $link_wrapper_classes = array('prevent-hacking-link', 'include-form');
+        }
+
+        $form['form_ids'] = array(
+          '#type' => 'markup',
+          '#prefix' => '<div class="' . implode(' ', $link_wrapper_classes) . '"><p>',
+          '#suffix' => '</p></div>',
+          '#value' => l(
+              $link_caption,
+              $callback_url,
+              array(
+                'query' => array('destination' => _itrinno_form_filter_get_current_page()),
+              )
+            ),
+          '#weight' => 1000,
+        );
+      }
+    }
+
+    if (!_itrinno_form_filter_is_admin_page()) {
+      // set a common validator for all forms
+/*      if (!in_array($form_id, $excluded_form_ids)) {
+        $form['#validate'] = !is_array($form['#validate']) ? array() : $form['#validate'];
+        array_unshift($form['#validate'], '_itrinno_form_filter_form_validator');
+      } */
+
+      // filter forms so we don't display titles and other values with potentialy
+      // harmful content (eg. javascript code in textfield labels)
+      _itrinno_form_filter_filter_form_contents($form);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function itrinno_form_filter_menu() {
+  $items = array();
+
+  $items['admin/settings/itrinno-form-filter'] = array(
+    'title' => 'ITrInno Form Filter',
+    'description' => 'Protect your site agains hacking attempts.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('itrinno_form_filter_configuration'),
+    'access arguments' => array('configure formfilter module'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'itrinno_form_filter.admin.inc',
+  );
+
+  $items['admin/settings/itrinno-form-filter/configuration'] = array(
+    'title' => 'Configure ITrInno Form Filter',
+    'description' => 'General configurations for ITrInno Form Filter module.',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/settings/itrinno-form-filter/include/%'] = array(
+    'title' => 'Include Form in ITrInno Form Filter',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('itrinno_form_filter_include_exclude_form', 3, 4),
+    'access arguments' => array('toggle form filtering'),
+    'type' => MENU_CALLBACK,
+    'file'  => 'itrinno_form_filter.admin.inc',
+  );
+
+  $items['admin/settings/itrinno-form-filter/exclude/%'] = array(
+    'title' => 'Exclude Form from ITrInno Form Filter',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('itrinno_form_filter_include_exclude_form', 3, 4),
+    'access arguments' => array('toggle form filtering'),
+    'type' => MENU_CALLBACK,
+    'file' => 'itrinno_form_filter.admin.inc',
+  );
+  
+  $items['admin/settings/itrinno-form-filter/excluded-forms'] = array(
+    'title' => 'Manually Set Excluded Forms List',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('itrinno_form_filter_excluded_forms_settings'),
+    'access arguments' => array('toggle form filtering'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'itrinno_form_filter.admin.inc',
+  );
+
+  return $items;
+}
+
+
+
+
+/**
+ * @author Capgemini
+ * @since 14-July-2013
+ * Function to filter input data using drupal check_plain	
+ */
+
+ function _itrinno_form_filter_process_input_data($method) {
+
+	global $itrinno_form_filter_data_changed;
+	$itrinno_form_filter_data_changed = false;
+	
+	if(!empty($_GET)) {
+		array_walk_recursive($_GET, '_itrinno_form_filter_process_callback_get', $method);
+	}
+	if(!empty($_POST)) {
+		
+		array_walk_recursive($_POST, '_itrinno_form_filter_process_callback_post', $method);
+	}
+	if(!empty($_REQUEST)) {
+		array_walk_recursive($_REQUEST, '_itrinno_form_filter_process_callback_post', $method);
+	}
+  
+   if ( $itrinno_form_filter_data_changed == true && variable_get('itrinno_form_filter_data_process_option', '') == "ERROR" )  {
+		
+		drupal_set_message(t('An unsafe value has been detected during the processing, please correct and re-submit the form .'), 'error');
+   }
+				
+  }
+  
+  function _itrinno_form_filter_process_callback_get(&$item, $key, $method) {
+      
+		$initial_value = $item;  
+		$item = $method($item);
+		$item = _itrinno_form_filter_prevent_hacking_url($item);
+		global $itrinno_form_filter_data_changed;
+		
+		if($initial_value != $item ) {
+			$itrinno_form_filter_data_changed = true;
+		   if(variable_get('itrinno_form_filter_data_process_option', '') == "ERROR") {
+				form_set_error($key);
+				
+			}else if(variable_get('itrinno_form_filter_data_process_option', '') == "REDIRECT") {
+				drupal_set_message(variable_get('url_error_message', t('An unsafe value has been detected in the requested URL.')), 'error');
+				drupal_goto(variable_get('found_hack_redirection', '<front>'));
+			}
+		}
+		
+	}
+	
+  function _itrinno_form_filter_process_callback_post(&$item, $key, $method) {
+      
+		$initial_value = $item;  
+		$item = $method($item);
+		$item = _itrinno_form_filter_prevent_hacking($item);
+		global $itrinno_form_filter_data_changed;
+		
+		if($initial_value != $item ) {
+			$itrinno_form_filter_data_changed = true;
+		   if(variable_get('itrinno_form_filter_data_process_option', '') == "ERROR") {
+				form_set_error($key);
+				
+			}else if(variable_get('itrinno_form_filter_data_process_option', '') == "REDIRECT") {
+				drupal_set_message(variable_get('url_error_message', t('An unsafe value has been detected in the requested URL.')), 'error');
+				drupal_goto(variable_get('found_hack_redirection', '<front>'));
+			}
+		}
+		
+	}

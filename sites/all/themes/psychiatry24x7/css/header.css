@@ -1,0 +1,40 @@
+#header_container #header_left {
+    background: url("../images/menu_left_new.jpg") no-repeat scroll left top transparent !important;
+    
+    height: 282px !important;
+    
+}
+
+#header_container #header_right {
+    background: url("../images/menu_right_new.jpg") no-repeat scroll left top transparent !important;
+    
+   height: 282px !important;
+    
+}
+
+
+
+/*new css 03.07.2013*/
+.wats-new-sticky{
+	position: absolute;
+	left: -215px;
+	top: 194px;
+}
+.mark-space{
+	margin-left:5px;
+}
+.what-to-think-sticky {
+	position: absolute;
+	right: -165px;
+	bottom: -62px;
+	*bottom:-240px !important;
+}
+#body_container #body_bmiddle .hbanner .hbanner_image {
+	height: 400px;
+}
+body #header_container #header_right #right_menu ul li.menu-558_slctd {
+  padding: 0px 60px 3px 13px;
+}
+body #header_container #header_right #right_menu ul li.menu-1133_slctd {
+  padding: 0px 0px 0px 12px;
+}

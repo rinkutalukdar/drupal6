@@ -1,0 +1,1230 @@
+<?php
+// ; $Id: iapp_rules.module,v 1.0 2009/05/20 19:47:55 Exp $
+
+/**
+ * @file iapp_rules.module
+ * Implements IAPP rules for Drupal.
+ */
+drupal_add_js(drupal_get_path('module', 'iapp_rules') .'/iapp_rules.js');
+require_once('iapp_rules.config.inc');
+
+/**
+ * Implementation of hook_init().
+ *
+ * Disables ajax password validation,
+ * On first login after forgot or expired password, restrict user to password change page
+ *
+ */
+function iapp_rules_init() {
+  // Disable the ajax password validation
+  if (arg(0) === 'user') {
+    drupal_add_js('Drupal.behaviors.password = function () {};', 'inline', 'footer');
+  }
+
+  // if this is first login after forgot or expired password, restrict user to password change page
+  global $user;
+  if(isset($user->uid) && $user->uid != 0 )  {
+
+    // allowed URLs
+    $redirect_url = variable_get('password_redirect_url', '');
+    $allowed_url = (trim($redirect_url)==''?'user/'.$user->uid.'/edit':$redirect_url);
+
+    // current URL
+    $current_url = $_GET['q'];
+
+    // get password status
+    $expiry_state = db_result(db_query("SELECT state FROM iapp_password_expire WHERE uid='%d'", $user->uid));
+
+    // get forgot password operation state
+    $forgot_pwd = db_result(db_query("SELECT status FROM iapp_forgot_password WHERE uid='%d'", $user->uid));
+
+  // set redirect flag to FALSE
+    $redirect = FALSE;
+
+    // check if the password has expired
+    if($current_url != $allowed_url) {
+
+      // first login after forgot password
+      if($forgot_pwd == 2) {
+        drupal_set_message(t(FORGOT_PASSWORD_FIRST_LOGIN), 'error', FALSE);
+      $redirect = TRUE;
+      }
+      // first login after password expired
+      elseif($expiry_state == PWD_EXPIRED) {
+        // display a message to the user if their password has expired
+        drupal_set_message(t(PASSWORD_EXPIRE_MESSAGE), 'error', FALSE);
+        $redirect = TRUE;
+      }
+    }
+
+    // on redirect flag, do redirect
+    if($redirect) {
+      unset($_REQUEST['destination']);
+      drupal_goto($allowed_url);
+    }
+  }
+
+};
+
+/**
+ * Implementation of hook_perm().
+ */
+function iapp_rules_perm() {
+  return array('configure iapp rules');
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function iapp_rules_menu() {
+  $items = array();
+
+  $items['admin/settings/iapp'] = array(
+    'title' => t('Password Policy'),
+    'description' => t('Site wide password policy configuration.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_admin_settings'),
+    'access arguments' => array('configure iapp rules'),
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 1,
+  );
+  $items['admin/settings/iapp/password_strength'] = array(
+    'title' => t('Password strength'),
+    'description' => t('Configure password strength enforcement rules.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_admin_settings'),
+    'access arguments' => array('configure iapp rules'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 2,
+  );
+  $items['admin/settings/iapp/password_policy'] = array(
+    'title' => t('Password Iterations'),
+    'description' => t('Configure password policy.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_password_policy'),
+    'access arguments' => array('configure iapp rules'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 3,
+  );
+  $items['admin/settings/iapp/password_expire'] = array(
+    'title' => t('Password expiry'),
+    'description' => t('Configure password expiry.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_password_expire'),
+    'access arguments' => array('configure iapp rules'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 4,
+  );
+  $items['admin/settings/iapp/unsuccessful_login'] = array(
+    'title' => t('Unsuccessful Login'),
+    'description' => t('Configure unsuccessful login action.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_unsuccessful_login'),
+    'access arguments' => array('configure iapp rules'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 5,
+  );
+  $items['admin/settings/iapp/forgot_password'] = array(
+    'title' => t('Forgot Password'),
+    'description' => t('Configure forgot password action.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_forgot_password'),
+    'access arguments' => array('configure iapp rules'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 6,
+  );
+  $items['admin/settings/iapp/misc_settings'] = array(
+    'title' => t('Misc'),
+    'description' => t('Miscellaneous settings.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_misc_settings'),
+    'access arguments' => array('configure iapp rules'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 7,
+  );
+  $items['admin/settings/iapp/activity_log'] = array(
+    'title' => t('Activity Log'),
+    'description' => t('Configure activity log.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('iapp_rules_config_activity'),
+    'access arguments' => array('configure iapp rules'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'iapp_rules.admin.inc',
+    'weight' => 8,
+  );
+  $items['admin/reports/activity_log'] = array(
+    'title' => t('Activity Log'),
+    'description' => t('Displays the user activity log.'),
+    'page callback' => 'iapp_activity_log',
+    'page arguments' => array(),
+    'access arguments' => array('configure iapp rules'),
+    'file' => 'iapp_rules.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_form_alter()
+ *
+ * Additional validations and submit functions
+ *
+ */
+function iapp_rules_form_alter(&$form, $form_state, $form_id) {
+  global $user;
+  switch($form_id) {
+    case 'user_pass':
+      $form['#validate'][] = 'iapp_rules_pass_validate';
+      $form['#submit'] = array('iapp_rules_pass_submit');
+      break;
+    case 'user_profile_form':
+      // disable password edit field on edit user operation
+      if($user->uid != $form['#uid'] && (arg(3) == 'account' || arg(3) == '')) {
+        $form['account']['pass'] = array('#type' => 'submit', '#value' => 'Reset Password', '#submit' => array('iapp_reset_user_password'));
+        $form['account']['password_status'] = array('#type' => 'hidden', '#value' => 'disabled', );
+      }
+      else {
+        $fp_status = db_result(db_query("SELECT status FROM iapp_forgot_password WHERE uid='%d'",$user->uid));
+
+        // for forgot password dont show current password box
+        if($fp_status != 2 && (arg(3) == 'account' || arg(3) == '')) {
+          $pass_field = $form['account']['pass'];
+          unset($form['account']['pass']);
+          $form['account']['cpass'] = array('#title' => 'Current password', '#type' => 'password', '#description' => t('Enter your current password here'), '#size' => 25);
+          $form['account']['pass'] = $pass_field;
+          $form['account']['pass']['#description'] = t('Enter your new password in both fields');
+        }
+      }
+      $form['#validate'][] = 'iapp_rules_user_edit_validate';
+      $form['#submit'][] = 'iapp_rules_user_edit_submit';
+      break;
+    case 'user_register':
+      $form['#validate'][] = 'iapp_rules_user_register_validate';
+      $form['#submit'][] = 'iapp_rules_user_register_submit';
+      // disable password field when on add user operation by another user
+      if($user->uid > 0 && $user->uid != 1) {
+        if(isset($form['pass'])) {
+          unset($form['pass']);
+        } elseif (isset($form['account']['pass'])) {
+          unset($form['account']['pass']);
+        }
+        $form['password_status'] = array('#type' => 'hidden', '#value' => 'disabled', );
+        $form['notify'] = array('#type' => 'hidden', '#value' => '1', );
+      }
+      break;
+    case 'user_login':
+    case 'user_login_block':
+    case 'user_profile_sample_login':
+      $validate = $form['#validate'];
+      $form['#validate'] = array_merge(array('iapp_rules_user_login_validate'), $validate);
+      break;
+    case 'iapp_rules_password_expire':
+      $form['#validate'][] = 'iapp_rules_password_expire_validate';
+      break;
+  }
+}
+
+/**
+ * Custom validation function for user profile edit form
+ *
+ * Password level and password ageing policies are checked here
+ */
+function iapp_rules_user_edit_validate($form, &$form_state) {
+  iapp_rules_user_register_validate($form, $form_state);
+}
+
+/**
+ * Custom validation function for user register form
+ *
+ * Password level and password ageing policies are checked here
+ */
+function iapp_rules_user_register_validate($form, &$form_state) {
+    //print "<pre>";print_r($form_state);print "</pre>";
+  global $user;
+  //print "<pre>";print_r($form_state['values']);print "</pre>";
+  $account = $user->uid>0?$user:$form_state['values']['_account'];
+  $pass = $form_state['values']['pass'];
+  //print $pass;
+  $cpass = $form_state['values']['cpass'];
+  $password_status = trim($form_state['values']['password_status']);
+  //echo "<pre>";print_r($account);print_r($password_status); exit;
+  if ($password_status != 'disabled') {
+        $messages = '';
+        //if ( (isset($form_state['values']['_account']->authId)) && (isset($form_state['values']['_account']->authUserId))  && (arg(2) == 'edit') )  {
+    if ( (isset($form_state['values']['_account']->authId)) && (isset($form_state['values']['_account']->authUserId)) && (arg(2) == 'edit') || (isset($_SESSION['AuthId'])) ) {
+            $messages   =   '';
+        } else {
+            // for user's first login and login after password reset password cannot be empty on submit
+            if(!$pass && isset($account->uid) && (_iapp_check_user_first_login($account->uid) || _iapp_check_password_reset_login($account->uid)) ) {
+                if(arg(2) == 'edit')
+                    $messages = t(ERR_EMPTY_PASSWORD);
+            } elseif(isset($account->uid)){
+              // check the current password
+              if(trim($form_state['values']['cpass'])) {
+                // try loading the user object
+                $user_obj = user_load(array('uid' => $account->uid, 'pass' => $cpass));
+
+                // check if user object is loaded
+                if(!isset($user_obj->uid)) {
+                  $messages = t(ERR_CURRENT_PASSWORD);
+                }
+
+                // check if new password is empty
+                if(!trim($form_state['values']['pass'])) {
+                  $messages = t(ERR_EMPTY_NEW_PASSWORD);
+                }
+              }
+            }
+        }
+
+        // if no error with current password
+        if(strlen($messages) == 0 && trim($form_state['values']['pass'])) {
+            // Get the current password level
+            $iapp_rule = variable_get('password_level', IAPP_STANDARD1);
+            $pwd_length = strlen($pass);
+
+            // username and password are same
+            if($form_state['values']['name'] == $pass || $account->name == $pass) {
+                $messages = t(ERR_USERNAME_PASSWORD_SAME);
+            }
+
+            switch($iapp_rule) {
+                case IAPP_BASIC:
+                    if($pwd_length < PWD_BASIC_LENGTH) {
+                        $messages = t("Password should be atleast ".PWD_BASIC_LENGTH." characters");
+                    }
+                break;
+                case IAPP_STANDARD1:
+                    if($pwd_length < PWD_STANDARD1_LENGTH) {
+                        $messages = t("Password should be atleast ".PWD_STANDARD1_LENGTH." characters");
+                    } elseif(_count_iapp_classes($pass) < PWD_STANDARD1_COMPLEXITY) {
+                        $messages = t("Password is not complex");
+                    }
+                break;
+                case IAPP_STANDARD2:
+                    if($pwd_length < PWD_STANDARD2_LENGTH) {
+                        $messages = t("Password should be atleast ".PWD_STANDARD2_LENGTH." characters");
+                    } elseif(_count_iapp_classes($pass) < PWD_STANDARD2_COMPLEXITY) {
+                        $messages = t("Password is not complex");
+                    }
+                break;
+            }
+
+            // flag for skipping already changed check
+            $skip_limit_check = FALSE;
+            if(isset($account->uid)) {
+                // get the forgot password flag status
+                $forgot_status = db_result(db_query("SELECT status FROM iapp_forgot_password WHERE uid='%d'", $account->uid));
+
+                // check if password expired
+                $expire_status = db_result(db_query("SELECT state FROM iapp_password_expire WHERE uid=%d", $account->uid));
+
+                // check if the current action is forgot password
+                if($forgot_status == 2 || $expire_status == PWD_EXPIRED || $expire_status == PWD_NEEDS_RENEWAL) {
+                  $skip_limit_check = TRUE;
+                }
+            }
+            $iapp_ageing = variable_get('password_ageing', IAPP_METHOD1);
+            // If basic skip the ageing check
+            if($iapp_rule != IAPP_BASIC) {
+
+                // Get the current ageing rule
+                $iapp_ageing = variable_get('password_ageing', IAPP_METHOD1);
+
+                // Check password ageing policies
+                switch($iapp_ageing) {
+                  case IAPP_METHOD1:
+                    $messages_age = _check_age_method1(md5($pass), $skip_limit_check, $account,  $_SESSION['hidResetPwd']);
+                    break;
+                  case IAPP_METHOD2:
+                    $messages_age = _check_age_method2(md5($pass), $skip_limit_check, $account, $_SESSION['hidResetPwd']);
+                    break;
+                }
+                $messages = strlen($messages)>0?$messages:$messages_age;
+            }
+        }
+
+        // check if there is some error from previous steps
+        if(strlen($messages) > 0) {
+          if($form_state['values']['pass'] != '') {
+            form_set_error('pass', $messages);
+          } else {
+            form_error($form, $messages);
+          }
+        }
+  } else {
+            unset($form_state['values']['pass']);
+  }
+}
+
+/**
+ * Custom submit function for user profile edit form
+ *
+ * Password history is maintained here
+ */
+function iapp_rules_user_edit_submit($form, &$form_state) {
+  iapp_rules_user_register_submit($form, $form_state);
+}
+
+/**
+ * Custom submit function for user register form
+ *
+ * Password history is maintained here
+ */
+function iapp_rules_user_register_submit($form, &$form_state) {
+  global $user;
+  $uid = $form['#uid']==''?$form_state['user']->uid:$form['#uid'];
+  $uid = ($uid==''&&$form['#uid']=='')?$user->uid:$uid;
+
+  $pass = $form_state['values']['pass'];
+  $password_status = $form_state['values']['password_status'];
+
+  // if password field is disabled, generate new password
+  if ($password_status == 'disabled') {
+    $account = $form_state['user'];
+
+    // get user id
+    $uid = $account->uid;
+
+    // generate the new password
+    $pass = _generate_password();
+
+    // sent the generated password to the user
+    //@_add_user_password($account, $pass);  //-- commented by Nagender to avoid mail after user registration.
+  }
+  // insert password into history only if it is entered by the user
+  else {
+    // Insert the password into the password history table
+    $sql = "INSERT INTO iapp_password_history(uid, timestamp, password) VALUES ('%d', '%d', '%s')";
+    db_query($sql, $uid, time(), md5($pass));
+
+    // if password policy is basic remove the password expiration
+    if(!_get_password_expiration_length()) {
+      $sql = "DELETE FROM `iapp_password_expire` WHERE uid='%d'";
+      db_query($sql, $uid);
+    } else {
+      $expiry_date = time() + _get_password_expiration_length() * 86400;
+      db_query("UPDATE iapp_password_expire SET timestamp='%d', state='0' WHERE uid='%d'", $expiry_date, $uid);
+    }
+
+    db_query("DELETE FROM iapp_forgot_password WHERE uid='%d'", $uid);
+  }
+}
+
+/**
+ * Custom login validate function
+ *
+ * Checks performed here are: user is blocked, user password expired, number of login attempts
+ */
+function iapp_rules_user_login_validate($form, &$form_state) {
+
+  // try to load the user
+  $user_test = user_load(array('name' => $form_state['values']['name']));
+
+  // user not exits
+  if(empty($user_test)) {
+
+    //** LOG EVENT **//
+    iapp_log_event('invalid login', ACTIVITY_SOURCE_USER, t('login failed from ip: !ip using username: !username', array('!username' => $form_state['values']['name'], '!ip' => ip_address())));
+  }
+  // user exists
+  else {
+
+    // clean user input
+    $name = check_plain($form_state['values']['name']);
+
+    // track the user login
+    db_query("INSERT INTO iapp_login_track(name, time, ip_address) VALUES ('%s', '%d', '%s')", $name, time(), ip_address());
+
+    // user blocked message
+    $blocked_message = t(USER_BLOCKED_MESSAGE);
+
+    // set blocked flag to FALSE
+    $blocked = FALSE;
+
+    // get the account login allowed try time
+    $default_try = time() - variable_get('try_time_span', IAPP_UNLOGIN_TRY_TIME) * 60;
+    // delete all login try records which are obsoleted
+    db_query("DELETE FROM iapp_login_track WHERE name='%s' AND ip_address='%s' AND time<%d", $name, ip_address(), $default_try);
+
+    // get user blocked data
+    $data = db_fetch_object(db_query("SELECT id, time FROM iapp_blocked_temp WHERE name='%s' AND ip_address='%s'", $name, ip_address()));
+
+    if($data) {
+    $block_period = (time() - $data->time);
+    $default_block = variable_get('lock_time_span', IAPP_UNLOGIN_LOCK_TIME) * 60;
+
+    // check if user is currently blocked
+    if($block_period < $default_block) {
+      $blocked = TRUE;
+    }
+    }
+    if(!$blocked) {
+
+      // get user track data
+      $data = db_fetch_object(db_query("SELECT COUNT(id) as count FROM iapp_login_track WHERE name='%s' AND ip_address='%s'", $name, ip_address()));
+
+      if($data) {
+
+        // the current number of attempts allowed
+        $attempts_allowed = variable_get('login_attempts_allowed', IAPP_UNLOGIN_ATTEMPTS);
+
+        // check if the number of attempts exceeded the allowable limit
+        if($data->count >= $attempts_allowed) {
+        db_query("INSERT INTO iapp_blocked_temp(name, time, ip_address) VALUES ('%s', '%d', '%s')", $name, time(), ip_address());
+          $blocked = TRUE;
+        }
+        // check if user exits otherwise log the event
+        else {
+          $test = user_load(array('name' => $form_state['values']['name'], 'pass' => $form_state['values']['pass']));
+          if(empty($test)) {
+
+            //** LOG EVENT **//
+            iapp_log_event('login failure', ACTIVITY_SOURCE_USER, t('wrong password by user: !username attempt: !attempt', array('!username' => $form_state['values']['name'], '!attempt' => $data->count)));
+          }
+        }
+      }
+    }
+
+    // show message and redirect user if the user is blocked
+    if($blocked) {
+
+      $forgot_flag = db_result(db_query("SELECT status FROM iapp_forgot_password WHERE uid='%d'", $user_test->uid));
+
+      // Dont block the user if this is the login after forgot password
+      if($forgot_flag == 1) {
+        db_query("UPDATE {users} SET status='1' WHERE uid='%d'", $user_test->uid);
+      }
+      else {
+        //** LOG EVENT **//
+        iapp_log_event('user blocked', ACTIVITY_SOURCE_SYSTEM, t('denied login for user: !username from: !ip reason: blocked', array('!username' => $name, '!ip' => ip_address())));
+
+        if($blocked_message != '') {
+           form_set_error('name', $blocked_message);
+        }
+      }
+    }
+    // if this is the login after forgot password /***NOT MERGED ***/
+    else {
+      $user = $user_test;
+      $validity = variable_get('forgot_password_span', FORGOT_PASSWORD_VALIDITY) * 86400;
+      $expiry_message = t(FORGOT_PASSWORD_EXPIRED_MESSAGE);
+
+      $result = db_query("SELECT f.status, e.timestamp FROM iapp_forgot_password f INNER JOIN iapp_password_expire e ON f.uid=e.uid WHERE f.uid='%s'",$user->uid);
+      $data = db_fetch_object($result);
+
+      // check if status this is login after forgot password
+      if($data->status == 1) {
+        $expiry = $data->timestamp + $validity;
+
+        // check if resetted password is expired
+        if(time() > $expiry) {
+
+          //** LOG EVENT **//
+          iapp_log_event('password expired', ACTIVITY_SOURCE_SYSTEM, t('password expired for user: !username', array('!username' => $name)));
+
+          form_set_error('name', $expiry_message);
+        }
+        // enable the user
+        else {
+          db_query("UPDATE {users} SET status='1' WHERE uid='%d'", $user->uid);
+        }
+      }
+    }
+  }
+
+}
+
+/**
+ * Custom validation for password expiry settings
+ *
+ * Checks if the user submitted url is valid
+ */
+function iapp_rules_password_expire_validate($form, &$form_state) {
+  $form_item['link_path'] = trim($form_state['values']['password_redirect_url']);
+
+  if ($form_item['link_path'] != '') {
+    // check if the submitted url is a valid drupal url
+    if(!menu_valid_path($form_item)) {
+      form_set_error('password_redirect_url', t(ERR_INVALID_REDIRECT_URL));
+    }
+  }
+}
+
+/**
+ * Custom validation function for forgot password
+ */
+function iapp_rules_pass_validate($form, &$form_state) {
+  $account = $form_state['values']['account'];
+  if($account->uid<1 && $form_state['values']['name'] != '') {
+    $account = user_load(array('name' => $form_state['values']['name']));
+  }
+
+  $gap_ok = TRUE;
+
+  $data = db_fetch_object(db_query("SELECT timestamp FROM iapp_forgot_password WHERE op_uid='0' AND uid='%d' ORDER BY timestamp DESC", $account->uid));
+
+  if(isset($data->timestamp)) {
+    $reset_gap = floor((time() - $data->timestamp) / 86400);
+
+    if($reset_gap <= variable_get('forgot_password_restricted_gap', IAPP_FORGOT_PASSWORD_GAP)) {
+      $gap_ok = FALSE;
+    }
+  }
+
+  if(!$gap_ok) {
+    form_set_error('name', t(FORGOT_PASSWORD_ALREADY_CHANGED));
+  }
+}
+
+/**
+ * Custom submit function for forgot password
+ *
+ * New password is generated and mailed to the user
+ */
+function iapp_rules_pass_submit($form, &$form_state) {
+  $account = $form_state['values']['account'];
+
+  if($account->uid<1 && $form_state['values']['name'] != '') {
+    $account = user_load(array('name' => $form_state['values']['name']));
+  }
+
+  // generate the new password
+  $pass = _generate_password();
+
+  // reset the current password
+  @_reset_password($account, $pass);
+
+  $form_state['redirect'] = 'user';
+
+  drupal_set_message(t(PASSWORD_FURTHER_INSTRUCTIONS));
+
+  //** LOG EVENT **//
+  iapp_log_event('forgot password', ACTIVITY_SOURCE_SYSTEM, t('user: !username submitted forgot password', array('!username' => $account->name)));
+}
+
+/**
+ * Custom submit function for profile edit operation by admin
+ *
+ * Reset password operation
+ */
+function iapp_reset_user_password($form, &$form_state) {
+
+  $account = user_load(array('uid' => $form['#uid']));
+
+  // generate the new password
+  $pass = _generate_password();
+
+  // reset the current password
+  @_reset_password($account, $pass);
+
+  drupal_set_message(t(MSG_PASSWORD_RESET_SUCCESS), 'status', FALSE);
+
+  //** LOG EVENT **//
+  iapp_log_event('password reset', ACTIVITY_SOURCE_SYSTEM, t('password resetted for: !username', array('!username' => $account->name)));
+
+  return;
+}
+
+/**
+ * Imeplementation of hook_mail()
+ */
+function iapp_rules_mail($key, &$message, $params) {
+  $lang = $params['lang'];
+  $account = $params['account'];
+  $name = $params['name'];
+  //print $params['type'];
+  if($params['type'] == 'password_submit') {
+  // update the user password with the new password
+  $account->pass = md5($params['pass']);
+    $variables = user_mail_tokens($account, $lang);
+  $variables['!password'] = $params['pass'];
+    $message['subject'] .= t(variable_get('user_mail_password_reset_subject', FORGOT_PASSWORD_SUBJECT),$variables,$lang);
+    $message['body'][] = t(variable_get('user_mail_password_reset_body', FORGOT_PASSWORD_MESSAGE), $variables, $lang);
+  }
+  elseif($params['type'] == 'warning_message') {
+    $days = $params['days'];
+  $site = variable_get('site_name', 'Drupal');
+  global $base_url;
+    $message['subject'] .= t(variable_get('pass_warning_mail_subject', PASS_WARNING_MAIL_SUBJECT),array('!site' => variable_get('site_name', 'Drupal')),$lang);
+    $message['body'][] = t(variable_get('pass_warning_mail_message', PASS_WARNING_MAIL_MESSAGE), array('!site' => $site, '!username' => $name, '!days' => $days, '!url' => url("$base_url", array('absolute' => TRUE))), $lang);
+  }
+  elseif($params['type'] == 'add_user_password') {
+    $pass = $params['pass'];
+    $message['subject'] .= t(variable_get('add_user_password_subject', ADD_USER_PASSWORD_SUBJECT),array('!site' => variable_get('site_name', 'Drupal')),$lang);
+    $message['body'][] = t(variable_get('add_user_password_message', ADD_USER_PASSWORD_MESSAGE), array('!site' => variable_get('site_name', 'Drupal'), '!username' => $account->name, '!password' => $pass), $lang);
+  }
+  elseif($params['type'] == 'forgot_password') {
+    $pass = $params['pass'];
+    $message['subject'] .= t(variable_get('forgot_password_mail_subject', FORGOT_PASSWORD_MAIL_SUBJECT),array('!site' => variable_get('site_name', 'Drupal')),$lang);
+    $message['body'][] = t(variable_get('forgot_password_mail_message', FORGOT_PASSWORD_MAIL_MESSAGE), array('!site' => variable_get('site_name', 'Drupal'), '!username' => $account->name, '!password' => $pass), $lang);
+  }
+}
+
+/**
+ * Implementation of hook_user()
+ *
+ * Handles updating password expiry dates and
+ * warns the user when they login if their password is going to expire soon.
+ *
+ * Custom logging functions for activity log is also performed here
+ *
+ */
+function iapp_rules_user($op, &$edit, &$account, $category = NULL) {
+
+  switch ($op) {
+    case 'login':
+
+      global $user;
+
+      // check if there is some error from login validations
+    if(count($_SESSION['messages']['error']) == 0) {
+
+      // clean the user name
+        $name = (!empty($edit['name'])) ? check_plain($edit['name']) : $account->name;
+
+        //** LOG EVENT **//
+        iapp_log_event('login', ACTIVITY_SOURCE_USER, t('user: !name logged in from : !ip', array('!name' => $name, '!ip' => ip_address())), $account->name);
+
+        // delete the user login tracking record
+        db_query("DELETE FROM iapp_login_track WHERE name='$name' AND ip_address='%s'", ip_address());
+
+        // delete the user login blocked record
+        db_query("DELETE FROM iapp_blocked_temp WHERE name='$name' AND ip_address='%s'", ip_address());
+
+        // load user object
+      $user = user_load(array('name' => $name));
+
+      // the forgot password operation flag
+      $forgot_pwd_flag = FALSE;
+
+      // get the forgot password status
+      $result = db_query("SELECT status FROM iapp_forgot_password WHERE uid='%d'", $user->uid);
+
+      $data = db_fetch_object($result);
+
+      // check if forgot password is resetted or not
+      if($data->status == 1) {
+        $forgot_pwd_flag = TRUE;
+
+        // set the change password option flag
+        db_query("UPDATE iapp_forgot_password SET status='2' WHERE uid='%d'", $user->uid);
+
+        // display the message and redirect
+        drupal_set_message(t(FORGOT_PASSWORD_FIRST_LOGIN), 'error', FALSE);
+        $redirect_url = variable_get('password_redirect_url', '');
+        $redirect_url = trim($redirect_url)==''?'user/'.$account->uid.'/edit':$redirect_url;
+        unset($_REQUEST['destination']);
+        drupal_goto($redirect_url);
+      }
+
+      $expire = _get_password_expiration_length();
+
+        // roots password never expires
+        if ($account->uid != 1 && !$forgot_pwd_flag) {
+
+          // check if user has a password expiry set up, if not create one.
+          $expiry_date = db_result(db_query("SELECT timestamp FROM iapp_password_expire WHERE uid='%d'", $account->uid));
+
+          if (empty($expiry_date)) {
+            // automatically create an expiry date for this user when they first login
+            _password_expire_renew_password($account->uid);
+          }
+        else {
+            $today = time();
+
+            if($today >= $expiry_date) {
+
+                //** LOG EVENT **//
+                iapp_log_event('password expired', ACTIVITY_SOURCE_SYSTEM, t('user: !username password expired', array('!username' => $name)), $account->name);
+
+                $expiry_message = PASSWORD_EXPIRE_MESSAGE;
+
+                // display a message to the user if their password is expired
+                drupal_set_message($expiry_message, 'error');
+
+                // Set password expired flag in expiry table
+                db_query("UPDATE iapp_password_expire SET state='%d' WHERE uid='%d'", PWD_EXPIRED, $account->uid);
+
+                // redirect the user to the password redirect page
+                $redirect_url = variable_get('password_redirect_url', '');
+                $redirect_url = trim($redirect_url)==''?'user/'.$account->uid.'/edit':$redirect_url;
+                unset($_REQUEST['destination']);
+                drupal_goto($redirect_url);
+            }
+          }
+
+          // check when users password expires and warns them
+          if ($warning_period = variable_get('password_expire_warning', NULL)) {
+            // convert warning period into seconds
+            $warning_period = $warning_period * 86400;
+      $days = ceil(($expiry_date - $today) / 86400);
+            if ($today > $expiry_date - $warning_period) {
+              // user is in warning period
+              if ($warning_message = variable_get('password_expire_warning_message', FALSE)) {
+                // display a message to the user warning them their password is due to expire
+                drupal_set_message(t($warning_message,array('!days' => $days)) ,'warning');
+              }
+            }
+          }
+        }
+    }
+    else {
+      // if there is some error unset the user id (to avoid getting user logged in automatically)
+      unset($user->uid);
+    }
+
+    break;
+
+    case 'delete':
+
+      // clear user records from iapp tables
+      _iapp_delete_user_cleanup($account);
+
+      //** LOG EVENT **//
+      iapp_log_event('account delete', ACTIVITY_SOURCE_USER, t('user: !username deleted', array('!username' => $account->name)));
+      break;
+    case 'update':
+
+      if ($edit['pass']) {
+        // if password changed, renew expiry date
+        _password_expire_renew_password($account->uid);
+      }
+
+      //** LOG EVENT **//
+      iapp_log_event('account edit', ACTIVITY_SOURCE_USER, t('user: !username account updated', array('!username' => $account->name)));
+      break;
+    case 'insert':
+      //** LOG EVENT **//
+      iapp_log_event('account create', ACTIVITY_SOURCE_USER, t('account created for user: !username', array('!username' => $edit['name'])));
+      break;
+    case 'logout':
+      //** LOG EVENT **//
+      iapp_log_event('logout', ACTIVITY_SOURCE_USER, t('user: !username logged out', array('!username' => $account->name)));
+      break;
+
+  }
+}
+
+/**
+ * Implementation of hook_cron()
+ *
+ * Periodically checks if any user password is going to expire,
+ * then sends message to the user
+ *
+
+function iapp_rules_cron() {
+  global $language;
+
+  // delete all old records
+  $time = time() - variable_get('lock_time_span', IAPP_UNLOGIN_LOCK_TIME) * 60;;
+  db_query("DELETE FROM iapp_login_track WHERE time < %d", $time);
+
+  // find all the users whose password is going to expire and warn them by email
+  require_once(drupal_get_path('module', 'user_profile'). '/classes/UserProfileData.php');
+  require_once(drupal_get_path('module', 'user_profile'). '/classes/UserProfileService.php');
+    require_once(drupal_get_path('module', 'SMSSO_Manager').'/classes/smssomanagerdata.php');
+    require_once(drupal_get_path('module', 'SMSSO_Manager').'/classes/smssomanager.php');
+
+  $res = db_query("SELECT e.uid, e.timestamp, u.name, u.data FROM iapp_password_expire e INNER JOIN {users} u ON e.uid=u.uid WHERE e.state!='%d' AND data NOT LIKE '%s' ", PWD_NEEDS_RENEWAL, "%AuthId%");
+  $today = time();
+  $params = array('lang' => $language, 'type' => 'warning_message');
+
+  while($data = db_fetch_object($res)) {
+    $params['name'] = $data->name;
+    $warning_period = variable_get('password_expire_warning', NULL);
+    if ($warning_period) {
+      // convert warning period into seconds
+      $warning_period = $warning_period * 86400;
+      if (($today > ($data->timestamp - $warning_period)) && ($today < $data->timestamp)) {
+        // calculate number of days remaining
+        $params['days'] = ceil(($data->timestamp - $today) / 86400);
+        db_query("UPDATE iapp_password_expire SET state='%d' AND uid='%d'", PWD_NEEDS_RENEWAL, $data->uid);
+        // user is in warning period so send the warning mail
+        $objUsrProfData = new UserProfileData();
+        $objUsrProfData->SetServiceName(UserProfileService::SERVICE_NEW_NAME);
+        $objUsrProfData->SetServiceIdentity(UserProfileService::SERVICE_IDENTITY_LOAD);
+        $objUsrProfData->SetServiceMethod(UserProfileService::SERVICE_METHOD_GET);
+        $objUsrProfData->SetSiteId(UserProfileService::getSiteId());
+          $objmultichanneldata = new smssomanagerdata();
+          $objmultichanneldata->SetServiceName(UserProfileService::SERVICE_NAME);
+          $objmultichanneldata->SetServiceIdentity('getAuthenticator');
+          $objmultichanneldata->SetMethod('get');
+          $objmultichanneldata->SetSiteId($siteId);
+          $multichanneloff = new smssomanager();
+          $result = $multichanneloff->get_smssomanager($objmultichanneldata);
+          foreach($result->authList as $key=>$value)  {
+            if($value->name == 'SampleSite') {
+              $auth_id=$value->authId;
+            }
+          }
+        $objUsrProfData->SetSearchCriteria(null,$data->name,$auth_id);
+        $objUsrProfData->SetMethod('GET');
+        $objUsrProfSrv = new UserProfileService();
+        $result = $objUsrProfSrv->ExecuteUserProfileReq($objUsrProfData);
+        $result = json_decode($result);
+        $email='';
+          //echo "<pre>"; print_r($result); echo $result->user[0]->emailId;
+        if(count($result->user)){
+          $email = $result->user[0]->emailId;
+        }
+        if($email!=''){
+          $mail = drupal_mail('iapp_rules', 'warning_message', $email, $language, $params);
+          //** LOG EVENT
+          iapp_log_event('password warning mail', ACTIVITY_SOURCE_SYSTEM, t('password expiry warning mail sent to: !mail', array('!mail' => $email)));
+        }
+      }
+    }
+  }
+  //** LOG EVENT
+  iapp_log_event('cron', ACTIVITY_SOURCE_SYSTEM, t('cron performed'));
+  return;
+}*/
+/**
+ * Counts the number of IAPP complexity classes satisfied by a string
+ *
+ * @param $string
+ * 			user password
+ * @return $matches
+ * 			number of matches
+ */
+function _count_iapp_classes($string) {
+  $iapp_classes = array( "[A-Z]",
+               "[a-z]",
+               "[0-9]",
+               //"[\{\}\[\]\,\.\<\>\;\:\`\"\'\?\/\|\\\~\!\@\#\$\%\^\&\*\(\)\_\-\+\=]",
+               "[^a-zA-Z0-9]",
+              );
+  $matches = 0;
+  foreach($iapp_classes as $class) {
+    if(ereg($class, $string)) {
+      $matches++;
+    }
+  }
+  return $matches;
+}
+
+/**
+ * Renew a user's password expiry date
+ *
+ * @param $uid
+ * 			user id of the user, whose password is going to be renewed
+ */
+function _password_expire_renew_password($uid) {
+
+  if (_get_password_expiration_length()) {
+    $expiry_date = time() + _get_password_expiration_length() * 24 * 60 * 60;
+    db_query("UPDATE iapp_password_expire SET timestamp='%d', state='0' WHERE uid='%d'", $expiry_date, $uid);
+    if(!db_affected_rows()) {
+      db_query("INSERT INTO iapp_password_expire () VALUES ('%d', '%d', '0')", $uid, $expiry_date);
+    }
+
+    // reset the forgot password flag
+    db_query("UPDATE iapp_forgot_password SET status='0' WHERE uid='%d'", $uid);
+  }
+}
+
+/**
+ * Generate and mail new password to the user
+ *
+ * @param $account
+ * 			user account object
+ * @param $pass
+ * 			new password
+ */
+function _reset_password($account, $pass) {
+  global $language, $user;
+
+  // user id of the user who is performing this action
+  $op_uid = isset($user->uid)?$user->uid:0;
+
+  $params = array('account' => $account, 'pass' => $pass, 'lang' => $language->language, 'type' => 'password_submit');
+
+  // send mail to the user
+  $mail = drupal_mail('iapp_rules', 'pass_submit', $account->mail, $language->language, $params);
+
+  //** LOG EVENT **//
+  iapp_log_event('password mail', ACTIVITY_SOURCE_SYSTEM, t('auto generated password sent to: !mail', array('!mail' => $account->mail)));
+
+  // update the password in the database
+  db_query("UPDATE {users} SET pass='%s' WHERE uid='%d'", md5($pass), $account->uid);
+
+  // delete previous user records from frogot password temporary table
+  db_query("DELETE FROM iapp_forgot_password WHERE uid='%d'", $account->uid);
+
+  // Insert the password into the password history table
+  $sql = "INSERT INTO iapp_password_history(uid, timestamp, password) VALUES ('%d', '%d', '%s')";
+  db_query($sql, $account->uid, 0, md5($pass));
+
+  // add the forgot password user record into temporary table
+  db_query("INSERT INTO iapp_forgot_password(uid, op_uid, status, timestamp) VALUES ('%d', '%d', '1', '%d')", $account->uid, $op_uid, time());
+
+  // set password expiry limit
+  $span = time() + variable_get('forgot_password_span', FORGOT_PASSWORD_VALIDITY) * 60 * 60;
+
+  db_query("UPDATE iapp_password_expire SET timestamp='%d' WHERE uid='%d'", $span, $account->uid);
+
+  if(db_affected_rows() == 0) {
+    db_query("INSERT INTO iapp_password_expire(uid, timestamp, state) VALUES ('%d', '%d', '0')", $account->uid, $span);
+  }
+
+  // log the action
+  watchdog('user', 'Password reset instructions mailed to %name at %email.', array('%name' => $account->name, '%email' => $account->mail));
+}
+
+/**
+ * Generate and mail password for the new user
+ *
+ * @param $account
+ * 			user account object
+ * @param $pass
+ * 			new password
+ */
+function _add_user_password($account, $pass) {
+  global $language;
+  $params = array('account' => $account, 'pass' => $pass, 'lang' => $language, 'type' => 'add_user_password');
+
+  // send mail to the user
+  $mail = drupal_mail('iapp_rules', 'add_user_password', $account->mail, $language, $params);
+
+  //** LOG EVENT **//
+  iapp_log_event('user password', ACTIVITY_SOURCE_SYSTEM, t('auto generated password sent to: !mail', array('!mail' => $account->mail)));
+
+  // update the password in the database
+  db_query("UPDATE {users} SET pass='%s' WHERE uid='%d'", md5($pass), $account->uid);
+
+  // Insert the password into the password history table
+  $sql = "INSERT INTO iapp_password_history(uid, timestamp, password) VALUES ('%d', '%d', '%s')";
+  db_query($sql, $account->uid, 0, md5($pass));
+
+  // mark password as expired
+  db_query("INSERT INTO iapp_password_expire(uid, timestamp, state) VALUES ('%d', '%d', '0')", $account->uid, time());
+
+  // log the action
+  watchdog('user', 'Password reset instructions mailed to %name at %email.', array('%name' => $account->name, '%email' => $account->mail));
+}
+
+/**
+ * Get the current password expiration length
+ *
+ * @return Password expiration in number of days
+ */
+function _get_password_expiration_length() {
+
+  $level = variable_get('password_level', IAPP_STANDARD1);
+
+  switch($level) {
+  case IAPP_BASIC:
+    break;
+  case IAPP_STANDARD1:
+    return PWD_STANDARD1_EXPIRE_LENGTH;
+  case IAPP_STANDARD2:
+    return PWD_STANDARD2_EXPIRE_LENGTH;
+  }
+  return FALSE;
+}
+
+/**
+ * Check if the password satisfies the ageing policy I
+ *
+ * @param $pass
+ * 			user password
+ * @param $skip_limit_check
+ * 			skip already changed check
+ * @return $message
+ * 			error message
+ */
+function _check_age_method1($pass, $skip_limit_check=FALSE, $tuser=FALSE, $firstTimeReset= '') {
+  global $user;
+  $message = '';
+  $account = $tuser?$tuser:$user;
+
+  $iterations = variable_get('method1_iterations', IAPP_M1_ITERATIONS_ALLOWED)>0?variable_get('method1_iterations', IAPP_M1_ITERATIONS_ALLOWED):1;
+
+  // Check if password is used in any of the previous five iterations
+  $sql = "SELECT timestamp, password FROM iapp_password_history WHERE uid='%d' ORDER BY timestamp DESC LIMIT 0, %d";
+  $result = db_query($sql, $account->uid, $iterations);
+  while($data = db_fetch_object($result)) {
+    if($data->password == $pass) {
+      $message =  t(METHOD1_ITERATION_MESSAGE);
+      break;
+    }
+  }
+
+  // skip already changed check
+  if(!$skip_limit_check) {
+      if ( ($firstTimeReset == 'Yes') || (isset($_SESSION['channelName'])) || _iapp_check_user_first_login($account->uid) ) { // Added an extra condition to avoid Password should not be empty for Third Party user Edit My Account Page --- Added By GIRI SHANKAR R dated 16/09/2010
+            $message    =   '';
+      } else {
+            // Check if password is already changed today
+            $sql = "SELECT timestamp, password FROM iapp_password_history WHERE uid='%d' ORDER BY timestamp DESC LIMIT 0, 1";
+            $result = db_query($sql, $account->uid);
+            $data = db_fetch_object($result);
+            if(date('Y-m-d', time()) == date('Y-m-d',$data->timestamp))
+                    $message = t(METHOD1_CHANGED_TODAY_MESSAGE);
+      }
+  }
+  return $message;
+}
+
+/**
+ * Check if the password satisfies the ageing policy II
+ *
+ * @param $pass
+ * 			user password
+ * @param $skip_limit_check
+ * 			skip already changed check
+ * @return $message
+ * 			error message
+ */
+function _check_age_method2($pass, $skip_limit_check=FALSE, $tuser=FALSE, $firstTimeReset = '') {
+    global $user;
+    $message = '';
+    $account = $tuser?$tuser:$user;
+
+    $day_span = variable_get('method2_day_span', IAPP_M2_DAY_SPAN)>0?variable_get('method2_day_span', IAPP_M2_DAY_SPAN):1;
+
+    $n_days_back = time() - ($day_span * 86400);
+
+    // Check if password is used in previous n days
+    $sql = "SELECT timestamp FROM iapp_password_history WHERE uid='%d' AND timestamp>%d AND password='%s'";
+    $timestamp = db_result(db_query($sql, $account->uid, $n_days_back, $pass));
+    if ( ($firstTimeReset == 'Yes') || (isset($_SESSION['channelName'])) ) { // Added an extra condition to avoid Password should not be empty for Third Party user Edit My Account Page --- Added By GIRI SHANKAR R dated 16/09/2010
+        $message    =   '';
+    } else {
+      if($timestamp > 0) {
+        $message = t(METHOD2_DAY_SPAN_MESSAGE);
+      }
+    }
+    return $message;
+}
+
+/**
+ * Generate a random new user password
+ *
+ * @return newly generated password
+ */
+function _generate_password() {
+  $level = variable_get('password_level', IAPP_STANDARD1);
+  $new_pass = '';
+  $classes = array('abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '0123456789', str_shuffle('~!@#$%^&*()_+{}:",./'));
+  switch($level) {
+    case IAPP_BASIC:
+      // generate basic password
+      $new_pass = substr(md5(rand(9999, 999999)), 3, 3+PWD_BASIC_LENGTH);
+      break;
+    case IAPP_STANDARD1:
+      // generate standard I password
+      $new_pass = '';
+      for($i=0; $i < PWD_STANDARD1_COMPLEXITY; $i++) {
+        $new_pass .= substr($classes[$i], rand(1,strlen($classes[$i])), PWD_STANDARD1_LENGTH/PWD_STANDARD1_COMPLEXITY);
+      }
+      $new_pass .= substr($classes[3], 0, PWD_STANDARD1_LENGTH-strlen($new_pass));
+      break;
+    case IAPP_STANDARD2:
+      // generate standard II password
+      $new_pass = '';
+      for($i=0; $i<PWD_STANDARD2_COMPLEXITY; $i++) {
+        $new_pass .= substr($classes[$i], rand(1,strlen($classes[$i])), PWD_STANDARD2_LENGTH/PWD_STANDARD2_COMPLEXITY);
+      }
+      $new_pass .= substr($classes[3], 0, PWD_STANDARD2_LENGTH-strlen($new_pass));
+      break;
+  }
+  return str_shuffle($new_pass);
+}
+
+/**
+ * Cleanup user records from IAPP tables
+ *
+ * @param $account
+ * 			the user account object
+ */
+function _iapp_delete_user_cleanup($account) {
+
+  // remove user data from blocked users table
+  db_query("DELETE FROM iapp_blocked_temp WHERE id='%s'", $account->name);
+
+  // remove user data from forgot password records
+  db_query("DELETE FROM iapp_forgot_password WHERE id='%d'", $account->uid);
+
+  // remove user data from login track table
+  db_query("DELETE FROM iapp_login_track WHERE name='%s'", $account->name);
+
+  // remove user data from password expire table
+  db_query("DELETE FROM iapp_password_expire WHERE uid='%d'", $account->uid);
+
+  // remove user data from password history table
+  db_query("DELETE FROM iapp_password_history WHERE uid='%d'", $account->uid);
+}
+
+/**
+ * Log an all the system, user and process activities
+ *
+ * @param $category
+ * 			log category
+ * @param $source
+ * 			source identifier
+ * @param $description
+ * 			log description
+ * @param $luser
+ * 			logged in user
+ * @param $timestamp
+ * 			log time
+ */
+function iapp_log_event($category, $source, $description, $luser=FALSE, $timestamp=FALSE) {
+  global $user;
+
+  // if username is empty get current username, if that is also empty use 'anonymous'
+  $luser = $luser?$luser:($user->name==''?'anonymous':$user->name);
+  // get the timestamp
+  $timestamp = $timestamp?$timestamp:time();
+
+  // log the activity
+  db_query("INSERT INTO iapp_activity_log(timestamp, category, source, user, description) VALUES('%d', '%s', '%s', '%s', '%s')", $timestamp, $category, $source, $luser, $description);
+}
+
+/**
+ * Check if this is the first login of the user
+ *
+ * @param $uid
+ * 			user id
+ * @return boolean
+ */
+function _iapp_check_user_first_login($uid) {
+  $sql = "SELECT COUNT(id) as count FROM iapp_password_history WHERE uid='%d'";
+  $count = db_result(db_query($sql, $uid));
+
+   // for the first login, the user will have only one history entry
+  if($count == 1) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Check if this is the login after password reset
+ *
+ * @param $uid
+ * 			user id
+ * @return boolean
+ */
+function _iapp_check_password_reset_login($uid) {
+  $sql = "SELECT id, timestamp FROM iapp_password_history WHERE uid='%d' ORDER BY id DESC";
+  $data = db_fetch_object(db_query($sql, $uid));
+
+  // if user's password is reset, the most recent history entry's timestamp will be zero
+  if($data->id > 0 && $data->timestamp == 0) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}

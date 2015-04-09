@@ -1,0 +1,81 @@
+<?php
+// $Id: custom_override.module,v 1.250.2.2 2008/04/09 21:11:49 goba Exp $
+
+/**
+ * @file
+ * To override base site functions..
+ */
+ 
+ /*
+ * Implementation of hook_form_alter
+ */
+function custom_override_form_alter(&$form, &$form_state, $form_id){
+    global $base_url, $user;
+    $path = variable_get('file_directory_path', NULL);
+    $theme_default = variable_get('theme_default', '');
+    $images_path = url().drupal_get_path('theme', $theme_default).'/images/';
+  	switch($form_id){  		
+      case 'search_block_form':		    
+        if(drupal_is_front_page()){
+          $form['#action'] = '/search';
+        }
+      break;
+      /*
+      * The below code is added to override "custommod_tell_a_friend_form" form to get transalated image for "Tell your friend".
+      */
+      case 'custommod_tell_a_friend_form':
+        if(isset($form['txt'])) {
+          $theme_default = variable_get('theme_default', '');
+          $path_to_theme = drupal_get_path('theme', $theme_default);
+         
+          $form['txt'] = array(
+            '#type' => 'markup',
+            '#value' => '<img src="'.url().$path_to_theme.'/images/tell-your-friend.jpg" alt="'.t("Tell your friend").'"/><br/><p>'.t("Fill in the fields and send to a friend...").'</p>'
+          );
+        }
+      break;
+	 case 'internetsearch_form':
+		$form['search_term']['#size'] = 15;
+		unset($form['internet_search']);
+		$form['submit'] = array(        
+		'#type' => 'image_button',      
+		'#value' => 'Search',
+		'#attributes' => array('src' => $images_path . 'icon_go.gif'),
+		'#custom_button' => 'true',
+		'#weight' => 10,
+		'#prefix' => '<div class="search_button">',
+		'#suffix' => '</div>',
+		);                            
+      break;	  
+	  
+      /*
+      * End-
+      */
+  	}
+}
+
+/**
+ * Implementation of hook_menu_alter
+ */
+function custom_override_menu_alter(&$items) {
+    $items['download'] = array(
+		'page callback' => 'custom_override_download_air_file',
+		'access callback' => TRUE
+    );
+}
+
+
+/**
+ * Function to downlaod .air files
+ */
+function custom_override_download_air_file(){
+	global $base_path;
+	$file_name = arg(1);	
+    $pth = rtrim($_SERVER["DOCUMENT_ROOT"],"/").$base_path.'sites/stage-arabic-schizophrenia24x7-com.emea.cl.datapipe.net/files/pdf/'.$file_name;	
+	watchdog('diary_test',$pth);
+	header('Content-disposition: attachment; filename='.$file_name);
+	header('Content-type: application/air');
+	readfile($pth);
+}
+
+function print_insert_link(){ }

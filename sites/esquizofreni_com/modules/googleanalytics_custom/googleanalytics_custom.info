@@ -1,0 +1,4 @@
+name = "Google Analytics Custom"
+description = Adds Google Analytics tracking code to the site's pages.
+core = 6.x
+package = Custom

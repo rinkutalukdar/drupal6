@@ -1,0 +1,299 @@
+<?php
+// $Id: custom_override.module,v 1.250.2.2 2008/04/09 21:11:49 goba Exp $
+
+/**
+ * @file
+ * To override base site functions..
+ */
+
+
+  /**
+ * Implementation of hook_init().
+ */
+ function custom_override_init() {
+   global $base_url;
+   global $user;
+   drupal_add_js(array('baseUrl' => $base_url), 'setting');
+   drupal_add_js(array('banner_delay' => variable_get('home_banner_delay', '')), 'setting');
+   drupal_add_js(drupal_get_path('module', 'custom_override') .'/home.js');
+   /*$arg_0 = arg(0);
+   $arg_1 = arg(1);
+   $arg_2 = arg(2);*/
+  $node = node_load(arg(1));   
+   if($user->uid ==1 && $node->type ='home_page_banner' ){
+//     echo "sss";exit;
+     error_reporting(E_ALL);
+  ini_set('display_errors', TRUE);
+  ini_set('display_startup_errors', TRUE);
+
+   }
+ }
+
+ /**
+ * Implementation of hook_menu().
+ */
+function custom_override_menu() {
+ $items = array();
+ $items['admin/settings/home-banner'] = array(
+    'title' => 'HCP Home Page Banner Settings',
+    'description' => t('Manage HCP home page banner configuration.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('admin_settings_home_banner'),
+    'access arguments' => array('administer home banner settings'),
+    'type' => MENU_NORMAL_ITEM
+  );
+   return $items;
+}
+
+ /*
+ * Implementation of hook_form_alter
+ */
+function custom_override_form_alter(&$form, &$form_state, $form_id){
+  	$theme_default = variable_get('theme_default', '');
+     $path_to_theme = drupal_get_path('theme', $theme_default);
+
+	switch($form_id){  		
+		case 'search_block_form':		    
+			if(drupal_is_front_page()){
+			  $form['#action'] = '/search';
+			}
+		    break;
+		    case 'custommod_tell_a_friend_form':			
+				$form['txt']['#value'] = '<img src="'.url().path_to_theme().'/images/tell-your-friend.jpg" alt="'.t("Tell your friend").'"/><br/><p>'.t("Fill in the fields and send to a friend...").'</p>';
+				$form['txt']['#weight']=0;
+				$form['txt_disclaimer_1'] = array('#type' => 'markup', '#value' => '<div class="abc">Al facilitarnos una direcci&#243;n de correo electr&#243;nico usted nos est&#225; solicitando que contactemos en su nombre con dicha cuenta de correo. La informaci&#243;n de contacto que nos facilite es necesaria y solo sera utilizada para gestionar su petici&#243;n.<br/><br/>Env&#237;e esta p&#225;gina a un amigo. Complete el formulario y pulse "Enviar".<br/><br/><br/> 
+				<span title="Este campo es obligatorio." class="form-required">*</span> campos de cumplimentaci&#243;n obligatoria.</div><br/> ', '#weight' => 1);
+				$form['your_name']['#weight'] = 2;
+				$form['your_email']['#weight'] = 3;
+				$form['friend_name']['#weight'] = 4;
+				$form['friend_email']['#weight'] = 5;
+				$form['message']['#weight'] = 6;
+				$form['txt_disclaimer_2'] = array('#type' => 'markup', '#value' => '<div class="abc">Por favor, tenga en cuenta que esta web no est&#225; dirigida a ni&#241;os menores de 13 a&#241;os. Recordarmos a los padres la importancia de que hablen con sus hijos sobre el uso de Internet.<br/><br/>
+        		El env&#237;o de esta informacion a trav&#233;s de este formulario garantiza que usted est&#225; de acuerdo con el tratamiento de los datos seg&#250;n nuestra <a href="Privacy Policy" >Pol&#237;tica de privacidad.</a> </div>', '#weight' => 9);
+				$form['submit']['#weight'] = 10;
+				break;
+				case 'internetsearch_form': 
+				  $path = base_path() . drupal_get_path('theme',$theme_default);
+				  //echo $path;
+				  $form['search_term']['#prefix'] = '<div id="search_txt"><img title="Search" alt="Search" src="'.$path . '/images/hd_search.gif">';
+				  $form['search_term']['#suffix'] = '</div>';
+				  $form['search_term']['#title'] = '';
+				  $form['search_term']['#size'] = 15;
+				  $form['search_term']['#value'] = '';
+				  $form['search_term']['#attributes'] = array('class' => 'search_box');
+				  unset($form['internet_search']);
+				  $form['submit'] = array(
+					  '#theme' => 'button',
+					  '#button_type' => 'image',
+					  '#id' => 'btn_search_top',
+					  '#class' => 'form-submit',
+					  '#value' => '',
+					  '#custom_button' => 'true',
+					  '#attributes' => array('src' => $path . '/images/icon_go.gif'),
+					  '#prefix' => '<div class="search_button">',
+					  '#suffix' => '</div>',
+					  '#weight' => 10,
+
+				  );			
+				break;
+  	}
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function custom_override_block($op = 'list', $delta = 0, $edit = array()) {
+global $user;
+  switch ($op) {
+    case 'list':
+      $blocks = array();
+	 // echo "<pre>";print_r($blocks);echo "</pre>";
+      $blocks[0] = array('info' => t('Home page slide'), 'cache' => BLOCK_CACHE_GLOBAL);	 
+	  return $blocks;
+	  break;
+	
+    case 'view':
+      switch ($delta) {
+        case 0:
+		  $i = 0;
+		  $results = array();
+
+		  /* _get_topnids_bypreferences  function defined in miscellaneous.module */
+		  $content_type = "'home_page_banner'";
+		  $getOrder = _get_topnids_bypreferences($content_type);
+
+          if (count($getOrder) == 0) {
+             $getDefaultBanners = _get_defaultBannids_bypreferences($content_type);
+          }
+
+
+          $query = " SELECT DISTINCT node.nid AS nid, node.title AS title, nr.body AS body, f.filepath,cthpb.field_linklabel_value,cthpb.field_linkurl_value ".
+                   " FROM node node".
+                   " LEFT JOIN term_node term_node ON node.vid = term_node.vid".
+				   " INNER JOIN content_type_home_page_banner cthpb ON cthpb.nid = node.nid ".
+                   " LEFT JOIN term_data term_data ON term_node.tid = term_data.tid ".
+				   " INNER JOIN files f ON f.fid = cthpb.field_upload_file_fid  ".
+				   " INNER JOIN node_revisions nr ON nr.nid = node.nid ".
+                   " WHERE (node.type IN ('home_page_banner')) order by node.sticky desc limit 0,12";
+        
+
+		  $result = db_query($query);
+
+
+
+    	  $temp_arrayfirst = array();
+		  $temp_arraylast = array();
+		  while ($record = db_fetch_object($result)) {
+		    $body = strlen(strip_tags($record->body)) > 200 ? substr(strip_tags($record->body), 0, 198) . '..' : strip_tags($record->body);
+            //$banner_type = str_replace(' ','_',strtolower($record->field_banner_type_value));
+
+	       if (in_array($record->nid,$getOrder)) {
+ 		     $temp_arrayfirst[$i]['title']             = addslashes($record->title);
+			 $temp_arrayfirst[$i]['description']       = addslashes($body);
+			 $temp_arrayfirst[$i]['image_path']        = $record->filepath;
+			 $temp_arrayfirst[$i]['field_linklabel']   = $record->field_linklabel_value;
+			 $temp_arrayfirst[$i]['path']              = 'node/' . $record->nid;
+			 $temp_arrayfirst[$i]['linkurl']           = $record->field_linkurl_value;
+			}
+			if (count($getOrder) == 0) {
+			  if (in_array($record->nid,$getDefaultBanners)) {
+			     $temp_arraylast[$i]['title']             = addslashes($record->title);
+			     $temp_arraylast[$i]['description']       = addslashes($body);
+			     $temp_arraylast[$i]['image_path']        = $record->filepath;
+			     $temp_arraylast[$i]['field_linklabel']   = $record->field_linklabel_value;
+			     $temp_arraylast[$i]['path']              = 'node/' . $record->nid;
+			     $temp_arraylast[$i]['linkurl']           = $record->field_linkurl_value;
+
+			  }
+			}
+
+		   /* $temp_array[$banner_type]['banner_type'] = $record->field_banner_type_value;*/
+		    /*$temp_array[$banner_type]['description'] = addslashes($body);
+			$temp_array[$banner_type]['image_path'] = $record->filepath;
+			$temp_array[$banner_type]['path'] = 'node/' . $record->nid; */
+			$temp_array = $temp_arrayfirst+$temp_arraylast;
+
+			$i++;
+		  }
+		  //$temp_array['priority_data'] = $temp_array[$banner_type];
+		  $countResult= count($temp_array);
+		  $temp_array['priority_data'] = $temp_array;
+
+		  drupal_add_js(array('banner_element_counter' => $countResult), 'setting');
+		  $results = $temp_array;
+        
+		  $block = array('subject' => t(''), 'content' => theme('block_home_banner', $results));
+          
+		  return $block;
+		  
+		  }
+	  }
+}
+/**
+ * Implementation of hook_theme().
+ */
+function custom_override_theme() {
+  return array(
+    'block_home_banner' => array(
+      'template' => 'block-home-banner',
+      'arguments' => array('results' => NULL),
+    ),
+  );
+}
+
+
+/**
+ * Implementation of hook_menu_alter
+ */
+function custom_override_menu_alter(&$items) {
+    $items['download'] = array(
+		'page callback' => 'custom_override_download_air_file',
+		'access callback' => TRUE
+    );
+	//unset($items['tell-a-friend']);
+	
+}
+
+
+/**
+ * Function to downlaod .air files
+ */
+function custom_override_download_air_file(){
+	global $base_path;
+	$file_name = arg(1);	
+    $pth = rtrim($_SERVER["DOCUMENT_ROOT"], "/").$base_path.file_directory_path().'/pdf/'.$file_name;	
+	header('Content-disposition: attachment; filename='.$file_name);
+	header('Content-type: application/air');
+	readfile($pth);
+}
+/**
+ * Function to home banner settings
+ */
+function admin_settings_home_banner(){
+  $form['home_banner_delay'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Banner Delay'),
+	 '#size' => 60, 
+
+      '#maxlength' => 128, 
+    '#description' => t('Enter digit in seconds. e.g 5'),
+    '#default_value' => variable_get('home_banner_delay', ''),
+  );
+  $form['home_page_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Home Page URL'),
+	 '#size' => 60, 
+
+      '#maxlength' => 128, 
+    '#description' => t('After login the user will be redirected to this URL'),
+    '#default_value' => variable_get('home_page_url', 'home'),
+  );
+ 
+    return system_settings_form($form);
+}
+
+function _get_topnids_bypreferences($content_type) {
+				global $user;
+				//echopre($user);
+				//die($user->roles);
+                $order = array();
+
+               if(count($_SESSION['SESSVAR_MY_PREFERENCES']['mySpeciality']) > 0){
+						$user_terms = $_SESSION['SESSVAR_MY_PREFERENCES']['mySpeciality'];
+
+						//for admin users
+
+							$sql = "SELECT DISTINCT(N.nid) FROM {node} N,{term_data} TD,{term_node} TN WHERE TN.nid = N.nid AND TD.tid = TN.tid AND TD.tid IN($user_terms) AND N.type IN($content_type) ORDER BY N.nid DESC";
+							$resNids = db_query($sql);
+							$nidArr = array();
+							while ($row = db_fetch_array($resNids)) {
+									$order[] = $row[nid];
+								}
+						}
+
+				$_SESSION['SESS_PERSONALIED_PDTS_PRINT_PER']=0;
+				return $order;
+}
+
+function _get_defaultBannids_bypreferences($content_type) {
+                $order = array();
+				$user_terms = $_SESSION['SESSVAR_MY_PREFERENCES']['mySpeciality'];
+				$sql = "SELECT DISTINCT(N.nid) FROM {node} N
+						WHERE  N.type IN('home_page_banner') AND N.status=1 ORDER BY N.nid DESC";
+				$resNids = db_query($sql);
+                $nidArr = array();
+				$nodeData=array();
+			    while ($row = db_fetch_array($resNids)) {
+						$status=0;
+						$nodeData= node_load($row[nid]);
+						foreach($nodeData->taxonomy as $key => $value){
+							if($nodeData->taxonomy[$key]->vid==2){
+								$status=1;
+							}
+						}
+						if($status==0){
+							$order[] = $row[nid];
+						}
+                }
+				return $order;
+}

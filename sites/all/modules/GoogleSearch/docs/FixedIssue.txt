@@ -1,0 +1,1 @@
+In this release, fixed the parsing xml data when the path is not empty.

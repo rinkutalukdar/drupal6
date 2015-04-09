@@ -1,0 +1,46 @@
+<?php
+
+/**
+ * Implementation of hook_install().
+ */
+function endusersitemap_install() {           
+  if (!db_table_exists('endusersitemap')) {
+    drupal_install_schema('endusersitemap');
+  }
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function endusersitemap_schema() {
+  $schema['endusersitemap'] = array(
+    'description' => t('The base table for sitemap at the user end.'),
+    'fields' => array(
+      'xmlid' => array(
+        'description' => t('The id of this sitemap.'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'xmldata' => array(
+        'description' => t('The sitemap data.'),
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+      ),
+    ),
+    'indexes' => array(
+      'xmlid' => array('xmlid'),
+    ),
+    'primary key' => array('xmlid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function endusersitemap_uninstall() {
+  drupal_uninstall_schema('endusersitemap');
+}

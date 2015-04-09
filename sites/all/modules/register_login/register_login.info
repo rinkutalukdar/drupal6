@@ -1,0 +1,10 @@
+; $Id: register_login.info,v 1.0 2010/12/13 12:00:10 Exp $
+name = Register & Login
+description = Manages User Registration and Login functionality.
+core = 6.x
+
+; Information added by JnJ packaging script on 2010-12-13
+version = "6.3"
+core = "6.x"
+project = "register_login"
+datestamp = "1257192000"

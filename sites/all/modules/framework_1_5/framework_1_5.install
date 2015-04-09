@@ -1,0 +1,26 @@
+<?php
+// $Id: framework_1_5.install,v 1.10 2007/11/26 6:39:21 Jag Exp $
+
+/**
+ * Implementation of hook_uninstall().
+ */
+
+/*
+*	Function to install the default table to form builder
+*	- Reason to prepopulated the default fields on submission form 
+*/
+function framework_1_5_install() {	
+	// Create tables.
+	variable_set('frameworkemkt_1_5_siteid', '1');
+    variable_set('frameworkemkt_1_5_authkey', '14e10255-99bc-4a0c-85a6-df638ea5797f'); //ODC/JnJ Dev Server AuthKey
+	db_query("UPDATE system SET weight = '-3' WHERE NAME = 'framework_1_5'");
+}
+
+/*
+*	Function to uninstal
+*/
+function framework_1_5_uninstall() {
+	
+	@db_query("DELETE FROM {variable} WHERE name like '%%%s%%'", 'framework_1_5_');
+ 
+}

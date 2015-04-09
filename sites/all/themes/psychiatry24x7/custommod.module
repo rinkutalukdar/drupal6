@@ -1,0 +1,536 @@
+<?php
+
+/**
+ * A call back menu for the url website/emailformat
+ */
+function custommod_init(){
+	// ignore for user and admin screens
+	global $base_url;
+	if(arg(0) !="admin" && arg(0) !="user" && !$_GET['v']) {
+		global $base_url;
+		drupal_add_js(drupal_get_path('module', 'custommod').'/jquery.cookie.js');
+		drupal_add_js(drupal_get_path('module', 'custommod').'/customSelect.jquery.js');
+		drupal_add_js(drupal_get_path('module', 'custommod').'/custommod.js');
+
+		// use trim to remove trailing slashes
+		$c = trim($_COOKIE['schizophernia-language'], "/");
+		if($c && $c != trim($base_url,"http://") || $c && $c != trim($base_url,"https://")) {
+			drupal_goto("http://".$c);
+			exit;
+		}
+	}
+
+if (drupal_is_front_page() || arg(0) == 'set-survey-cookie') {
+  $GLOBALS['conf']['cache'] = FALSE;
+}
+
+}
+
+function custommod_menu() {
+	// Admin settings
+	$items['admin/settings/country-selector-settings'] = array(
+		'title' => t('Country selector settings'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('custommod_admin_settings'),
+		'access arguments' => array('administer site configuration'),
+		'file' => 'custommod.admin.inc'
+	);
+	$items['admin/settings/tell-a-friend-settings'] = array(
+		'title' => t('Tell a friend settings'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('custommod_tell_a_friend_admin_settings'),
+		'access arguments' => array('administer site configuration'),
+		'file' => 'custommod.admin.inc'
+	);
+	// General
+	$items['country-selector'] = array(
+		'title' => t('Choose Language'),
+		'page callback' => 'custommod_country_selector',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	$items['setcookie'] = array(
+		'page callback' => 'custommod_set_cookie',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	$items['tell-a-friend'] = array(
+		'page callback' => 'custommod_tell_a_friend',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	$items['download'] = array(
+		'page callback' => 'custommod_download_air_file',
+		'access callback' => TRUE
+	);
+
+	return $items;
+}
+function custommod_tell_a_friend_success(){
+	return 'Thank you!<br />The email has been sent';
+}
+
+/**
+ *  Implementation of hook_theme
+ * */
+function custommod_theme() {
+	return array(
+		/* this template is used to display the country selector popup which appears when
+		 * a user clicks on "Select country" link on the top of the page
+		*/
+		'custommod-country-selector' => array(
+			'template' => 'custommod-country-selector',
+			'arguments' => array('countries' => NULL)
+		),
+		'custommod_language_dropdown' => array(
+			'template' => 'language-dropdown'
+		)
+	);
+}
+
+/**
+ * Implementation of hook_menu_alter
+ */
+/* Implementation of hook_menu_alter */
+function custommod_menu_alter(&$items) {
+    $items['aggregator'] = array(
+    'title' => 'Feed aggregator',
+    'page callback' => 'aggregator_page_modified',
+    'access arguments' => array('access news feeds'),
+    'weight' => 5,
+    //'file' => 'aggregator.pages.inc',
+  );
+  // translation client module - override function callback for 'save' operation
+  $items['l10n_client/save']['page callback'] = 'custommod_save_string';
+}
+
+//
+function aggregator_page_modified() {
+	drupal_add_feed(url('aggregator/rss'), variable_get('site_name', 'Drupal') .' '. t('aggregator'));
+
+  //$items = aggregator_feed_items_load('SELECT i.*, f.title AS ftitle, f.link AS flink FROM {aggregator_item} i INNER JOIN {aggregator_feed} f ON i.fid = f.fid ORDER BY i.timestamp DESC, i.iid DESC');
+ $sql = 'SELECT i.*, f.title AS ftitle, f.link AS flink FROM {aggregator_item} i INNER JOIN {aggregator_feed} f ON i.fid = f.fid ORDER BY i.timestamp DESC, i.iid DESC';
+ $items = array();
+  if (isset($sql)) {
+    $result = pager_query($sql, 10);
+    while ($item = db_fetch_object($result)) {
+
+      $result_category = db_query('SELECT c.title, c.cid FROM {aggregator_category_item} ci LEFT JOIN {aggregator_category} c ON ci.cid = c.cid WHERE ci.iid = %d ORDER BY c.title', $item->iid);
+      $item->categories = array();
+      while ($item_categories = db_fetch_object($result_category)) {
+
+        $item->categories[] = $item_categories;
+      }
+      $items[$item->iid] = $item;
+    }
+  }
+
+  $feed_source = arg(1);
+
+  if (user_access('administer news feeds') && ($op == 'categorize')) {
+    // Get form data.
+    $output = aggregator_categorize_items($items, $feed_source);
+  }
+  else {
+    // Assemble themed output.
+    $output = $feed_source;
+    foreach ($items as $item) {
+      $output .= theme('aggregator_item', $item);
+    }
+    $output = theme('aggregator_wrapper', $output);
+  }
+  return $output;
+}
+/*
+ * Implementation of hook_form_alter
+ */
+/*function custommod_form_alter(&$form, &$form_state, $form_id){
+  	switch($form_id){
+  		case 'search_form':
+  			unset($form['basic']);
+  			unset($form['advanced']);
+  			//echo "<PRE>";print_r($form);
+  			break;
+  		case 'aggregator_admin_settings':
+  		$form['aggregator_clear']['#options'][19353600]  = "32 weeks";
+  		$form['aggregator_clear']['#options'][29030400]  = "48 weeks";
+  		break;
+  	}
+}*/
+function custommod_form_alter(&$form, &$form_state, $form_id){
+     switch($form_id){
+                                case 'search_form':
+                                                unset($form['basic']);
+                                                unset($form['advanced']);
+                                                //echo "<PRE>";print_r($form);
+                                                break;
+                                case 'aggregator_admin_settings':
+                                $form['aggregator_clear']['#options'][19353600]  = "32 weeks";
+                                $form['aggregator_clear']['#options'][29030400]  = "48 weeks";
+                                break;
+                                case 'internetsearch_form': {
+                                                  $path = base_path() . drupal_get_path('theme', 'psychiatry24x7');
+                                                 // echo $path;
+                                                  $form['search_term']['#prefix'] = '<div id="search_txt"><img title="Search" alt="Search" src="'.$path . '/images/hd_search.gif">';
+                                                  $form['search_term']['#suffix'] = '</div>';
+                                                  $form['search_term']['#title'] = '';
+              									  $form['search_term']['#size'] = 15;
+              									  $form['search_term']['#value'] = 'keyword';
+              									  $form['search_term']['#attributes'] = array('class' => 'search_box');
+
+              unset($form['internet_search']);
+              $form['submit'] = array(
+                  '#theme' => 'button',
+                  '#button_type' => 'image',
+                  '#id' => 'btn_search_top',
+                  '#class' => 'form-submit',
+                  '#value' => '',
+                  '#custom_button' => 'true',
+                  '#attributes' => array('src' => $path . '/images/icon_go.gif'),
+                  '#prefix' => '<div class="search_button">',
+                  '#suffix' => '</div>',
+                  '#weight' => 10,
+              );
+                                }
+        break;
+
+                                case 'survey_form':
+                                  unset($form['#prefix']);
+                                  unset($form['#suffix']);
+                                                $form['#prefix'] = '<div class="survey"><h2>Your opinion</h2>';
+                                                $form['#suffix'] = '</div>';
+                                                $form['survey']['answer_0']['#attributes'] = array('class'=>'noclass');
+												unset($form['#submit']);
+												$form['#submit'][] = 'custommod_survey_submit';
+                                break;
+                }
+
+}
+
+/*
+ * This menu alter function callback is written for the menu I10n_client/save - calling my own function which
+ * is a copy of the original funciton from i10n_client.module file, with a few modifications to fix a bug
+ * Fix - $report['skips'] is replaced by $report[3]
+ *     - $report['additions'] is replaced by $report[0]
+ *     - $report['updates'] is replaced by $report[1]
+ *     - $report['deletes'] is replaced by $report[2]
+ * */
+ function custommod_survey_submit($form, &$form_state){
+
+               // p($form_state); exit;
+			   
+			    if($form_state['storage']['page'] < $form_state['values']['totalpage']) {
+
+                                $form_state['rebuild'] = TRUE;
+
+                                $form_state['storage'][$form_state['storage']['page']]['values'] = $form_state['values'];
+
+                                $result = create_survey_evaluation($form_state);
+
+                //print_r($result);exit;
+
+                                if ( $result->Message=='Success'){
+
+                                drupal_set_message(t('Your Survey on the page number has been posted'), 'status',FALSE);
+
+                                }
+
+                                else{
+
+                                                form_set_error('submit', t('Oops! An error has occured, please try again later!'));
+
+                                }
+
+                                $form_state['storage']['page']++;
+
+                } else {
+
+                                $result = create_survey_evaluation($form_state);
+								
+                                if ( $result->Message=='Success'){
+												
+												
+												
+                                                drupal_set_message(t('Thanks for taking the survey'), 'status',FALSE);
+												
+
+                                                //survey_redirect($form_state['values']['survey_id']);
+
+                                                //exit;
+
+                                }
+
+                                else
+
+                                                $err_msg= t('Oops! An error has occured, please try again later!');
+
+                                }
+
+
+
+}
+function custommod_save_string() {
+  global $user, $language;
+  if (l10n_client_access()) {
+    if (isset($_POST['source']) && isset($_POST['target']) && !empty($_POST['textgroup']) && !empty($_POST['form_token']) && drupal_valid_token($_POST['form_token'], 'l10n_client_form')) {
+      // Ensure we have this source string before we attempt to save it.
+      $lid = db_result(db_query("SELECT lid FROM {locales_source} WHERE source = '%s' AND textgroup = '%s'", $_POST['source'], $_POST['textgroup']));
+
+      if (!empty($lid)) {
+        include_once 'includes/locale.inc';
+        $report = array('skips' => 0, 'additions' => 0, 'updates' => 0, 'deletes' => 0);
+        _locale_import_one_string_db($report, $language->language, $_POST['source'], $_POST['target'], $_POST['textgroup'], NULL, LOCALE_IMPORT_OVERWRITE);
+        cache_clear_all('locale:', 'cache', TRUE);
+        _locale_invalidate_js($language->language);
+        if (!empty($report[3])) {
+          $message = theme('l10n_client_message', t('Not saved locally due to invalid HTML content.'));
+        }
+        elseif (!empty($report[0]) || !empty($report[1])) {
+          $message = theme('l10n_client_message', t('Translation saved locally.'), WATCHDOG_INFO);
+        }
+        elseif (!empty($report[2])) {
+          $message = theme('l10n_client_message', t('Translation successfuly removed locally.'), WATCHDOG_INFO);
+        }
+        else {
+          $message = theme('l10n_client_message', t('Unknown error while saving translation locally.'), WATCHDOG_ERROR);
+        }
+
+        // Submit to remote server if enabled.
+        if (variable_get('l10n_client_use_server', FALSE) && user_access('submit translations to localization server') && ($_POST['textgroup'] == 'default')) {
+          if (!empty($user->l10n_client_key)) {
+            $remote_result = l10n_client_submit_translation($language->language, $_POST['source'], $_POST['target'], $user->l10n_client_key, l10n_client_user_token($user));
+            $message .= theme('l10n_client_message', $remote_result[1], $remote_result[0] ? WATCHDOG_INFO : WATCHDOG_ERROR);
+          }
+          else {
+            $server_url = variable_get('l10n_client_server', 'http://localize.drupal.org');
+            $user_edit_url = url('user/'. $user->uid .'/edit', array('absolute' => TRUE));
+            $message .= theme('l10n_client_message', t('You could share your work with !l10n_server if you set your API key at !user_link.', array('!l10n_server' => l($server_url, $server_url), '!user_link' => l($user_edit_url, 'user/'. $user->uid .'/edit'))), WATCHDOG_WARNING);
+          }
+        }
+      }
+      else {
+        $message = theme('l10n_client_message', t('Not saved due to source string missing.'));
+      }
+    }
+    else {
+      $message = theme('l10n_client_message', t('Not saved due to missing form values.'));
+    }
+  }
+  else {
+    $message = theme('l10n_client_message', t('Not saved due to insufficient permissions.'));
+  }
+  drupal_json(array('message' => $message));
+  exit;
+}
+
+
+
+function custommod_get_country_array(){
+	$c = variable_get('custommod_languages', '');
+	$c = explode("\n",$c);
+	$data = array();
+	for($i = 0; $i <sizeof($c); $i++) {
+		$temp = explode("|", $c[$i]);
+		$data[$temp[0]] = $temp[1];
+	}
+	// sort countries alphabetically
+	asort($data);
+	return $data;
+}
+
+function custommod_get_current_country_array(){
+	$c = variable_get('custommod_additional_languages', '');
+	$c = explode("\n",$c);
+	$data = array();
+	for($i = 0; $i <sizeof($c); $i++) {
+		$temp = explode("|", $c[$i]);
+		$data[$temp[0]] = $temp[1];
+	}
+	// sort countries alphabetically
+	asort($data);
+	return $data;
+}
+
+function custommod_country_selector(){
+	$data = custommod_get_current_country_array();
+	// print and exit here to avoid site template from showing up in the popup.
+	print theme('custommod-country-selector', $data);
+print "<script>$(document).ready(function(){
+		if(document.getElementById('language_selector_popup')){
+			$('body').addClass('country_selector-form');
+		}
+	});</script>";
+
+	exit;
+}
+
+function custommod_set_cookie(){
+	if($_GET['v']){
+		$expire = time()+3600*24*30;
+		$val = trim($_GET['v'], "http://");
+		$val = trim($val, "/");
+		setcookie('schizophernia-language', $val, $expire);
+	}
+	if(!$_GET['context']){
+		$url = "http://".$_GET['v'];
+		drupal_goto($url);
+	}
+	else{
+		return "";
+	}
+}
+/**
+ * Function to get the ookie value of a cookie name
+ */
+function custommod_get_cookie(){
+	return $_COOKIE['schizophernia-language'];
+}
+/**
+ * Implementation of hook_block
+ */
+function custommod_block($op = 'list', $delta = NULL, $edit = NULL){
+	switch($op){
+		case 'list':
+			$blocks['custommods']['info'] = 'Iframe block';
+			$blocks['custommods']['status'] = 1;
+			$blocks['custommods']['region'] = 'footer';
+			$blocks['custommods']['weight'] = 1;
+			$blocks['custommods']['visibility'] = 0;
+			$blocks['custommods']['pages'] = 'admin/*';
+			return $blocks;
+		break;
+
+		case 'view':
+			//$blocks['subject'] = t(''); //  do not display any subject
+			$blocks['content'] = custommod_show_iframe();
+			return $blocks;
+		break;
+	}
+}
+
+/**
+ * Function to display iframe on all the sites, except the main site
+ * return iframe tag and a hidden field which stores the value of the base site url
+ */
+function custommod_show_iframe(){
+	global $base_url;
+	$return = "<input type='hidden' name='base_site' id='base_site' value = '".variable_get('custommod_main_site','http://www.schizophrenia24x7.com')."' />";
+	if($base_url != variable_get('custommod_main_site', 'http://www.schizophrenia24x7.com')){
+		$return .= "<iframe style='display:none;' height='1px' width='1px' src='".variable_get('custommod_main_site', 'http://www.schizophernia24x7.com')."/setcookie?context=iframe&v=".$base_url."'></iframe>";
+	}
+	return $return;
+}
+
+function custommod_tell_a_friend(){
+
+	$form =  drupal_get_form('custommod_tell_a_friend_form');
+
+  $script = "<script>$(document).ready(function(){
+		if(document.getElementById('custommod-tell-a-friend-form')){
+			$('body').addClass('custommod-tell-a-friend-form');
+		}
+	});</script>";
+	return $form.$script;
+	//exit;
+}
+function custommod_tell_a_friend_form(){
+	//$form['#attributes'] = array('class' => 'exit-popup');
+	$form['txt'] = array(
+		'#type' => 'markup',
+		'#value' => '<img src="'.url().path_to_theme().'/images/tell-your-friend.jpg" alt="'.t("Tell your friend").'"/><br/><p>'.t("Fill in the fields and send to a friend...").'</p>'
+	);
+	$form['your_name'] = array(
+		'#type' => 'textfield',
+		'#required' => TRUE,
+		'#maxlength' => '62',
+		'#title' => t('Your name')
+	);
+	$form['your_email'] = array(
+		'#type' => 'textfield',
+		'#required' => TRUE,
+		'#maxlength' => '62',
+		'#title' => t('Your email')
+	);
+	$form['friend_name'] = array(
+		'#type' => 'textfield',
+		'#required' => TRUE,
+		'#maxlength' => '62',
+		'#title' => t("Friend's name")
+	);
+	$form['friend_email'] = array(
+		'#type' => 'textfield',
+		'#required' => TRUE,
+		'#maxlength' => '62',
+		'#title' => t("Friend's email")
+	);
+	$form['message'] = array(
+		'#type' => 'textarea',
+		'#required' => TRUE,
+		'#maxlength' => '2000',
+		'#title' => t('Personal message')
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Submit'),
+		'#submit' => array('custommod_tell_a_friend_submit'),
+		'#attributes' => array('onclick' => 'return custommod_tell_friend_validate();')
+	);
+	return $form;
+}
+
+function custommod_tell_a_friend_submit($form_state, $form_values) {
+	//ini_set('SMTP','smtp.eu.jnj.com');
+    //ini_set('smtp_port','25');
+	global $base_url;
+	$v = $form_values['values'];
+	$tokens = array();
+	$tokens['!friend_name'] = $v['friend_name'];
+	$tokens['!friend_email'] = $v['friend_email'];
+	$tokens['!sender_name'] = $v['your_name'];
+	$tokens['!sender_email'] = $v['your_email'];
+	$tokens['!your_name'] = $v['your_name'];
+	$tokens['!your_email'] = $v['your_email'];
+	$tokens['!message'] = $v['message'];
+	$tokens['!site_url'] = $base_url;
+	$tokens['!site_name'] = variable_get('site_name', '');
+
+	$email_body = t(variable_get('custommod_taf_email_template', ''), $tokens);
+	$email_subject = t(variable_get('custommod_taf_email_subject', ''), $tokens);
+	$params['from'] = $v['your_email'];
+	$params['body'] = $email_body;
+	$params['subject'] = $email_subject;
+	/*echo $email_body;
+	echo "<br/>";
+	echo $email_subject;
+	exit;*/
+ 	drupal_mail('custommod', 'tellfriend', $v['friend_email'], language_default(), $params);
+ 	//drupal_goto("tellfriend-success");
+ 	print t('Please wait...');
+ 	drupal_set_message(t('Thank you! The email has been sent'));
+	//echo "<script>window.parent.location.reload(true); </script>";
+	echo "<script>parent.location.href ='".url('node/'.$_GET['destination'])."';</script>";
+ exit;
+}
+
+function custommod_mail($key, &$message, $params){
+	$message['headers'] = array('From' => $params['from'], 'X-Mailer' => 'Drupal Webform (PHP/'. phpversion() .')', 'Content-Type' => 'text/html; charset=UTF-8; format=flowed;');
+	if($key == "tellfriend") {
+		$language = $message['language'];
+		$message['subject'] = $params['subject'];
+		$message['body'][] =  $params['body'];
+	}
+}
+/**
+ * Function to downlaod .air files
+ */
+function custommod_download_air_file(){
+	//locale_update_js_files();return null;
+	global $base_path;
+	$file_name = arg(1);
+	$pth=rtrim($_SERVER["DOCUMENT_ROOT"],"/").$base_path.variable_get('file_directory_path', 'dfghdfhdfh' ).'/pdf/'.$file_name;
+	header('Content-disposition: attachment; filename='.$file_name);
+	header('Content-type: application/air');
+	readfile($pth);
+}
+
+

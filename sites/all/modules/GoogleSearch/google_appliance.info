@@ -1,0 +1,12 @@
+; $Id 
+name = "Google Appliance"
+description = "Provides a search interace to the Google Appliance and a class for talking to a GoogleMini or GSA."
+package = Itrinno Framework
+;dependencies[] = search
+
+; $Id
+version = "6.2"
+core = "6.x"
+project = "google_appliance"
+
+

@@ -1,0 +1,603 @@
+<?php
+/**
+ * @file GSA integration
+ */
+
+/**
+ * Implementation of hook_menu()
+ *
+ */
+function google_appliance_menu() {
+
+  $items['google_appliance'] = array(
+    'title' => 'Google Appliance',
+    'page callback' => 'google_appliance_search',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('administer site configuration'),
+  );
+  
+  $items['admin/settings/google_appliance'] = array(
+    'title' => 'Google Appliance Settings',
+    'description' => 'Configuration for the Google Appliance search',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('google_appliance_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+  );
+  $items['admin/settings/google_appliance/settings'] = array(
+    'title' => 'Google Appliance',
+    'description' => 'Configuration for the Google Appliance search',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -1,
+    'access arguments' => array('administer site configuration'),
+  );
+  $items['admin/settings/google_appliance/google_search_admin'] = array(
+    'title' => 'Google Search Settings',
+    'description' => t('Provide the ability search against the index created by any search engine and display search results.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('google_search_admin_form'),
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer site configuration'),
+  );
+	
+  return $items;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function google_appliance_init() {
+  $path = drupal_get_path('module', 'google_appliance');
+  drupal_add_css($path .'/google_appliance.css');
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function google_appliance_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+
+    case 'list':      
+      $blocks['recommended_links']['info'] = "Recommended Links";
+      $blocks['recommended_links']['title'] = 'Recommended Links';      
+      $blocks['recommended_links']['pages'] = '*search/google_appliance*';
+      $blocks['recommended_links']['visibility'] = 1;
+      
+      return $blocks;
+      break;
+
+    case 'view':
+
+      switch ($delta) {
+        case 'recommended_links':         
+          if ($result =& google_appliance_static_response_cache()) {            
+            $matches = $result->getKeyMatches();
+            if (!$matches) {
+              return;
+            }
+          
+            $links = array();          
+            foreach ($matches as $link => $title) {
+              $links[] = l($title,$link);
+            }
+          
+            if (count($links)) {
+              $block['content'] = theme('item_list',$links);
+            } else {
+              return false;
+            }
+          }
+          break;
+      }
+      return $block;
+      break;
+  }
+}
+
+function google_appliance_admin_settings() {
+  $form = array();
+
+  // initial required config fields
+  $form["config_init"] = array(
+    "#title" => "Initial Configuration",
+    "#type" => "fieldset",
+  );
+
+  $form["config_init"]["google_appliance_name"] = array(
+    "#type" => "textfield",
+    "#size" => 30,
+    "#title" => "Search Name",
+    "#description" => 'The name of this search, to appear as sub-navigation on the search page.',
+    "#default_value" => variable_get('google_appliance_name', 'Google Appliance'),
+    "#required" => true,
+  );
+
+  $form["config_init"]["google_appliance_host_name"] = array(
+    "#type" => "textfield",
+    "#size" => 50,
+    "#title" => "Host Name",
+    "#description" => 'Your Google Search Appliance host name or IP address (with http:// or https://), which were assigned when the appliance was set up.<br />You do <b>not</b> need to include "/search" at the end, or a trailing slash, but you should include a port number if needed.<br/> Example: http://mygooglebox.com',
+    "#default_value" => variable_get('google_appliance_host_name', ''),
+    "#required" => true,
+  );
+
+  $form["config_init"]["google_appliance_collection"] = array(
+    "#type" => "textfield",
+    "#size" => 20,
+    "#title" => "Collection",
+    "#description" => 'The name of the collection of indexed content to search.',
+    "#default_value" => variable_get('google_appliance_collection', ''),
+    "#required" => true,
+  );
+
+  $form["config_init"]["google_appliance_client"] = array(
+    "#type" => "textfield",
+    "#size" => 20,
+    "#title" => "Client",
+    "#description" => 'The name of a valid front-end, defined when you set up the appliance.',
+    "#default_value" => variable_get('google_appliance_client', ''),
+    "#required" => true,
+  );
+  
+  $form["config_init"]["google_appliance_cache_timeout"] = array(
+    "#type" => "textfield",
+    "#size" => 20,
+    "#title" => "Cache Timeout",
+    "#description" => 'If you wish to use caching of results (to reduce load on mini, enter a timeout here',
+    "#default_value" => variable_get('google_appliance_cache_timeout', ''),    
+  );
+  
+  
+  $form["config_init"]["google_debug"] = array(
+    "#type" => "textfield",
+    "#size" => 20,
+    "#title" => "Debug Level",
+    "#description" => '1 = watchdog, 2 = dpr(needs devel module), 3 = more dpr\'s',
+    "#default_value" => variable_get('google_debug', ''),    
+  );
+  
+
+
+  // last but not least, submit
+  $form["submit"] = array(
+    "#type" => "submit",
+    "#value" => "Save Settings",
+  );
+
+  $form['#submit'] = array('google_appliance_admin_settings_submit');
+
+  return $form;
+
+}
+
+function google_search_admin_form() {
+  $form = array();
+  $form['google_search_admin'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Search'),
+  );
+  $form['google_search_admin']['search_limit_per_page'] = array(
+    '#type' => 'select',
+    '#title' => t('Number of results per page'), 
+    '#options' => array('10' => 10, '20' => 20, '30' => 30, '40' => 40, '50' => 50),
+    '#default_value' => variable_get('search_limit_per_page', 10),
+    '#description' => t('Number of search results to display per page.'),
+  );
+  $form['google_search_admin']['search_categorize'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Choose whether to enable categorization of search results'),
+    '#return_value' => 1,
+    '#default_value' => variable_get('search_categorize', 0),    
+    '#description' => t(''),
+  );
+  $form['google_search_admin']['search_rss_subscription'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('RSS subscription of search results'),
+    '#return_value' => 1,
+    '#default_value' => variable_get('search_rss_subscription', 0),    
+    '#description' => t(''),
+  );
+  $form['google_search_admin']['search_rss_frequency'] = array(
+    '#type' => 'select',
+    '#title' => t('Frequency of RSS updates'), 
+    '#options' => array('1 Hour', '1 Day', '1 Week'),
+    '#default_value' => variable_get('search_rss_frequency', 0),
+    '#description' => t('To set the Frequency of RSS updates.'),
+  );
+  $form['google_search_admin']['search_auto_complete'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Auto Complete'),
+    '#return_value' => variable_get('search_auto_complete', ''),
+    '#return_value' => '1',
+    '#default_value' => variable_get('search_auto_complete', 0),    
+    '#description' => t('To enable the auto complete feature for Search.'),
+  );
+  $form['google_search_admin']['search_auto_complete_location'] = array(
+    '#type' => 'textfield',
+    '#prefix' => '<div id="search-auto-complete-location">',
+    '#suffix' => '</div>',
+    '#title' => t('Location of auto-complete repository'), 
+    '#default_value' => variable_get('search_auto_complete_location', 'http://'),
+    '#required' => TRUE,
+    '#description' => t('URL location of the auto-complete web service.'),
+  );
+
+  $form['google_search_admin_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save Configuration'),
+    '#weight' => 9,
+  );
+
+  menu_rebuild();
+  return $form;
+
+}
+
+
+
+/**
+ * Submits the admin settings form and saves all the variables.
+ */
+function google_appliance_admin_settings_submit($form1, $form) {
+  variable_set('google_appliance_host_name', check_plain($form['values']['google_appliance_host_name']));
+  variable_set('google_appliance_collection', check_plain($form['values']['google_appliance_collection']));
+  variable_set('google_appliance_client', check_plain($form['values']['google_appliance_client']));
+  variable_set('google_appliance_name', check_plain($form['values']['google_appliance_name']));
+  variable_set('google_appliance_cache_timeout', check_plain($form['values']['google_appliance_cache_timeout']));
+  variable_set('google_debug', check_plain($form['values']['google_debug']));
+  //variable_set('google_appliance_limit_per_page', check_plain($form['values']['google_appliance_limit_per_page'])); 
+
+  // don't run check_plain on these because they can have HTML
+  variable_set('google_appliance_errorcode_1', $form['values']['google_appliance_errorcode_1']);
+  variable_set('google_appliance_errorcode_2', $form['values']['google_appliance_errorcode_2']);
+  variable_set('google_appliance_errorcode_neg_99', $form['values']['google_appliance_errorcode_neg_99']);
+  variable_set('google_appliance_errorcode_neg_100', $form['values']['google_appliance_errorcode_neg_100']);
+
+  drupal_set_message('The configurations settings have been saved.');
+}
+
+/**
+ * Invokes the google_appliance_appconfig hook to add <meta> tags to nodes
+ * for indexing metadata by the google crawler.
+ *
+ */
+function _google_appliance_add_meta_tags() {
+  if (arg(0) == 'node' && is_numeric(arg(1))) {
+    $node = node_load(arg(1));
+    theme('add_google_appliance_meta_tags', $node);
+  }
+}
+
+function google_appliance_feeder() {
+  //not sure if this is appropriate as everything should be findable via the main site, but this basically just creates a listing of all nodes.
+  $result = db_query('SELECT * from {node} WHERE status = 1');
+  print '<html>';
+  print '<body>';
+
+  while ($row = db_fetch_object($result)) {
+    print l($row->title,'node/' . $row->nid);
+  }
+
+  print '</body>';
+  print '</html>';
+  die();
+}
+
+/**
+ * Implementation of hook_search()
+ *
+ * @param string $op
+ *  Operation - name, reset, search, status
+ * @param string $keys
+ *  Keyword string sent to the search
+ * @return
+ *  Array of search results (each is an assoc. array) that can be fed to a theme function
+ */
+function google_appliance_search($op = 'search', $keys = null) {
+  switch ($op) {
+    case 'name':
+      return variable_get('google_appliance_name', "Google Appliance");
+      break;
+
+    case 'search':
+
+      global $pager_page_array, $pager_total, $pager_total_items;
+      $page = isset($_GET['page']) ? $_GET['page'] : '';
+      // Convert comma-separated $page to an array, used by other functions.
+      $pager_page_array = explode(',', $page);
+      // $element indicates which of the pagers active this pager is working from.  $limit indicates how many per page.
+      $element = 0;
+      $limit = variable_get('search_limit_per_page',10);
+      
+      $dir = drupal_get_path('module', 'google_appliance');
+      include_once $dir . '/DrupalGoogleMini.php';
+      
+      $google_debug = variable_get('google_debug',0);
+      if ($google_debug >= 2 ){
+        $gm = new DrupalGoogleMini(true,'dpr');
+      } elseif ($google_debug == 1)  {
+        $gm = new DrupalGoogleMini(true);
+      } else {
+        $gm = new DrupalGoogleMini(false);
+      }
+      
+      if ($cache = variable_get('google_appliance_cache_timeout',0) ) {
+        cache_clear_all(null,'cache_google');
+        $gm->cache = true;
+      }
+
+      // initialize search object
+      try {
+        $gm->setOutputEncoding('utf8');
+        $gm->setInputEncoding('utf8');
+        $gm->setMetaDataRequested('*');
+        $gm->addMetaDataFilter('*', '*');
+
+        // get configuration from settings page
+        $_tmp_host = variable_get('google_appliance_host_name', false);
+        if (!$_tmp_host) {
+          drupal_set_message('No host name has been configured for the search appliance. Please enter it on the <a href="@admin-url">Google Appliance settings page</a>', array("@admin-url" => url("admin/settings/search/google_appliance")), 'error');
+          return false;
+        }
+        $gm->baseUrl = $_tmp_host . "/search";
+        $gm->collection = variable_get('google_appliance_collection', '');
+        $gm->setQueryPart('client',variable_get('google_appliance_client', ''));
+
+	  $gm->setQueryPart('filter',"0");
+	  $gm->setQueryPart('show_spelling',"1");
+	
+        $gm->setPageAndResultsPerPage($page, $limit);
+
+      	// set search parameters
+      	$keys = $_REQUEST['search_term'];
+
+      	$gm->setKeywords($keys);
+
+        if (module_exists('i18n')) {
+          if ($lang = i18n_get_lang()) {
+            $gm->setLanguageFilter(array($lang));            
+          }
+        }
+      }
+      catch (GoogleMiniCriteriaException $e) {
+        $code = $e->getCode();
+        if ($message = variable_get('google_appliance_errorcode_' . $code,'')) {
+          $user_message = $message;
+        } else {
+          $user_message = GoogleMiniException::getUserMessage($code);  
+        }
+        
+        $error_message = $e->getMessage();
+        if ($code > 0) {
+            $output .= "<h2>" . $user_message . "</h2>";
+            return $output;
+        } else {
+          watchdog('google_appliance', $error_message);
+          drupal_set_message($error_message, 'error');
+        }
+      }
+
+      // perform the search
+      $results = array();
+      try {
+        $resultIterator = $gm->query();
+
+        google_appliance_static_response_cache($resultIterator);
+
+        // Google never returns more than 1000 results, so we ignore any values larger than that.
+		
+        $pager_total_items[$element] = ($resultIterator->totalResults < 1000) ? $resultIterator->totalResults : 1000;
+		
+      	$pager_total[$element] = ceil($pager_total_items[$element] / $limit);
+	
+        $pager_page_array[$element] = max(0, min((int)$pager_page_array[$element], ((int)$pager_total[$element]) - 1));
+      	foreach ($resultIterator as $key => $result) {
+          $results[] = google_appliance_search_result_array($result);
+        }
+      }
+      catch(Exception $e) {
+        if ($e->getCode() > 0) {
+          google_appliance_static_response_cache($resultIterator);
+        }
+	      $output = ''; //drupal_get_form('internetsearh_google_appliance_form', NULL);
+	  
+        drupal_set_message($e->getMessage());
+	      return $output;
+      }
+      $result = '';
+      $results['total'] = $pager_total_items[$element];
+      $results['page'] = $pager_page_array[$element];	
+
+	if(!isset($pager_total_items[$element])) {
+		if(isset($resultIterator->Spelling->Suggestion) && strlen($resultIterator->Spelling->Suggestion)>0)
+			{
+			$result.= t("Did you mean ").$resultIterator->Spelling->Suggestion."?<p/>";
+			}
+	$result.= t('Your search yielded no results');
+	}
+	else
+	{
+      if ($results) {
+	      for ($i=0;$i<count($results);$i++) {
+	        $result .= theme('box', l($results[$i]['title'], $results[$i]['link']), $results[$i]['snippet']);
+        }
+      }
+	}
+       
+      
+      $result .= theme('pager', $results['page'], 10, 0);
+		
+      // Construct the search form.
+      $output = '<div class="google_search">';
+      //$output .= drupal_get_form('internetsearh_google_appliance_form', NULL);
+      $output .= '</div>';
+      $output .= $result;
+      return $output;
+      break;
+
+    case 'reset':
+    case 'status':
+      // do nothing
+    break;
+  }
+}
+
+function theme_add_google_appliance_meta_tags($node) {
+  // create list of tags to add
+  $results = array();
+
+  /**
+   * Adding taxonomy tags
+   */
+  $vocabs = taxonomy_get_vocabularies();
+  if (module_exists('nat') && $node->nat) {
+    $node->taxonomy = array_merge($node->nat,$node->taxonomy);
+    //$node->taoxnomy[] = $
+  }
+  foreach ($node->taxonomy as $term ) {
+    $tagname = 'category-' . strtolower($vocabs[$term->vid]->name);
+    $results[] = array($tagname, $term->name);
+  }
+
+  /**
+   * Adding sort date IMPORTANT: for sorting, mini must be configured to use htis tag
+   */
+  
+  $results[] = array('date', date('Y-m-d h:i:s', $node->changed));
+  $results[] = array('created', date('Y-m-d h:i:s', $node->created));
+  
+  /**
+   * Normally this doesn't matter, 
+   * but if you want to allow the gsa to 
+   * access unpublished pages and later filter
+   * on this you will need it.
+   */
+  $results[] = array('status', $node->status);
+  
+
+  /**
+   * i18n configuration
+   */
+  if ($node->language) {
+    $results[] = array('content-language', $node->language);
+  }
+
+  /**
+   * node type
+   */
+  $results[] = array('type', $node->type);
+  
+  /**
+   * Author
+   */
+  $node->uid = empty($node->uid) ? 0: $node->uid;
+  $user = user_load(array('uid' => 0));
+  $user->name = empty($user->name) ? 'anonymous' : $user->name;
+  $results[] = array('author' => $user->name);
+  
+  // add meta tags
+  foreach ($results as $res) {
+    list($name, $content) = $res;
+    $content = strip_tags($content);
+    drupal_set_html_head('<meta name="'. htmlentities($name) .'" content="'. htmlentities($content) .'" />');
+  }
+}
+
+function google_appliance_search_result_array($result) {  
+	$tempvar=$result->HAS->C;
+  return array(
+    'score' => $tempvar[SZ],
+    'link' => $result->U,
+    'user' => $result->getMetaData('user'),
+    'type' => $result->getMetaData('type'),
+    'title' => strip_tags(decode_entities((string)$result->T)),
+    'date' => strtotime($result->getMetaData('date')),
+    'snippet' => decode_entities((string)$result->S),
+  );
+}
+
+function google_appliance_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'block_admin_configure'){
+    $module = $form['module']['#value'];
+    $delta = $form['delta']['#value'];
+    $var_name = $module . '-' .$delta;
+
+    $ga_blocksettings = google_appliance_blocksettings_get();
+
+    $form['block_settings']['google_appliance'] = array (
+    '#type' => 'fieldset',
+    '#title' => "Google Appliance Settings",
+    '#description' => '',
+    '#collapsed' => true,
+    '#collapsible' => true,
+    '#tree' => true,
+    '#weight' => -1,
+    );
+
+    $form['block_settings']['google_appliance']['hide'] = array (
+    '#type' => 'radios',
+    '#title' => "Do you want to hide this block from the GSA crawler?",
+    '#description' => 'Select No if you want this block content to be crawled with the page content.',
+    '#options' => array(1 => 'Yes', 0 => 'No'),
+    '#default_value' => isset($ga_blocksettings[$var_name]) ? $ga_blocksettings[$var_name] : 1,
+    '#collapsed' => true,
+    '#collapsible' => true,
+    '#tree' => true,
+    );
+
+    $form['#submit']['google_appliance_block_save'] = array();
+    return $form;
+  }
+}
+
+function google_appliance_block_save($form_id,$form_values) {
+  $var_name = $form_values['module'] . '-' . $form_values['delta'];
+  $block_settings = google_appliance_blocksettings_get();
+  if (!isset($form_values['google_appliance']['hide'])) {
+    unset($block_settings[$var_name]);
+  } 
+  else {
+    $block_settings[$var_name] = $form_values['google_appliance']['hide'];
+  }
+
+  google_appliance_blocksettings_set($block_settings);
+}
+
+
+function google_appliance_blocksettings_set($new_val) {
+  variable_set('google_appliance_block_settings',$new_val);
+}
+
+
+function google_appliance_blocksettings_get() {
+  static $google_appliance;
+  if (empty($google_appliance)) {
+    $google_appliance = variable_get('google_appliance_block_settings',array());
+  }
+  return $google_appliance;
+}
+
+function google_appliance_block_nogoogle($block) {
+  $gsa_block_settings = google_appliance_blocksettings_get();
+  $var_name = $block->module . '-' . $block->delta;
+  if (!isset($gsa_block_settings[$var_name]) || $gsa_block_settings[$var_name]) {
+    return true;
+  }
+}
+
+
+/**
+ * It is important to hold on to the Google Appliance response object for the duration of the
+ * page request so that we can use it for things like the keymatch block
+ * 
+ * Stolen from apachesolr module
+ * 
+ * 
+ */
+function &google_appliance_static_response_cache($response = NULL) {  
+  static $_response;
+
+  if (!empty($response)) {
+    $_response = drupal_clone($response);
+  }
+  return $_response;
+}

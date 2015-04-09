@@ -1,0 +1,82 @@
+<?php
+/**
+ * Implementation of hook_install().
+ */
+function user_profile_install() {
+  // Code for formbuilder integration - Not Implemented Yet!!!
+  // default_user_profile_settings();
+  drupal_install_schema('user_profile');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function user_profile_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name like '%%%s%%'", 'user_profile');
+  // Code for formbuilder integration - Not Implemented Yet!!!
+  @db_query("DELETE FROM {formbuilder_form} WHERE form_type like '%%%s%%'", 'user_profile');
+  drupal_uninstall_schema('user_profile');
+}
+
+// to verify
+function default_user_profile_settings() {
+  include_once('user_profile.fields.inc');
+  $fields = user_profile_get_defaultfileds();
+  if(!class_exists('Services_JSON')) {
+  	include_once 'sites/all/modules/formbuilder/JSON/JSON.php';
+  	include_once 'sites/all/modules/formbuilder/JSON/class.json.php';
+  }
+  //$form = '{"name":{"#type":"textfield","#prefix":"","#suffix":"","#after_build":{},"#attributes":{},"#title":"Name","#default_value":"","#description":"","#required":true,"#validations":"ctype_alnum","#dontdelete":true,"#input":true,"#size":60,"#maxlength":70,"#autocomplete_path":false,"#process":{"0":"form_expand_ahah","1":"fckeditor_process_input"},"#encryption":false},"email":{"#type":"textfield","#prefix":"","#suffix":"","#after_build":{},"#attributes":{},"#title":"Email Address","#default_value":"","#description":"","#required":true,"#dontdelete":true,"#input":true,"#size":60,"#maxlength":128,"#autocomplete_path":false,"#process":{"0":"form_expand_ahah","1":"fckeditor_process_input"},"#encryption":false},"message":{"#type":"textarea","#prefix":"","#suffix":"","#after_build":{},"#attributes":{},"#title":"Message","#default_value":"","#description":"","#required":true,"#dontdelete":false,"#input":true,"#cols":60,"#rows":5,"#resizable":true,"#process":{"0":"form_expand_ahah","1":"fckeditor_process_textarea"},"#encryption":false},"#id":"contactus_form","#prefix":"","#suffix":"","#method":"post","#action":"","#value":""}';
+  $json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
+  $fields = $json->encode($fields);
+  $fields = $json->decode($fields);
+  $test = db_query("INSERT INTO {formbuilder_form}  (form_type, form_name, form_id, form, active, default_form) VALUES ('%s', '%s','%s', '%s', '%s', '%s')", constant("ITRINNO_USER_PROFILE_FORM_TYPE"), constant("ITRINNO_USER_PROFILE_FORM_NAME"), constant("ITRINNO_USER_PROFILE_FORM_ID"), serialize($fields), '1', '1');
+  drupal_set_message(t('User profile default fields created successfully.'));
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function user_profile_schema() {
+  $schema['consent'] = array(
+    'description' => 'user consent version',
+    'fields' => array(
+      'consent_id' => array(
+        'description' => 'The primary key',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE
+      ),
+      'consent_url' => array(
+        'description' => 'Consent url',
+        'type' => 'text',
+        'not null' => TRUE
+      ),
+      'consent_version' => array(
+        'description' => 'Consent version',
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE
+      ),
+      'consent_date' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'status' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'default' => 0,
+      ),
+      'modified' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('consent_id'),
+  );
+  return $schema;
+}

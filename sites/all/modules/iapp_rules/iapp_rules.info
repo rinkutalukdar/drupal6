@@ -1,0 +1,6 @@
+; $Id: iapp_rules.info,v 1.3 2009/05/20 19:47:55 Exp $
+name = "Password Policy"
+description = "Password Policy custom module"
+core = "6.x"
+version = "6.x-1.x"
+package = "Other"

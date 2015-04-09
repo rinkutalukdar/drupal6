@@ -1,0 +1,10 @@
+; $Id: $
+name = Formbuilder
+description = Client-side UI for building and editing drupal form arrays.
+core = "6.x"
+package = ITrInno Framework
+
+; Information added by drupal.org packaging script on 2007-02-11
+version = "6.x"
+project = "formbuilder"
+datestamp = "1215640509"

@@ -1,0 +1,110 @@
+.player .controls{
+	clear:both;
+	padding:1%;
+	border-top:1px gray solid;
+	margin-top:5px;
+	}
+.player .controls ul{
+	/*overflow:hidden;*/
+	}
+.player .controls .play-btn, .player .controls .pause-btn, .player .controls .stream-timeline, .player .controls .stream-time, .player .controls .volume, .player .controls .swich-window, .player .controls .thumbnails-btn, .player .controls .toggle-window, .player .controls .mute{
+	float:left;
+	height:20px;
+	width:20px;	
+	margin-left:10px;
+	}
+.controls .play-btn{
+	background:url(../images/play.png) left center no-repeat;
+	cursor:pointer;
+	}
+.controls .play-btn:hover{
+	background-position:-46px center;
+	}
+.controls .pause-btn{
+	background:url(../images/pause.png) left center no-repeat;
+	cursor:pointer;
+	background-position:-41px center;
+	}
+.controls .pause-btn:hover{
+	background-position:-41px center;
+	}
+.player .controls .stream-timeline{
+	width:55%;	
+	height:8px;
+	border-radius:6px;
+	background-color:#3f3f3f;
+	margin-top:5px;
+	cursor:pointer;
+	}
+.stream-timeline span{
+	display:block;
+	height:8px;
+	border-radius:6px;
+	background-color:#b3b2b2;
+	width:20%;
+	}
+.player .controls .stream-time{
+	color:#3f3f3f;
+	width:100px;
+	}
+.stream-time .playing-at{
+	color:#c4c4c4;
+	}
+.player .controls .volume{
+	background:url(../images/volume.png) left center no-repeat;
+	cursor:pointer;
+	float:right;
+	position:relative;
+	}
+.player .controls .volume:hover{
+	background-position:-40px center;
+	}
+.volume .bar{
+	position:absolute;
+	bottom:25px;
+	height:100px;
+	display:block;
+	width:12px;
+	border-radius:6px;
+	background-color:#7f7f7f;
+	left:0px;
+	display:none;
+	margin-bottom: -5px;
+	}
+.volume .bar .current{
+	position:absolute;
+	bottom:0px;
+	height:20px;
+	display:block;
+	width:8px;
+	border-radius:6px;
+	background-color:#b3b2b2;
+	}
+.player .controls .volume:hover .bar{
+	display:block;
+	}
+.player .controls .swich-window{
+	background:url(../images/switch.png) left center no-repeat;
+	cursor:pointer;
+	float:right;
+	}
+.player .controls .toggle-window{
+	background:url(../images/toggle-switch.png) left center no-repeat;
+	cursor:pointer;
+	float:right;
+}
+.player .controls .mute{
+	background:url(../images/mute.png) left center no-repeat;
+	cursor:pointer;
+	float:right;
+}
+.player .controls .mute:hover{
+	background-position:-40px center;
+}
+
+#wp_thumbnails_btn{
+	float:right;
+}
+.jcarousel-prev-horizontal, .jcarousel-next-horizontal{
+	top:37px;
+}

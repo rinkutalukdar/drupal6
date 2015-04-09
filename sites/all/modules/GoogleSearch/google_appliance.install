@@ -1,0 +1,32 @@
+<?php
+function google_appliance_install() {
+  // Create tables.
+  if (!db_table_exists('cache_google')) {
+    drupal_install_schema('google_appliance');
+  }
+}
+
+function google_appliance_schema() {
+  $schema['cache_google'] = array(
+    'fields' => array(
+      'cid'    => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE),
+      'data'    => array('type' => 'blob', 'size' => 'big'),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'),
+      'headers' => array('type' => 'text')
+    ),
+    'indexes' => array(
+      'cid'    => array('cid'),
+      'expire' => array('expire')
+    ),
+    'primary key' => array('cid'),
+  );
+
+  return $schema;
+}
+
+function google_appliance_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('google_appliance');
+}
+

@@ -1,0 +1,15 @@
+; $Id: contactus.info,v 1.0 2008/10/28 12:53:10 Exp $
+name = Contact Us
+description = Provides capability for users of the website to send feedback via a web-based form.
+package = ITrInno Framework
+
+dependencies[] = formbuilder
+dependencies[] = checkbox_validate
+dependencies[] = restapi
+dependencies[] = framework_1_5
+core = 6.x
+
+; Information added by JnJ packaging script on 2008-10-28
+version = "6.3"
+project = "drupal"
+datestamp = "1203739506"

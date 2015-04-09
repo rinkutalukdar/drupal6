@@ -1,0 +1,164 @@
+#header_container #header_right #right_menu ul li {
+    overflow: hidden;
+    padding: 0 60px 0px 0;
+    width: auto;
+	margin-top:-1px;
+}
+
+#header_container #header_right #right_menu {
+    float: right;
+    margin-top: -20px;
+    overflow: hidden;
+    padding: 0 15px 0 0;
+    width: 390px;
+}
+
+#header_container #header_right #right_menu ul li.active  {
+		margin-top:-3px;
+}
+
+#body_container #body_bmiddle #welcome_container {
+    float: right;
+    margin-right: 20px;
+    width: 160px;
+}
+
+#body_container #body_bmiddle .hbanner {
+    margin-left: 30px;
+	position:relative;
+	height:255px;
+}
+
+#body_container #body_bmiddle .hbanner .hmeet_mark {
+    float: none;
+    margin-left: -711px;
+    margin-top:0px;
+	bottom:1px;
+	left:-383px;
+	position:absolute;
+}
+
+#body_container #body_bmiddle .hbanner .hbanner_image {
+		z-index:-1;
+}
+
+#ftmenu_container #ftmenu_right {
+    float: left;
+    overflow: hidden;
+    width: 305px;
+}
+
+#ftmenu_container #ftmenu_left {
+    float: right;
+    margin-right: -10px;
+    overflow: hidden;
+    padding: 25px 0 0;
+    width: 596px;
+}
+
+#ftmenu_container #ftmenu_left ul.menu {
+	margin-right:95px;
+	display:noe;
+}
+
+#main_container #body_container  .big-width p{
+padding-right:0px;
+margin-right:-73px;
+}
+
+#main_container #body_container  .big-width .tell_a_friend_div
+{
+margin-right:-35px;
+}
+
+#main_container #body_container  .big-width h1{
+margin-top:-30px;
+padding-right:0px;
+margin-right:0px;
+}
+
+#main_container #header_container #header_right ul li,
+#main_container #header_container #header_right ul li span,
+#main_container #header_container #header_left ul li,
+#main_container #header_container #header_left ul li span
+
+{
+   font-size: 0px;
+   line-height:0px;
+   display:inline-block;
+}
+
+#body_container #body_bmiddle #welcome_container {
+    float: right;
+    margin-right: 20px;
+    width: 160px;
+}
+
+#body_container #body_bmiddle .hbanner {
+    margin-left: 30px;
+	position:relative;
+	height:255px;
+}
+
+#body_container #body_bmiddle .hbanner .hmeet_mark {
+    float: none;
+    margin-left: -711px;
+    margin-top:0px;
+	bottom:1px;
+	left:-383px;
+	position:absolute;
+}
+
+#body_container #body_bmiddle .hbanner .hbanner_image {
+		z-index:-1;
+}
+
+
+/*Remove before deployment*/
+
+body.front_page #body_container #body_bmiddle {
+    margin-right: 0;
+    overflow: visible;
+    position: relative;
+    width: 750px;
+    margin-left:165px;
+}
+
+
+
+#header_country_selector{
+	position:absolute;
+}
+
+#hsection_right .latest_news_block h2 {
+	width:130px;
+}
+
+sup{
+	display:inline-block;
+}
+
+.front_page #body_container #body_left {
+    position:relative;
+}
+
+#modalContainer {
+    height: 450px !important;
+}
+#gtb {
+  float:none !important;
+}
+#internetsearch-form .search_button {
+    margin-top:-52px !important;
+}
+#footer_container p{
+                width:715px !important;
+}
+sup{
+position:static; 
+}
+#pagination #pagination_middle UL LI{
+    float:left;
+    margin:0px !important;
+
+}

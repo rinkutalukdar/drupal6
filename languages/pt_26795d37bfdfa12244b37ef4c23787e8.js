@@ -1,0 +1,1 @@
+Drupal.locale = { 'pluralFormula': function($n) { return Number(($n!=1)); }, 'strings': { "Please enter your name": "Inserir o seu nome", "Please enter your friend\'s name": "Inserir o nome do seu amigo", "Please enter your friend\'s email": "Inserir o endereço eletrónico do seu amigo" } };

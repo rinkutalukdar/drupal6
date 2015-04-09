@@ -1,0 +1,258 @@
+<?php
+// ; $Id: iapp_rules.install,v 1.0 2009/05/20 19:47:55 Exp $
+
+/**
+ * @file iapp_rules.install
+ * Install file for iapp_rules module.
+ */
+
+require_once('iapp_rules.config.inc');
+
+/**
+ * Implementation of hook_schema().
+ */
+function iapp_rules_schema() {
+  $schema['iapp_activity_log'] = array(
+    'description' => t('The {iapp_activity_log} table stores activity data'),
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'category' => array(
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'source' => array(
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'user' => array(
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'description' => array(
+        'type' => 'varchar',
+        'length' => 200,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'activity_timestamp' => array('timestamp'),
+    ),
+  );
+  $schema['iapp_blocked_temp'] = array(
+    'description' => t('The {iapp_blocked_temp} table stores data of temporarily blocked users'),
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'time' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'ip_address' => array(
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'name_ip_address' => array('name', 'ip_address'),
+    ),
+  );
+  $schema['iapp_forgot_password'] = array(
+    'description' => t('The {iapp_forgot_password} table stores forgot password details'),
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'op_uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'status' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'forgot_pw_uid' => array('uid'),
+    ),
+  );
+  $schema['iapp_login_track'] = array(
+    'description' => t('The {iapp_login_track} table tracks the login data'),
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'time' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'ip_address' => array(
+        'type' => 'varchar',
+        'length' => 30,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'login_name_ip' => array('name', 'ip_address'),
+    ),
+  );
+  $schema['iapp_password_expire'] = array(
+    'description' => t('The {iapp_password_expire} table stored password expiry date for all users'),
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'state' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('uid'),
+  );
+  $schema['iapp_password_history'] = array(
+    'description' => t('The {iapp_password_history} table stores the user password history'),
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'password' => array(
+        'type' => 'varchar',
+        'length' => 42,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'pw_history_uid' => array('uid'),
+    ),
+  );
+  
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function iapp_rules_install() {
+  
+  drupal_install_schema('iapp_rules');
+  
+  variable_set('password_level', IAPP_STANDARD1);
+  variable_set('password_ageing', IAPP_METHOD1);
+  variable_set('method1_iterations_allowed', IAPP_M1_ITERATIONS_ALLOWED);
+  variable_set('method1_iteration_message', t(METHOD1_ITERATION_MESSAGE));
+  variable_set('method1_changed_today_message', t(METHOD1_CHANGED_TODAY_MESSAGE));
+  variable_set('method2_day_span', IAPP_M2_DAY_SPAN);
+  variable_set('method2_day_span_message', t(METHOD2_DAY_SPAN_MESSAGE));
+  variable_set('password_expire_warning', PASSWORD_EXPIRE_WARNING);
+  variable_set('password_expire_warning_message', t(PASSWORD_EXPIRE_WARNING_MESSAGE));
+  variable_set('pass_warning_mail_subject', t(PASS_WARNING_MAIL_SUBJECT));
+  variable_set('pass_warning_mail_message', t(PASS_WARNING_MAIL_MESSAGE));
+  variable_set('password_expire_message', t(PASSWORD_EXPIRE_MESSAGE));
+  variable_set('login_attempts_allowed', IAPP_UNLOGIN_ATTEMPTS);
+  variable_set('try_time_span', IAPP_UNLOGIN_TRY_TIME);
+  variable_set('lock_time_span', IAPP_UNLOGIN_LOCK_TIME);
+  variable_set('user_blocked_message', t(USER_BLOCKED_MESSAGE));
+  variable_set('forgot_password_subject', t(FORGOT_PASSWORD_SUBJECT));
+  variable_set('forgot_password_message', t(FORGOT_PASSWORD_MESSAGE));
+  variable_set('forgot_password_span', FORGOT_PASSWORD_VALIDITY);
+  variable_set('forgot_password_restricted_gap', IAPP_FORGOT_PASSWORD_GAP);
+  variable_set('forgot_password_already_changed', t(FORGOT_PASSWORD_ALREADY_CHANGED));
+  variable_set('forgot_password_first_login', t(FORGOT_PASSWORD_FIRST_LOGIN));
+  variable_set('forgot_password_expired_message', t(FORGOT_PASSWORD_EXPIRED_MESSAGE));
+  variable_set('add_user_password_subject', t(ADD_USER_PASSWORD_SUBJECT));
+  variable_set('add_user_password_message', t(ADD_USER_PASSWORD_MESSAGE));
+  variable_set('activity_log_span', IAPP_ACTIVITY_LOG_SPAN);
+  
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function iapp_rules_uninstall() {
+  
+  drupal_uninstall_schema('iapp_rules');
+
+  variable_del('password_level');
+  variable_del('password_ageing');
+  variable_del('method1_iterations_allowed');
+  variable_del('method1_iteration_message');
+  variable_del('method1_changed_today_message');
+  variable_del('method2_day_span');
+  variable_del('method2_day_span_message');
+  variable_del('password_expire_warning');
+  variable_del('password_expire_warning_message');
+  variable_del('pass_warning_mail_subject');
+  variable_del('pass_warning_mail_message');
+  variable_del('password_expire_message');
+  variable_del('password_redirect_url');
+  variable_del('login_attempts_allowed');
+  variable_del('try_time_span');
+  variable_del('lock_time_span');
+  variable_del('user_blocked_message');
+  variable_del('forgot_password_subject');
+  variable_del('forgot_password_message');
+  variable_del('forgot_password_span');
+  variable_del('forgot_password_restricted_gap');
+  variable_del('forgot_password_already_changed');
+  variable_del('forgot_password_first_login');
+  variable_del('forgot_password_expired_message');
+  variable_del('add_user_password_subject');
+  variable_del('add_user_password_message');
+  variable_del('activity_log_span');
+}
+?>

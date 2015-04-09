@@ -1,0 +1,13 @@
+name = ITrInno User Profile
+description = "User profile with IAPP compliance."
+core = 6.x
+package = ITrInno Framework
+dependencies[] = restapi
+dependencies[] = framework_1_5
+
+; Information added by itrino framework dev team on 2010-06-10
+version = "6.x-1.0"
+core = "6.x"
+project = "user_profile"
+ 
+

@@ -1,0 +1,40 @@
+<?php 
+// $Id: pear.module,v 1.3 2008/05/06 23:06:39 mepcotterell Exp $
+
+/**
+ * Perform startup tasks
+ */
+function pear_init() {
+
+  /**
+   * This is just a test... 
+   * 
+   */
+  $pear_path = variable_get('pear_pear_path', -1);
+  
+  
+  if ($pear_path == -1) {
+    trigger_error(t('The Pear module installation failed!'));
+  } else {
+    
+    $include_path = array(
+      get_include_path(),
+	  $pear_path,
+    );
+    set_include_path(implode(PATH_SEPARATOR, $include_path));
+    
+    include_once 'PEAR.php';
+    
+    
+  }
+
+}
+
+/*
+ * This function sends log messages to watchdog. 
+ * The $message parameter must be handled where
+ * the pear_log function is called.
+ */
+function pear_log($message, $error = FALSE) {
+  watchdog('pear', $message, NULL, ($error) ? WATCHDOG_DEBUG : $error);
+}

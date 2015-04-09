@@ -1,0 +1,178 @@
+<?php
+// $Id: survey.install,v 1.0 2008/10/17 12:18:46 Exp $
+
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function survey_uninstall() {
+
+	drupal_uninstall_schema('survey');
+	delete_varaibles();
+
+}
+
+/*
+*	Implementation of dbschema
+*/
+function survey_schema(){
+  $schema['survey_page'] = array(
+    'description' => 'Table for survey display page.',
+    'fields' => array(
+      'spid' => array(
+        'description' => 'The primary identifier for the page on a survey id.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'survey_id' => array(
+        'description' => 'The survey id on on a particular page.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0),
+      'page' => array(
+        'description' => 'The page path on which the survey have to be load.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => ''),
+      'render_type' => array(
+        'description' => 'The render type of the survey.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0),
+      'uid' => array(
+        'description' => 'The {users}.uid, the user that created it.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0),
+      'status' => array(
+        'description' => 'Boolean indicating whether the page is published.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1),
+      'created' => array(
+        'description' => 'The Unix timestamp when the node was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0),
+      'changed' => array(
+        'description' => 'The Unix timestamp when the node was most recently saved.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0),
+      ),
+    'primary key' => array('spid'),
+    );
+	
+	return $schema;
+}
+
+
+
+/*
+*	Implementation of hook_install
+*/
+function survey_install(){
+	//Set the default admin settings
+	survey_default_variable_settings();
+	//Create Tables
+	drupal_install_schema('survey');
+}
+
+
+
+/*
+*	Function delete all the varables
+*/
+
+function delete_varaibles(){
+  // Drop my variables from variable table.
+  $total_option_color= 10;
+  variable_del('survey_questions_per_page');
+  variable_del('chart_type');
+  variable_del('survey_addeddate_display');
+  variable_del('survey_answer_display_type');
+  variable_del('survey_question_color');
+  variable_del('survey_of_month');
+  variable_del('survey_expired');
+  
+  for( $option_count = 1; $option_count <= $total_option_color; $option_count++ ) {
+    variable_del('chart_color_'.$option_count);
+  }
+  
+  variable_del('survey_flag_show_textual_data_top');
+  variable_del('survey_textual_data_top');
+  variable_del('survey_flag_show_textual_data_abovedesc');
+  variable_del('survey_textual_data_abovedesc');
+  variable_del('survey_flag_show_textual_data_belowdesc');
+  variable_del('survey_textual_data_belowdesc');
+  variable_del('survey_flag_show_textual_data_abovesubmit');
+  variable_del('survey_textual_data_abovesubmit');
+  variable_del('survey_flag_show_textual_data_bottom');
+  variable_del('survey_textual_data_bottom');
+  variable_del('survey_flag_show_textual_data_activesurvey');
+  variable_del('survey_textual_data_activesurvey');
+  variable_del('survey_flag_show_textual_data_surveyofmonth');
+  variable_del('survey_textual_data_surveyofmonth');
+  variable_del('survey_flag_show_textual_data_pastsurvey');
+  variable_del('survey_textual_data_pastsurvey');
+  variable_del('survey_flag_show_textual_data_abovedesc_r');
+  variable_del('survey_textual_data_abovedesc_r');
+  variable_del('survey_flag_show_textual_data_belowdesc_r');
+  variable_del('survey_textual_data_belowdesc_r');
+  variable_del('survey_flag_show_textual_data_abovesubmit_r');
+  variable_del('survey_textual_data_abovesubmit_r');
+  variable_del('survey_flag_show_textual_data_bottom_r');
+  variable_del('survey_textual_data_bottom_r');
+  
+  variable_del('chart_background_color');
+  variable_del('chart_background_bgalpha');
+  variable_del('chart_font_name');
+  variable_del('chart_font_color');
+  variable_del('chart_font_size');
+  variable_del('chart_show_names');
+  variable_del('chart_show_values');
+  variable_del('chart_animation');
+  variable_del('chart_canvasbackground_color');
+  variable_del('chart_canvasborder_color');
+  variable_del('chart_canvasbackground_bgalpha');
+  variable_del('chart_canvasborder_size');
+  variable_del('chart_rotate');
+  variable_del('chart_x_axis_title');
+  variable_del('chart_y_axis_title');
+
+}
+
+/*
+*	Function to set the variable for the default graph settings
+*/
+function survey_default_variable_settings(){
+	variable_set('survey_questions_per_page', 5);
+	variable_set('survey_chart_type', 'bar');
+	variable_set('survey_chart_size_height', '150');
+	variable_set('survey_chart_size_width', 150);
+	variable_set('survey_chart_color_1', '#024e00');
+	variable_set('survey_chart_color_2', '#94aa24');
+	variable_set('survey_chart_color_3', '#e9bf31');
+	variable_set('survey_chart_color_4', '#f07f29');
+	variable_set('survey_chart_color_5', '#f33f22');
+	variable_set('survey_chart_color_6', '#be472f');
+	variable_set('survey_chart_color_7', '#87513c');
+	variable_set('survey_chart_color_8', '#804ea2');
+	variable_set('survey_chart_color_9', '#794bff');
+	variable_set('survey_chart_color_10', '#8ea5fa');
+	variable_set('survey_chart_background_color', '#a2feef');
+	variable_set('survey_chart_canvasborder_color', '#a2feef');
+	variable_set('survey_chart_canvasborder_size', '0');
+	variable_set('survey_chart_font_name', 'Arial');
+	variable_set('survey_chart_font_color', '#a2feef');
+	variable_set('survey_chart_font_size', '6');
+	variable_set('survey_chart_x_axis_title', 'Title');
+	variable_set('survey_chart_y_axis_title', 'Title');
+	variable_set('survey_chart_font_size', '6');
+	variable_set('survey_questions_per_page', 5);
+	variable_set('survey_answer_display_type', 'ver');
+	variable_set('survey_question_color', '#000000');
+}

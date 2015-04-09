@@ -1,0 +1,4 @@
+; $Id: custom_override.info,v 1.4 2007/06/08 05:50:55 dries Exp $
+name = custom_override
+description = "Custom module to override base site functions."
+core = 6.x

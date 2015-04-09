@@ -1,0 +1,31 @@
+; $Id: psychiatry24x7_ar.info,v 1.0 2010/10/12 15:55:00 narendra.b Exp $
+name = Psychiatry 24 X 7 arabic
+description = Psychiatry 24 X 7 - arabic.
+version = VERSION
+core = 6.x
+engine = phptemplate
+base theme = psychiatry24x7
+stylesheets[screen][] = css/psychiatry24x7_ar.css
+stylesheets[print][] = css/print.css
+
+scripts[] = js/searchkeyword.js
+
+regions[header_topnav] = Header Top Nav
+regions[left] = Left sidebar
+regions[right] = Right sidebar
+regions[content] = Content
+regions[welcome_container] = Welcome Container Left
+regions[search_container] = Search Container Right
+regions[hblocks_container] = Blocks on Home Page
+regions[hsurvey_left] = Survey Left
+regions[hsurvey_right] = Survey Right
+regions[share] = Share
+regions[footer] = Footer
+regions[footer_left] = Footer Left
+regions[hcontent_middle_left] = Middle-Left Home Page
+regions[hcontent_middle_right] = Middle-Right Home Page
+
+; Information added by drupal.org packaging script on 2010-08-11
+version = "6.3"
+project = "drupal"
+datestamp = "1281559292"

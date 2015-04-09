@@ -1,0 +1,578 @@
+<?php
+
+/**
+ * Implementation of hook_action_info().
+ *
+ */
+function jnj_content_workflow_action_info() {
+  return array(
+    'jnj_content_workflow_rollback_last_rev' => array(
+      'type' => 'node',
+      'description' => t('Rollback to the previous revision'),
+      'configurable' => FALSE,
+      'hooks' => array(
+        'workflow' => array('any'),
+      ),
+    ),
+  );
+}
+
+function jnj_content_workflow_init() {
+	drupal_add_js(drupal_get_path('module', 'jnj_content_workflow').'/jnj_content_workflow.js');
+}
+
+/**
+ *
+ * Action callback that publish the penultimate revision.
+ *
+ * @param <type> $node
+ * @param <type> $context
+ */
+function jnj_content_workflow_rollback_last_rev($node, $context) {
+  $sql = "SELECT vid FROM {node_revisions} WHERE nid = %d ORDER BY vid DESC LIMIT 1 OFFSET 1";
+  $result = db_query($sql, $node->nid);
+  $array = db_fetch_array($result);
+  if (isset($array['vid'])) {
+    _revisioning_publish_revision($node->nid, $array['vid']);
+  }
+  else {
+    _revisioning_unpublish_node($node);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * @param <type> $node
+ * @param <type> $op
+ * @param <type> $a3
+ * @param <type> $a4
+ */
+function jnj_content_workflow_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	if($op == 'view' && arg(2) == 'revisions') {
+		global $user;
+		$jnj_content_workflow_manageable_types = variable_get('jnj_content_workflow_manageable_types', array());
+		if(in_array($node->type, $jnj_content_workflow_manageable_types)) {
+			$allowed_roles = array('Editor', 'Approver', 'Publisher');		//TODO:
+			if(array_intersect($user->roles, $allowed_roles) ==  TRUE) {
+				$node->content['workflow_state'] = array(
+					'#value' => t('Current State')." : ".t(workflow_get_state_name($node->_workflow)),
+					'#weight' => 20,
+				);
+				if($node->_workflow == variable_get('jnj_content_workflow_sid_disapproved', NULL)) {	
+					$node->content['disapproved_comment'] = array(
+						'#value' => "<br />".t('Comment')." : ".jnj_workflow_disapproved_comment($node),
+						'#weight' => 25,
+					);
+				}
+			}
+		}
+	}
+  if ($op == 'presave' && $node->revision && $node->nid) {
+    $aids = _trigger_get_hook_aids('nodeapi', 'insertRevision');
+
+    if ($aids) {
+      $context = array(
+        'hook' => 'nodeapi',
+        'op' => $op,
+      );
+
+      foreach ($aids as $aid => $action_info) {
+        if ($action_info['type'] != 'node') {
+          if (!isset($objects[$action_info['type']])) {
+            $objects[$action_info['type']] = _trigger_normalize_node_context($action_info['type'], $node);
+         }
+
+         $context['node'] = $node;
+         actions_do($aid, $objects[$action_info['type']], $context);
+       }
+       else {
+         actions_do($aid, $node, $context);
+       }
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_mail_alter
+ */
+function jnj_content_workflow_mail_alter(&$message) {
+	$object['workflow_comment'] = $_POST['workflow_comment'];
+	$object = (object)$object;
+	$message['body'][0] = token_replace($message['body'][0], 'workflow_comment', $object);
+}
+
+/**
+ * Implementation of hook_workflow.
+ */
+function jnj_content_workflow_workflow($op, $old_state, $new_state, $node) {
+	switch($op) {
+		case 'workflow delete':
+			if($old_state == variable_get('jnj_content_workflow_wid', NULL)) {
+				db_query("DELETE FROM {workflow_states} WHERE wid = %d", $old_state);
+			}
+			break;
+	}
+}
+
+/**
+ * Implementation of hook_token_list().
+ */
+function jnj_content_workflow_token_list($type = 'all') {
+	$tokens = array();
+	if ($type == 'workflow_comment' || $type == 'workflow' || $type == 'node' || $type == 'all') {
+		$tokens['workflow']['workflow-comment'] = t('Comment added by user while disapproving');
+	}
+	
+	return $tokens;
+}
+
+/**
+ * Implementation of hook_token_values
+ */
+function jnj_content_workflow_token_values($type, $object = NULL, $options = array(), $label = NULL) {
+	switch($type) {
+		case 'node':
+		case 'workflow':
+		case 'workflow_comment':
+			$node = (object)$object;
+			$values['workflow-comment'] = $object->workflow_comment;
+			break;
+	}
+	return $values;
+}
+
+/**
+ * Implementation of hook_form_alter.
+ */
+function jnj_content_workflow_form_alter(&$form, $form_state, $form_id) {
+	global $user;
+	if($form_id == 'workflow_tab_form') {
+		$body = db_result(db_query("SELECT body FROM {node_revisions} nr WHERE nr.nid = %d ORDER BY nr.vid DESC LIMIT 0, 1", $form['#parameters']['2']->nid));
+		$form['workflow']['message'] = array(
+			'#type' => 'item',
+			'#value' => $body,
+			'#title' => t('Body'),
+			'#weight' => -20
+		);
+		$form['workflow']['content_management']['#weight'] = -10;
+		$form['workflow']['workflow_comment']['#weight'] = 0;
+		$form['#submit'][] = 'jnj_workflow_redirect_submit';
+	}
+	$jnj_content_workflow_manageable_types = variable_get('jnj_content_workflow_manageable_types', array());
+	foreach($jnj_content_workflow_manageable_types as $key => $type) {
+		if($type !== 0) {
+			if($form_id == $type.'_node_form') {
+				if(isset($form['#parameters'][2]->nid) && !empty($form['#parameters'][2]->nid)) {
+					$node = node_load($form['#parameters'][2]->nid);
+					$comment = jnj_workflow_disapproved_comment($node);
+					if($comment) {
+						$form['body_field']['comment_disp'] = array(
+							'#type' => 'item',
+							'#title' => t('Comment While Disapproving'),
+							'#value' => $comment,
+							'#weight' => -10,
+						);
+					}
+				}
+				
+				unset($form['workflow']);
+				$form['workflow'] = array(
+					'#type' => 'fieldset',
+					'#title' => t('Content Management'),
+					'#collapsible' => 1,
+					'#collapsed' => FALSE,
+				);				
+				$draft_sid = variable_get('jnj_content_workflow_sid_draft', NULL);
+				$submitted_sid = variable_get('jnj_content_workflow_sid_submitted', NULL);
+				$unpublished_sid = variable_get('jnj_content_workflow_sid_unpublished', NULL); //db_result(db_query("SELECT sid FROM {workflow_states} WHERE wid = %d AND state = '%s'", variable_get('jnj_content_workflow_wid', NULL), 'Unpublished'));
+
+				$options = array();
+				//if(in_array(variable_get('jnj_content_workflow_role_editor', NULL), array_keys($user->roles))) {
+					$options[$draft_sid] = t(workflow_get_state_name($draft_sid));
+					$options[$submitted_sid] = workflow_get_state_name($submitted_sid); 
+				//}
+/*				if(in_array(variable_get('jnj_content_workflow_role_publisher', NULL), array_keys($user->roles))) {
+					$options[$unpublished_sid] = t(workflow_get_state_name($unpublished_sid));
+				}*/
+				$form['workflow']['content_management'] = array(
+					'#type' => 'radios',
+					'#options' => $options,
+					'#default_value' => $draft_sid,
+					'#required' => TRUE,
+				);
+				
+				$form['buttons']['submit']['#submit'][] = 'jnj_content_workflow_submitted';
+				$form['buttons']['submit']['#submit'][] = 'jnj_workflow_redirect_submit';
+			}
+		}
+	}
+	if($form_id == 'rules_admin_form_edit' || $form_id == 'rules_admin_form_add') {
+		$form['input_help']['#weight'] = 5;
+	}
+	if($form_id == 'views_exposed_form') {
+		if(isset($form['sid'])) {
+			$wid = variable_get('jnj_content_workflow_wid', NULL);
+			$workflow = workflow_load($wid);
+			foreach($form['sid']['#options'] as $key => $val) {
+				if(substr($val, 0, strlen($workflow->name)).':' == $workflow->name.':') {			
+					$form['sid']['#options'][$key] = substr($val, strlen($workflow->name)+2);
+				}
+			}
+		}
+	}
+}
+
+function jnj_content_workflow_submitted($form, &$form_state) {
+	$submitted_sid = variable_get('jnj_content_workflow_sid_submitted', NULL);
+	$unpublished_sid = variable_get('jnj_content_workflow_sid_unpublished', NULL); //db_result(db_query("SELECT sid FROM {workflow_states} WHERE wid = %d AND state = '%s'", variable_get('jnj_content_workflow_wid', NULL), 'Unpublished'));
+	$node = node_load($form_state['nid']);
+	if($form_state['values']['content_management'] == $submitted_sid/* || $form_state['values']['content_management'] == $unpublished_sid*/) {
+		workflow_execute_transition($node, $submitted_sid, NULL, TRUE);
+	}
+	/*if($form_state['values']['content_management'] == $unpublished_sid) {
+		workflow_execute_transition($node, $unpublished_sid, NULL, TRUE);
+	}*/
+}
+
+function jnj_workflow_redirect_submit($form, &$form_state) {
+	if(isset($form_state['nid']) && !empty($form_state['nid'])) 
+		$node = node_load($form_state['nid']);
+	else
+		$node = $form_state['values']['node'];
+	$latest_revision_id = db_result(db_query("SELECT vid FROM {node_revisions} WHERE nid = %d ORDER BY vid DESC LIMIT 0, 1", $node->nid));
+	$form_state['redirect'] = 'node/'.$node->nid.'/revisions/'.$latest_revision_id.'/view';
+}
+
+/**
+ *
+ * Implementation of hook_user().
+ *
+ * @param <type> $op
+ * @param <type> $edit
+ * @param <type> $account
+ * @param <type> $category
+ */
+function jnj_content_workflow_user($op, &$edit, &$account, $category = NULL) {
+  if ($op == 'login') {
+    foreach ($account->roles as $rid => $role) {
+      $aids = _trigger_get_hook_aids('user', $rid .'Login');
+      $context = array(
+        'hook' => 'user',
+        'op' => $op,
+      );
+
+      foreach ($aids as $aid => $action_info) {
+        if ($action_info['type'] != 'user') {
+          if (!isset($objects[$action_info['type']])) {
+            $objects[$action_info['type']] = _trigger_normalize_user_context($action_info['type'], $account);
+          }
+
+          $context['user'] = $account;
+          actions_do($aid, $objects[$action_info['type']], $context);
+        }
+        else {
+           actions_do($aid, $account, $context);
+        }
+      }
+    }
+  }
+}
+
+/**
+ *
+ * Implementation of hook_hook_info().
+ *
+ * Adding the trigger to insertRevision.
+ *
+ * @return <type>
+ */
+function jnj_content_workflow_hook_info() {
+  $user_triggers = array();
+
+  $roles = user_roles(TRUE);
+
+  foreach ($roles as $rid => $role) {
+    $user_triggers[$rid .'Login'] = array(
+      'runs when' => 'After a '. $role .' has logged in',
+    );
+  }
+
+  return array(
+    'node' => array(
+      'nodeapi' => array(
+        'insertRevision' => array(
+          'runs when' => t('When a new revision is created.'),
+        ),
+      ),
+    ),
+    'user' => array(
+      'user' => $user_triggers,
+    ),
+  );
+}
+
+/**
+ *
+ * Implementation of hook_admin_menu().
+ *
+ * @param <type> $deleted
+ * @return <type>
+ */
+function jnj_content_workflow_admin_menu(&$deleted) {
+
+  $items = array();
+
+  $items[] = array(
+    'title' => '"Draft" Content',
+    'path' => 'content/draft',
+    'weight' => 100,
+  );
+
+  $items[] = array(
+    'title' => '"Rejected" Content',
+    'path' => 'content/rejected',
+    'weight' => 101,
+  );
+
+  $items[] = array(
+    'title' => '"Under Approval" Content',
+    'path' => 'content/under-approval',
+    'weight' => 102,
+  );
+
+  $items[] = array(
+    'title' => '"Approved" Content',
+    'path' => 'content/approved',
+    'weight' => 103,
+  );
+
+  $items[] = array(
+    'title' => '"Published" Content',
+    'path' => 'content/published',
+    'weight' => 104,
+  );
+
+  $items[] = array(
+    'title' => 'Create content',
+    'path' => 'create-content',
+    'weight' => 99,
+  );
+
+  /*$types = variable_get('jnj_content_workflow_manageable_types', array());
+  foreach ($types as $type_id) {
+    if ($type_id) {
+      $type = node_get_types('types', $type_id);
+      exit(print_r($type, 1));
+      $items[] = array(
+      );
+    }
+  }*/
+
+  return $items;
+}
+
+/**
+ * 
+ * Implementation of hook_perm().
+ * 
+ */
+function jnj_content_workflow_perm() {
+  return array(
+  	'access workflow landing page',
+    'Publish Approved Content',
+  );
+}
+
+/**
+ *
+ * Implementation of hook_menu().
+ *
+ * @return <type>
+ *
+ */
+function jnj_content_workflow_menu() {
+  $items = array();
+
+  $items['jnj-content-workflow/publishContent'] = array(
+    'access arguments' => array('Publish Approved Content'),
+    'page callback' => 'jnj_content_workflow_publish_nodes_ajax_callback',
+    'title' => 'Publish approved content',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['jnj-content-workflow/run-batch'] = array(
+    'access arguments' => array('Publish Approved Content'),
+    'page callback' => 'jnj_content_workflow_run_batch',
+    'title' => 'Publish content batch runner',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/settings/jnj-content-workflow'] = array(
+    'title' => 'JnJ Content Workflow Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('jnj_content_workflow_configuration_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'includes/jnj_content_workflow.admin.inc',
+  );
+
+  $items['create-content'] = array(
+    'title' => 'Create content',
+    'page callback' => 'jnj_content_workflow_create_content_callback',
+    'access callback' => '_node_add_access',
+    'weight' => 1,
+  );
+  $items['latest_revision/%node'] = array(
+  	'title' => t(''),
+  	'page callback' => 'latest_revision_redirect',
+  	'page arguments' => array(1),
+  	'type' => 'MENU_CALLBACK',
+  	'access callback' => TRUE,
+    );
+    
+  return $items;
+}
+
+/**
+ * Implementation of hook_query_alter
+ */
+function jnj_content_workflow_views_query_alter(&$view, &$query) {
+	if($view->name == 'landing_page') {
+		global $user;
+		$tid = workflow_get_transition_id(variable_get('jnj_content_workflow_sid_draft', NULL), variable_get('jnj_content_workflow_sid_submitted', NULL));
+		if(!workflow_transition_allowed($tid, array_keys($user->roles))) {
+			$where = array(
+				'clauses' => array("(workflow_states.state != '%s' OR workflow_states.state IS NULL)"),
+				'args' => array(t(workflow_get_state_name(variable_get('jnj_content_workflow_sid_draft', NULL)))),
+				'type' => 'AND',
+			);
+			$query->where[] = $where;
+		}
+	}
+}
+
+function jnj_content_workflow_create_content_callback() {
+  drupal_goto('node/add');
+}
+
+function latest_revision_redirect($node) {
+	$vid = db_result(db_query("SELECT vid FROM {node_revisions} WHERE nid = %d ORDER BY vid DESC LIMIT 0, 1", $node->nid));
+	drupal_goto('node/'.$node->nid.'/revisions/'.$vid.'/view');
+}
+
+/**
+ * Batch runner callback.
+ */
+function jnj_content_workflow_run_batch() {
+  $args = func_get_args();
+
+  $redirect = implode('/', $args);
+
+  $batch = $_SESSION['publish_content_batch'];
+  unset($_SESSION['publish_content_batch']);
+  batch_set($batch);
+  batch_process($redirect);
+}
+
+/**
+ *
+ * Ajax callback to publish content. If the number of nodes to be publish
+ * is more than the configured limit this operation will be executed in
+ * batch.
+ *
+ */
+function jnj_content_workflow_publish_nodes_ajax_callback() {
+  $nids = $_REQUEST['nids'];
+
+  $result = array();
+
+  $batch_size = 10;
+
+  if (count($nids) < $batch_size) {
+    $result['batch'] = FALSE;
+    jnj_content_workflow_publish_nodes($nids);
+  }
+  else {
+    $result['batch'] = TRUE;
+    $result['go_to'] = url('jnj-content-workflow/run-batch/'. $_REQUEST['redirect']);
+    $operations = array();
+
+    $offset = 0;
+
+    while ($offset < count($nids)) {
+      $operations[] = array(
+        'jnj_content_workflow_publish_nodes',
+        array(
+          array_slice($nids, $offset, $offset + 1)
+        ),
+      );
+
+      $offset ++;
+    }
+
+    $batch = array(
+      'operations' => $operations,
+      'finished' => 'jnj_content_workflow_batch_finished',
+    );
+
+    $_SESSION['publish_content_batch'] = $batch;
+  }
+
+  drupal_json($result);
+}
+
+/**
+ *
+ * Batch finished function.
+ *
+ * @param <type> $success
+ * @param <type> $results
+ * @param <type> $operations
+ */
+function jnj_content_workflow_batch_finished($success, $results, $operations) {
+  if ($success) {
+    drupal_set_message(format_plural($results['count'],
+              '1 node has been published.', '@count nodes have been published.'));
+  }
+}
+
+/**
+ *
+ * Publish the selected nodes.
+ *
+ */
+function jnj_content_workflow_publish_nodes($nids, &$context = NULL) {
+  if (isset($context)) {
+    $context['results']['count'] ++;
+  }
+
+  if (!is_array($nids)) {
+    $nids = array($nids);
+  }
+
+  foreach ($nids as $nid) {
+    workflow_execute_transition(node_load($nid), variable_get('jnj_content_workflow_sid_published', 0));
+  }
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function jnj_content_workflow_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'jnj_content_workflow') . '/includes',
+  );
+}
+
+function jnj_workflow_disapproved_comment($node) {
+	$sid = workflow_node_current_state($node);
+	$wid = workflow_get_workflow_for_type($node->type);
+	$disapproved_sid = variable_get('jnj_content_workflow_sid_disapproved', NULL);
+	if($sid == $disapproved_sid) {
+		$comment = db_result(db_query("SELECT comment FROM {workflow_node_history} WHERE nid = %d AND sid = %d ORDER BY stamp DESC LIMIT 0, 1", $node->nid, $disapproved_sid));
+		return $comment;
+	}
+	return FALSE;
+}

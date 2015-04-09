@@ -1,0 +1,698 @@
+/* psychiatry24x7 Spain CSS */
+#header_country_selector a {
+	color:red;
+}
+
+#header_container #header_left ul li.menu-549 a,#header_container #header_left ul li.menu-549 a:visited,#header_container #header_left ul li.menu-549 a:active{
+background:url(../images/menu_home.gif) left top no-repeat;
+cursor:pointer;
+width:150px;
+height:26px;
+display:block;
+text-indent:-9999px;
+position:relative;
+margin:8px 0px 0px 0px;
+outline:none;
+}
+body_container
+#header_container #header_left ul li.menu-549 a:hover{
+background:url(../images/menu_home_hover.gif) left top no-repeat;
+}
+
+
+#header_container #header_left ul li.menu-550 a,#header_container #header_left ul li.menu-550 a:visited,#header_container #header_left ul li.menu-550 a:active{
+background:url(../images/menu_about.gif) left top no-repeat;
+cursor:pointer;
+width:158px;
+height:26px;
+display:block;
+text-indent:-9999px;
+position:relative;
+outline:none;
+}
+
+#header_container #header_left ul li.menu-550 a:hover{
+background:url(../images/menu_about_hover.gif) left top no-repeat;
+}
+
+#header_container #header_left ul li.menu-551 a,#header_container #header_left ul li.menu-551 a:visited,#header_container #header_left ul li.menu-551 a:active{
+background:url(../images/menu_kwell.gif) left top no-repeat;
+width:94px;
+height:26px;
+display:block;
+text-indent:-999px;
+position:relative;
+outline:none;
+}
+
+#header_container #header_left ul li.menu-551 a:hover{
+background:url(../images/menu_kwell_hover.gif) left top no-repeat;
+}
+
+#header_container #header_left ul li.menu-552 a,#header_container #header_left ul li.menu-552 a:visited,#header_container #header_left ul li.menu-552 a:active{
+background:url(../images/menu_talk.gif) left top no-repeat;
+width:195px;
+height:26px;
+display:block;
+text-indent:-9999px;
+position:relative;
+outline:none;
+}
+
+#header_container #header_left ul li.menu-552 a:hover{
+background:url(../images/menu_talk_hover.gif) left top no-repeat;
+}
+
+#header_container #header_left ul li.menu-553 a,#header_container #header_left ul li.menu-553 a:visited,#header_container #header_left ul li.menu-553 a:active{
+background:url(../images/menu_different.gif) left top no-repeat;
+width:210px;
+height:26px;
+display:block;
+text-indent:-9999px;
+position:relative;
+outline:none;
+}
+
+#header_container #header_left ul li.menu-553 a:hover{
+background:url(../images/menu_different_hover.gif) left top no-repeat;
+}
+
+#header_container #header_right #right_menu ul li.menu-554 a,#header_container #header_right #right_menu ul li.menu-554 a:visited,#header_container #header_right #right_menu ul li.menu-554 a:active{
+background:url(../images/menu_getting.gif) right top no-repeat;
+width:115px;
+height:26px;
+display:block;
+text-indent:-9999px;
+outline:none;
+}
+
+#header_container #header_right #right_menu ul li.menu-554 a:hover{
+background:url(../images/menu_getting_hover.gif) right top no-repeat;
+}
+
+#header_container #header_right #right_menu ul li.menu-555 a,#header_container #header_right #right_menu ul li.menu-555 a:visited,#header_container #header_right #right_menu ul li.menu-555 a:active{
+background:url(../images/menu_friends.gif) left top no-repeat;
+width:139px;
+height:26px;
+display:block;
+text-indent:-9999px;
+outline:none;
+}
+
+#header_container #header_right #right_menu ul li.menu-555 a:hover{
+background:url(../images/menu_friends_hover.gif) left top no-repeat;
+}
+
+#header_container #header_right #right_menu ul li.menu-556 a,#header_container #header_right #right_menu ul li.menu-556 a:visited,#header_container #header_right #right_menu ul li.menu-556 a:active{
+background:url(../images/menu_news.gif) left top no-repeat;
+width:61px;
+height:26px;
+display:block;
+text-indent:-9999px;
+outline:none;
+*margin-bottom:-6px;
+}
+
+#header_container #header_right #right_menu ul li.menu-556 a:hover{
+background:url(../images/menu_news_hover.gif) left top no-repeat;
+}
+
+#header_container #header_right #right_menu ul li.menu-557 a,#header_container #header_right #right_menu ul li.menu-557 a:visited,#header_container #header_right #right_menu ul li.menu-557 a:active{
+background:url(../images/menu_patient.gif) left top no-repeat;
+width:89px;
+height:26px;
+display:block;
+text-indent:-9999px;
+outline:none;
+}
+
+#header_container #header_right #right_menu ul li.menu-557 a:hover{
+background:url(../images/menu_patient_hover.gif) left top no-repeat;
+}
+
+#header_container #header_right #right_menu ul li.menu-558 a,#header_container #header_right #right_menu ul li.menu-558 a:visited,#header_container #header_right #right_menu ul li.menu-558 a:active{
+background:url(../images/menu_resources.gif) left top no-repeat;
+width:65px;
+height:26px;
+display:block;
+text-indent:-9999px;
+outline:none;
+}
+
+#header_container #header_right #right_menu ul li.menu-558 a:hover{
+background:url(../images/menu_resources_hover.gif) left top no-repeat;
+}
+#header_container #header_left ul li.menu-895_slctd{
+padding:0px 0px 0px 0px;
+background:url(../images/menu_pfilm_slctd.png) 2px top no-repeat;
+_background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_pfilm_slctd.png", sizingMethod="crop");
+width:265px;
+height:44px;
+text-indent:-999px;
+}
+
+#header_container #header_left ul li.menu-895 a,#header_container #header_left ul li.menu-895 a:visited,#header_container #header_left ul li.menu-895 a:active{
+background:url(../images/menu_pfilm.gif) left top no-repeat;
+cursor:pointer;
+width:180px;
+height:25px;
+display:block;
+text-indent:-9999px;
+position:relative;
+outline:none;
+}
+
+#header_container #header_left ul li.menu-895 a:hover{
+background:url(../images/menu_pfilm_hover.gif) left top no-repeat;
+}
+
+#header_container #header_right #right_menu ul li.menu-896_slctd{
+padding:0px 0px 0px 0px;
+background:url(../images/menu_acarers_slctd.png) right top no-repeat;
+_background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/ppsychiatry24x7_es/images/menu_acarers_slctd.png", sizingMethod="crop");
+width:234px;
+height:45px;
+text-indent:-999px;
+margin:0 0 0 69px;
+}
+
+#header_container #header_right #right_menu ul li.menu-896 a, #header_container #header_right #right_menu ul li.menu-896 a:visited, #header_container #header_right #right_menu ul li.menu-896 a:active{
+background:url(../images/menu_acarers.gif) right top no-repeat;
+cursor:pointer;
+width:132px;
+height:26px;
+display:block;
+text-indent:-9999px;
+position:relative;
+margin:0px 0px 0px 0px;
+outline:none;
+}
+#header_container #header_right #right_menu ul li.menu-896 a:hover{
+background:url(../images/menu_acarers_hover.gif) right top no-repeat;
+}
+/*overrides for Hungry site*/
+
+#header_container #header_left ul li.menu-551 a, #header_container #header_left ul li.menu-551 a:visited, #header_container #header_left ul li.menu-551
+
+a:active {
+    width: 200px;
+}
+
+#header_container #header_right #right_menu ul li.menu-554 a, #header_container #header_right #right_menu ul li.menu-554 a:visited, #header_container
+
+#header_right #right_menu ul li.menu-554 a:active {
+    width: 150px;
+}
+
+#header_container #header_right #right_menu ul li.menu-896 a, #header_container #header_right #right_menu ul li.menu-896 a:visited, #header_container
+
+#header_right #right_menu ul li.menu-896 a:active {
+    width: 150px;
+}
+
+#header_container #header_right #right_menu ul li.menu-557 a, #header_container #header_right #right_menu ul li.menu-557 a:visited, #header_container
+
+#header_right #right_menu ul li.menu-557 a:active {
+    width: 111px;
+}
+
+.latest_news_block h2 {
+    background: url("../images/latest_news.gif") no-repeat scroll left top transparent;
+    height: 24px;
+    margin-bottom: 24px;
+    margin-top: 5px;
+    text-indent: -1e+7px;
+	width:150px;
+}
+.survey h2 {
+    background: url("../images/your_opinion.gif") no-repeat scroll left top transparent;
+    height: 30px;
+    margin: 21px 0 0 0;
+    text-indent: -999999px;
+}
+.hjoin_network {
+    background: url("../images/bg_join_our_network.gif") no-repeat scroll left top transparent;
+    float: left;
+    height: 145px;
+    margin-left: -10px;
+    margin-top: -5px;
+    padding-left: 15px;
+    padding-top: 69px;
+    width: 235px;
+}
+.taking_to_doctor_container .your_choices h2 {
+    background: url("../images/your_choices.gif") no-repeat scroll left top transparent;
+    height: 24px;
+    margin-bottom: 10px;
+    text-indent: -1e+7px;
+}
+.taking_to_doctor_container .getting_better h2 {
+    background: url("../images/getting_better.gif") no-repeat scroll left top transparent;
+    height: 24px;
+    margin-bottom: 10px;
+    text-indent: -1e+7px;
+}
+#hblocks_container #hblock2 h2 {
+    background: url("../images/your_medication.gif") no-repeat scroll left top transparent;
+    padding-bottom: 28px;
+    text-indent: -1e+8px;
+}
+#hblocks_container #hblock3 h2 {
+    background: url("../images/looking_for_answer.gif") no-repeat scroll left top transparent;
+    padding-bottom: 28px;
+    text-indent: -1e+8px;
+}
+#header_container #header_left ul li.menu-549_slctd{
+padding:0px 0px 0px 0px;
+background:url(../images/menu_home_slctd.png) left top no-repeat;
+_background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_home_slctd.png", sizingMethod="crop");
+width:230px;
+height:45px;
+text-indent:-999px;
+}
+
+#header_container #header_left ul li.menu-550_slctd{
+padding:0px 0px 0px 0px;
+background:url(../images/menu_about_slctd.png) left top no-repeat;
+_background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_about_slctd.png", sizingMethod="crop");
+width:316px;
+height:45px;
+text-indent:-999px;
+}
+
+#header_container #header_left ul li.menu-551_slctd{
+	margin:0px 0px 0px 2px;
+	padding:0px 0px 0px 0px;
+	background:url(../images/menu_kwell_slctd.png) left top no-repeat;
+	_background-image: none;
+	*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_kwell_slctd.png", sizingMethod="crop");
+	width:190px;
+	height:45px;
+	text-indent:-999px;
+}
+
+#header_container #header_left ul li.menu-552_slctd{
+padding:0px 0px 0px 0px;
+background:url(../images/menu_talk_slctd.png) left top no-repeat;
+_background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_talk_slctd.png", sizingMethod="crop");
+width:290px;
+height:45px;
+text-indent:-999px;
+}
+
+#header_container #header_left ul li.menu-553_slctd{
+padding:0px 0px 0px 0px;
+background:url(../images/menu_different_slctd.png) left top no-repeat;
+_background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_different_slctd.png", sizingMethod="crop");
+width:285px;
+height:45px;
+text-indent:-999px;
+}
+
+#header_container #header_right #right_menu ul li.menu-554_slctd{
+padding:0px 60px 3px 0px;
+margin:0px 0px 0px 30px;
+*margin:0px 0px 0px 90px;
+background:url(../images/menu_getting_slctd.png) right top no-repeat;
+*background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_getting_slct.png", sizingMethod="crop");
+width:215px;
+height:45px;
+font-size:0em;
+line-height:0em;
+text-align:right;
+}
+
+#header_container #header_right #right_menu ul li.active span,
+#header_container #header_left #right_menu ul li.active span
+{	visibility:hidden;
+	}
+
+#header_container #header_right #right_menu ul li.menu-555_slctd{
+padding:0px 60px 3px 0px;
+margin:0px 0px 0px 10px;
+*margin:0px 0px 0px 70px;
+background:url(../images/menu_friends_slctd.png) right top no-repeat;
+*background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_friends_slctd.png", sizingMethod="crop");
+width:234px;
+height:45px;
+font-size:0em;
+line-height:0em;
+text-align:right;
+}
+
+#header_container #header_right #right_menu ul li.menu-556_slctd{
+padding:0px 60px 3px 0px;
+margin:0px 0px 0px 108px;
+*margin:0px 0px 0px 168px;
+background:url(../images/menu_news_slctd.png) right top no-repeat;
+*background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_news_slct.png", sizingMethod="crop");
+width:134px;
+height:45px;
+font-size:0em;
+line-height:0em;
+text-align:right;
+}
+
+#header_container #header_right #right_menu ul li.menu-557_slctd{
+padding:0px 60px 3px 0px;
+margin:0px 0px 0px 56px;
+*margin:0px 0px 0px 70px;
+background:url(../images/menu_patient_slctd.png) right top no-repeat;
+*background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_patient_slctd.png", sizingMethod="crop");
+width:183px;
+height:45px;
+font-size:0em;
+line-height:0em;
+text-align:left;
+}
+
+#header_container #header_right #right_menu ul li.menu-558_slctd{
+padding:0px 60px 3px 0px;
+margin:0px 0px 0px 73px;
+*margin:0px 0px 0px 152px;
+background:url(../images/menu_resources_slctd.png) right top no-repeat;
+*background-image: none;
+*filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src="/sites/dev-psychiatry24x7-es.jnj.com/themes/psychiatry24x7_es/images/menu_resources_slctd.png", sizingMethod="crop");
+width:166px;
+height:45px;
+font-size:0em;
+line-height:0em;
+text-align:right;
+*padding-left:1000px;
+*text-align:right;
+}
+#header_container #header_right #right_menu ul li.menu-556_slctd {
+    background: url("../images/menu_news_slctd.png") no-repeat scroll right top transparent;
+    font-size: 0;
+    height: 45px;
+    line-height: 0;
+    margin: 0 0 0 108px;
+    padding: 0 60px 3px 0;
+    text-align: right;
+    width: 134px;
+}
+ 
+
+/*overrides for spain site*/
+
+#header_container #header_left ul li.menu-551 a, #header_container #header_left ul li.menu-551 a:visited, #header_container #header_left ul li.menu-551
+
+a:active {
+    width: 160px;
+}
+
+#header_container #header_right #right_menu ul li.menu-554 a, #header_container #header_right #right_menu ul li.menu-554 a:visited, #header_container
+
+#header_right #right_menu ul li.menu-554 a:active {
+    width: 150px;
+}
+
+#header_container #header_right #right_menu ul li.menu-896 a, #header_container #header_right #right_menu ul li.menu-896 a:visited, #header_container
+
+#header_right #right_menu ul li.menu-896 a:active {
+    width: 225px;
+}
+
+#header_container #header_right #right_menu ul li.menu-557 a, #header_container #header_right #right_menu ul li.menu-557 a:visited, #header_container
+
+#header_right #right_menu ul li.menu-557 a:active {
+    width: 144px;
+}
+
+#hblocks_container #hblock2 h2 {
+    margin-top: -5px;
+    padding-bottom: 28px;
+}
+
+.latest_news_block h2 {
+    height: 28px;
+    margin-bottom: 15px;
+    margin-left: -8px;
+}
+
+.taking_to_doctor_container .your_choices h2 {
+    height: 38px;
+    margin-bottom: 0;
+}
+
+.taking_to_doctor_container .getting_better h2 {
+    height: 34px;
+}
+
+.survey h2 {
+     height: 35px;
+ }
+
+ #header_container #header_right #right_menu ul li.menu-896_slctd {
+    height: 45px;
+    margin: 0 0 0 -7px;
+    width: 311px;
+}
+
+#header_container #header_left ul li.menu-551_slctd {
+    width: 300px;
+}
+
+.taking_to_doctor_container {
+    height: 210px;
+}
+
+#hblocks_container #hblock2,
+#hblocks_container #hblock3 {
+
+    height: 210px;
+}
+
+.survey .form-radios {
+    width: 350px;
+}
+
+.survey .form-radios .form-item {
+    height: 25px;
+    *height: 30px;
+    position: relative;
+    white-space:wrap;
+    width: 165px;
+}
+
+#ftmenu_container #ftmenu_left {
+    width: 600px;
+}
+
+#ftmenu_container #ftmenu_left ul li {
+    padding: 0 7px 0 0;
+}
+#ftmenu_left ul.menu li {
+    margin: 0 1px 0 0;
+}
+
+#welcome_left img{
+ width:160px;
+}
+
+.hjoin_network a {
+    color: #000000;
+    float: left;
+    font-weight: bold;
+    line-height: 16px;
+    margin: 8px 0 0 85px;
+    text-decoration: none;
+    width: 65px;
+}
+
+.tell_a_friend_div {    
+    width: 250px;
+}
+
+#newsstories_container #pagination {
+    width: 508px;
+}
+
+#pagination #pagination_left {
+    float: left;
+    width: 64px;
+}
+
+#pagination #pagination_left a, #pagination #pagination_left a:visited, #pagination #pagination_left a:active, 
+#pagination #pagination_right a, #pagination #pagination_right a:visited, #pagination #pagination_right a:active {
+    background: url("../images/pgn_pn_slctd.gif") scroll left top transparent;
+    color: #FFFFFF;
+    display: block;
+    font-weight: bold;
+    height: 20px;
+    padding: 9px 0 0 13px;
+    text-decoration: none;
+    width: 72px;
+}
+
+#pagination #pagination_left a:hover, 
+#pagination #pagination_right a:hover{
+	background: url("../images/pgn_pn_dsbld.gif") scroll left top transparent;
+}
+
+#pagination #pagination_right a, #pagination #pagination_right a:visited, #pagination #pagination_right a:active {
+    width: 70px;
+}
+
+#pagination #pagination_left .not_selected, #pagination #pagination_right .not_selected {
+    background: url("../images/pgn_pn_dsbld.gif") repeat scroll left top transparent;    
+    width: 70px;
+}
+
+#pagination #pagination_right .not_selected {
+    width: 63px;
+}
+
+#body_container #body_right #youtube_container {    
+    padding: 8px 2px 15px 6px;
+}
+.node-nav-advise .field-field-introduction .field-item p {
+    color: #7482B5;
+    width: 250px;
+}
+#main_container #body_container .decision_trees .node .right {
+    border: 3px solid #EEEEEE;
+    float: right;
+    margin: 0 0 0 0;
+    width: auto;
+}
+/* Override Screen.css */
+#modalContainer p {    
+    height: auto;    
+}
+#lightbox #imageDataContainer #bottomNavClose {
+	top: -440px;
+}
+#node-248 embed {
+	position: relative;
+	left: -29px;
+}
+
+/*.meet-mark p{
+    margin-left: -30px;
+}*/
+
+hr {
+    background: none repeat scroll 0 0 grey;
+    border: 0 none !important;
+    height: 2px;
+}
+#imageData #bottomNav #bottomNavClose {
+	margin-top: 20px;
+}
+#body_container .breadcrumb a {
+	color: #000000;
+}
+sup {
+    font-size: 9px;
+    position: relative;
+    top: -0.8em;
+    vertical-align: baseline;
+}
+
+#ftmenu_container #ftmenu_right ul li.italic {
+    font-style: italic;
+    padding: 25px 5px 0 0;
+}
+
+#ftmenu_container #ftmenu_left {
+    margin-left: 0px;
+    width: 607px;
+}
+
+#ftmenu_container #ftmenu_right {
+    float: right;
+    margin-right: -2px;
+    overflow: hidden;
+    width: 295px;
+}
+
+.error {
+    color: #EE5555;
+    display: block;
+    font-size: 10px;
+    
+    margin-left: 80px;
+    padding-bottom: 5px;
+    padding-top: 5px;
+}
+
+#custommod-tell-a-friend-form .form-item .error {
+    padding-right: 10px;
+    position: absolute;
+    right: 0;
+    top: 21px;
+}
+
+#custommod-tell-a-friend-form .form-item .error { 
+    margin-left: -38px;
+    padding-left: 145px;
+    width: 148px;
+}
+
+#custommod-tell-a-friend-form #edit-your-email-wrapper .error, #custommod-tell-a-friend-form #edit-friend-email-wrapper .error {
+    margin-left: 111px;
+    padding-right: 0;
+}
+
+#custommod-tell-a-friend-form #edit-message-wrapper span.error {
+    top: 144px;
+    width: 233px;
+}
+
+#custommod-tell-a-friend-form .form-item {
+    float: left;
+    height: 35px;
+    margin-bottom: 0;
+    margin-top: 13px;
+    position: relative;
+}
+
+.extlink_content {
+    color: #000000;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 12px;
+    margin-left: 10px;
+    margin-top: 63px;
+    padding-left: 10px;
+    padding-right: 10px;
+    width: 400px !important;
+}
+
+.survey .form-radios label {
+    color: #AA9663;
+    font-size: 1em;
+    font-weight: bold;
+    padding-left: 22px;
+    position: absolute;
+    *padding-top: 3px;
+}
+
+.survey .form-radios input {
+    left: 0;
+    margin-right: 4px;
+    position: absolute;
+    top: 0;
+    vertical-align: top;
+}
+
+#newsstories_container #pagination_mcontainer {
+    padding-left: 18px;
+    width: 345px;
+}
+
+#pagination {
+    overflow: hidden;
+    padding: 0;
+    width: 672px;
+}

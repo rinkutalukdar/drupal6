@@ -1,0 +1,87 @@
+<?php
+
+/**
+ * @file
+ * Implements some keyword based rules for the SEO Checker.
+ *
+ */
+
+/**
+ * Implementation of hook_menu().
+ * @return (array) menu items
+ */
+function keyword_rules_menu() {
+  $items['admin/settings/seo_checker/keyword_rules'] = array(
+    'title' => t('Keyword Rules'),
+    'description' => t('Settings for the keyword SEO rules module.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('keyword_rules_settings'),
+    'access arguments' => array('administer seo_checker configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+  );
+  return $items;
+}
+
+/**
+ * Defines the settings form.
+ */
+function keyword_rules_settings() {
+  drupal_add_js(drupal_get_path('module', 'keyword_rules') .'/js/admin.js');
+  $form = array();
+  $fields = array();
+  $fieldarr = content_fields();
+  foreach ($fieldarr as $label => $field) {
+    $fields[$label] = $field['field_name'];
+  }
+
+  $keyword_field_modules = array('cck' => 'cck');
+  if (module_exists('nodewords')) {
+    $keyword_field_modules['nodewords'] = 'Meta Tags';
+  }
+
+  if (count($keyword_field_modules) > 1) {
+    $form['keyword_rules_keywords_driver'] = array(
+      '#type' => 'radios',
+      '#title' => t('Keyword Field Provider Module'),
+      '#description' => t('Select what module to use to provide a field for keywords.'),
+      '#default_value' => variable_get('keyword_rules_keywords_driver', 'cck'),
+      '#options' => $keyword_field_modules,
+    );
+  } else {
+    $form['keyword_rules_keywords_driver'] = array(
+      '#type' => 'hidden',
+      '#value' => 'cck',
+    );
+  }
+
+  $form['keyword_rules_cck'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('CCK field selection'),
+    '#attributes' => array(
+      'id' => 'cck_settings',
+      'class' => 'keyword_rule_settings_fieldset',
+    ),
+  );
+  if (variable_get('keyword_rules_keywords_driver', 'cck') != 'cck') {
+    $form['keyword_rules_cck']['#attributes']['style'] = 'display:none;';
+  }
+  if (count($fields) > 0) {
+    $form['keyword_rules_cck']['keyword_rules_keywords_field'] = array(
+      '#type' => 'select',
+      '#title' => t('Field defining the keywords'),
+      '#default_value' => variable_get('keyword_rules_keywords_field', 'field_seo_keywords'),
+      '#description' => t('Select the field that defines the keywords to be used for the checks.'),
+      '#options' => $fields,
+    );
+  } else {
+    $form['keyword_rules_cck']['notice'] = array(
+      '#type' => 'item',
+      '#title' => t('Notice'),
+      '#value' => t('There are no CCK fields that could be used to hold keywords. Please create a cck field of type text for at least one content type.'),
+    );
+  }
+
+  return system_settings_form($form);
+}
+

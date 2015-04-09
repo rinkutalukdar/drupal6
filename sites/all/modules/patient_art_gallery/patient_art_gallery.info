@@ -1,0 +1,10 @@
+; $Id: patient_art_gallery.info,v 1.0 2010/12/06 14:00:10 Exp $
+name = Patient Art Gallery
+description = Manages Patient Art Gallery work
+core = 6.x
+
+; Information added by JnJ packaging script on 2010-12-06
+version = "6.3"
+core = "6.x"
+project = "patient_art_gallery"
+datestamp = "1257192000"

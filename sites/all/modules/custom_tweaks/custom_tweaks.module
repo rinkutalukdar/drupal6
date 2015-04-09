@@ -1,0 +1,177 @@
+<?php
+/**
+ * Implementation of hook_init().
+ */
+function custom_tweaks_init() {
+  if(variable_get("remember_me_cookie", 1800) > 0) {
+    // Change cookie/session id every few minutes
+    if(!$_COOKIE['current_time']){
+      setcookie("current_time", time());
+    }
+    $diff = time() - $_COOKIE['current_time'];
+    if (variable_get("remember_me_cookie", 1800) <= $diff) {
+      setcookie("current_time", time());
+      sess_regenerate();
+    }
+  }
+}
+/* Implementation of hook_menu */
+function custom_tweaks_menu(){
+  $items['userlogout'] = array(
+    'title' => 'Logging out. Please wait . . . .',
+    'page callback' => 'custom_tweaks_userlogout',
+    'type' => MENU_CALLBACK,
+    'access callback' => TRUE
+  );
+  return $items;
+}
+// Implementation of hook_menu_alter
+function custom_tweaks_menu_alter(&$items) {
+  // filter tips
+  if($items['filter/tips']){
+    unset($items['filter/tips']['access callback']);
+    $items['filter/tips']['access arguments'] = array('administer filters');
+  }
+  // Check permissions for taxonomy RSS feed.
+  if (module_exists('taxonomy')) {
+    $items['taxonomy/term/%']['access callback'] = 'custom_tweaks_taxonomy_display';
+    unset($items['taxonomy/term/%']['access arguments']);
+    // taxonomy autocomplete
+    if($items['taxonomy/autocomplete']) {
+      $items['taxonomy/autocomplete']['access callback'] = 'custom_tweaks_taxonomy_display';
+      unset($items['taxonomy/autocomplete']['access arguments']);
+    }
+  }
+  // /node page
+    $items['node'] = array(
+    'title' => 'Content',
+    'page callback' => 'custom_tweaks_nodedisplay',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'weight' => 20,
+  );
+  // user and its child forms
+  //$items['user']['access callback'] = FALSE;
+  //$items['user/password']['access callback'] = FALSE;
+  //$items['user/password/reset']['access callback'] = FALSE;
+  $items['logout']['page callback'] = 'custom_tweaks_logout';
+}
+
+// Functiion callback for /node
+function custom_tweaks_nodedisplay(){
+
+  if((request_uri() == "/print/node") ){
+  return TRUE;
+  }else if((request_uri() != "/") ){
+    global $base_url;
+    header("Location:".$base_url);
+    exit;
+  }
+  return TRUE;
+}
+
+function custom_tweaks_taxonomy_display() {
+  return user_access('access content') && user_access('access taxonomy RSS feeds');
+}
+
+function custom_tweaks_form_remember_me_admin_settings_alter(&$form, $form_state, $form_id){
+  $form['remember_me_display'] = array(
+    '#type' => 'select',
+    '#options' => array(0 => 'No', 1 => 'Yes'),
+    '#title' => t('Display this field in login forms'),
+    '#default_value' => variable_get('remember_me_display', 0),
+    '#weight' => 0
+  );
+  $options = drupal_map_assoc(
+    array(0, 1200, 1800, 3600, 10800, 21600),
+    'format_interval'
+  );
+  $form['remember_me_lifetime']['#options'] = $options;
+
+  $options = drupal_map_assoc(array(0, 1800),'format_interval');
+  $form['remember_me_cookie'] = array(
+    '#type' => 'select',
+    '#options' => $options,
+    '#title' => t('Change cookie periodically'),
+    '#description' => t('Set 0 sec to disable'),
+    '#weight' => 0,
+    '#default_value' => variable_get("remember_me_cookie", 1800),
+  );
+
+}
+// Remove Remember me checkbox if not set in Remember me module
+function custom_tweaks_form_alter(&$form, $form_state, $form_id) {
+  if(!variable_get('remember_me_display', 0)){
+    unset($form['remember_me']);
+  }
+  if($form_id == "custommod_tell_a_friend_form"){ 
+    $form['#validate'][] = 'custom_tweaks_custommod_tell_a_friend_form_validate';
+  }
+}
+
+function custom_tweaks_logout(){
+  global $user;
+  watchdog('user', 'Session closed for %name.', array('%name' => $user->name));
+  // Destroy the current session:
+  session_destroy();
+  // Only variables can be passed by reference workaround.
+  $null = NULL;
+  user_module_invoke('logout', $null, $user);
+  // Load the anonymous user
+  $user = drupal_anonymous_user();
+  drupal_goto("userlogout");
+}
+
+function custom_tweaks_userlogout(){
+  drupal_add_js("$(document).ready(function(){location.href='node';});", "inline");
+  return "";
+}
+/**
+ * Implementation of hook_user().
+ */
+function custom_tweaks_user($op, &$edit, &$user, $category = NULL) {
+  if ($category === NULL && $op == 'login') {
+    $remember_me = isset($edit['remember_me']) ? $edit['remember_me'] : NULL;
+    if (!isset($remember_me)) {
+      $user = user_save($user, array(
+          'remember_me' => 0,
+        ), NULL);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_theme
+ */
+function custom_tweaks_theme() {
+	return array(
+		'custommod_tell_a_friend_form' => array(
+			'arguments' => array('form' => NULL),
+			'template' => 'custommod-tell-a-friend-form',
+		),
+	);
+}
+
+function custom_tweaks_custommod_tell_a_friend_form_validate($form_values, $form_state) {
+         
+    if (custom_tweaks_validate_textarea(trim($form_values['#post']['message']))) {
+
+  			form_set_error('message', t("Please enter a valid message"));
+	}
+}
+/***
+ * Validate a field for tags and quotations
+ * @param string $field A string which needs to be validated for character between
+ */
+function custom_tweaks_validate_textarea($field) {
+  if(strpos($field, "<") !== FALSE) {
+    return TRUE;
+  }
+  elseif(strpos($field, "'") !== FALSE) {
+    return TRUE;
+  }
+  elseif(strpos($field, '"') !== FALSE) {
+    return TRUE;
+  }
+  return FALSE;
+}

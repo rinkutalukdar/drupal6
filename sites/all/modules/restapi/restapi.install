@@ -1,0 +1,12 @@
+<?php
+// $Id: restapi.install,v 1.9 2009/10/09 23:06:39 Ramkumar Exp $
+
+/**
+ * Install the restapi module
+ */
+function restapi_install() {	
+  db_query("UPDATE {system} SET weight = '-1' WHERE name = 'restapi'");	
+}
+
+function restapi_uninstall() {
+}

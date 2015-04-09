@@ -1,0 +1,11 @@
+name = 'SEO Compliance Checker'
+description = 'Checks the SEO compliance of a node at it's creation/modification'
+dependencies[] = nodewords
+package = "SEO Compliance Checker"
+core = 6.x
+; Information added by drupal.org packaging script on 2011-07-23
+version = "6.x-2.3"
+core = "6.x"
+project = "seo_checker"
+datestamp = "1311436020"
+

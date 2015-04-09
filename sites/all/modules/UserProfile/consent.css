@@ -1,0 +1,24 @@
+.filter { padding : 0 0 0 10px; }
+.filter ul{display:block;clear:both;margin:0;line-height:25px;} 
+.filter ul li{display:inline; float:left; margin-right:40px; }
+.filter ul.consentTitle li{ font-weight:bold;}
+.wid2751 { width:275px; }
+.wid275 { overflow : hidden; width:275px; }
+.wid117{text-align:left; width:117px;}
+.wid100{width:100px;}
+.wid50{width:50px; text-align:left;}
+
+.wid275f { width:275px; }
+
+* + html .filter ul{height:43px;} 
+* + html .wid275 { width:280px; }
+* + html .wid117{width:128px; text-align:center;} 
+* + html .wid100{width:107px;}
+* + html .wid50{width:57px; text-align:center;}
+
+.consentTitle li{ font-wieght:bold;}
+#user-consent-version-form #edit-submit{margin:10px 0 0 0;}
+#user-consent-version-form .form-radio{margin:0 0 0 5px;}
+.wid90 {float:left; margin-left:5px; }
+
+#user-consent-version-form #edit-consentURL-wrapper label { display:none; }

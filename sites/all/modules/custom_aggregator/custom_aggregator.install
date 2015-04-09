@@ -1,0 +1,83 @@
+<?php
+// $Id: custom_aggregator.install,v 1.14 2007/12/18 12:59:20 dries Exp $
+
+/**
+ * Implementation of hook_install().
+ */
+function custom_aggregator_install() {
+  // Create tables.
+  drupal_install_schema('custom_aggregator');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function custom_aggregator_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('custom_aggregator');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function custom_aggregator_schema() {
+
+  $schema['custom_aggregator_item'] = array(
+    'description' => t('Stores the individual items imported from feeds.'),
+    'fields' => array(
+      'iid'  => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => t('Primary Key: Unique ID for feed item.'),
+      ),
+      'fid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => t('The {aggregator_feed}.fid to which this item belongs.'),
+      ),
+      'title' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => t('Title of the feed item.'),
+      ),
+      'link' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => t('Link to the feed item.'),
+      ),
+      'author' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => t('Author of the feed item.'),
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => t('Body of the feed item.'),
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => t('Post date of feed item, as a Unix timestamp.'),
+      ),
+      'guid' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => t('Unique identifier for the feed item.'),
+      )
+    ),
+    'primary key' => array('iid'),
+    'indexes' => array('fid' => array('fid')),
+  );
+
+  return $schema;
+}

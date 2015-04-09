@@ -1,0 +1,19 @@
+#header {
+    height: 0px !important;
+}
+#admin-menu {
+  display: none;
+  height: 0px;
+}
+
+#modal-container{
+  margin: 0px 5px 0px 5px;
+}
+#cookieFooter{
+  width:800px;
+  float:left;
+}
+#cookieFooter .cookieButton {
+  float:right;
+  margin-right:65px;
+}

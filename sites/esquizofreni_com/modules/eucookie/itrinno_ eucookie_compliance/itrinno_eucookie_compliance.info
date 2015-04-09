@@ -1,0 +1,8 @@
+name = ITrInnoEUCookieCompliance
+description = This module aims at making the website compliant with the new EU cookie regulation
+dependencies[] = jquery_colorpicker
+core = 6.x
+version = 6.x-1.1
+
+
+

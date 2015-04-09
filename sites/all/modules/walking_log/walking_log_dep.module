@@ -1,0 +1,404 @@
+<?php
+
+function walking_log_menu(){
+	
+	
+	$items['user-confirmed'] = array(
+		'title' => t('Registration confirmed'),
+		'page callback' => 'user_registration_confirmed',
+		'type' => MENU_NORMAL_ITEM,
+		'access callback' => TRUE,
+	);
+	return $items;
+}
+
+function walking_log_theme(){
+	
+	  
+	  'registration_confirmed' => array(
+        'template' => 'walkinglog-registration-confirmed',
+        'arguments' => array('text' => NULL),
+      )
+}
+function walking_log_form_alter(&$form, &$form_state, $form_id){
+case 'user_login':
+			 $form['name']['#title'] = t('Email address');
+			 $form['name']['#size']=30;
+			 $form['name']['#description'] = '';
+			 $form['pass']['#size']=30;
+			 $form['pass']['#description'] = '';
+			 $form['submit']["#attributes"] = array (
+				'onclick' => 'return user_login_validate();',
+			);
+			break;
+		case 'user_pass':
+			//echo "<pre>";print_r($form);exit;
+			$form['name']['#title'] = t('Email address');
+			$form['name']['#size']=30;
+			$form['submit']['#value']=t('Send me my password');
+			 $form['submit']["#attributes"] = array (
+				'onclick' => 'return user_pass_validate();',
+			);
+			break;
+		case 'user_register':
+		//_user_password_dynamic_validation();
+		$form['user_profile']['consent']['#required'] = 0;
+		$form['user_profile']['consent']['#value']=1;
+		$form['user_profile']['consent']['#access']=FALSE;
+		$form['account']['#title']='';
+		$form['user_profile']['#title']='';
+		$form['account']['name']['#required']=0;
+		$form['account']['name']['#access'] = FALSE;
+		/**/$form['account']['mail']['#size'] = 30;
+		$form['account']['pass'] = array(
+				'#type' => 'password_confirm',
+				'#description' => t('To change the current user password, enter the new password in both fields.'),
+				'#size' => 30,
+		);
+		//_user_password_dynamic_validation();
+		$form['#redirect']='about-schizophrenia';
+		if(variable_get('configurable_timezones', 1) && isset($form['timezone'])) {
+			
+			date_timezone_user_form($form);
+			if (!isset($form['#after_build'])) {
+				$form['#after_build'] = array();
+			}
+			$form['#after_build'][] = 'date_timezone_user_form_after_build'; 
+			unset($form['timezone']['#type']);
+			unset($form['timezone']['#title']);
+		}
+		if (empty($form_state['storage']['step'])) {
+			$form['timezone']['#type']='fieldset';
+			$fields = array('mail','pass');
+			$form['#validate'] = array();
+			user_registration_multistep($form, $fields,$form_state, 'user_registration_form_1_handler');
+		}
+		else if($form_state['storage']['step']==1){
+			
+			$fields = array('timezone','aboutme','privacy_policy');
+			$form['#validate'] = array();
+			//$form['#submit'] = array(/*'user_registration_submit'*//*'user_register_submit'); 
+			
+			user_registration_multistep($form, $fields,$form_state, '');
+		}
+		
+		break;
+		case 'user_profile_form':
+			global $user;
+			$edit = get_object_vars($user);
+			$user_profile_form = user_profile_form_profile($edit,$user,'user_profile');
+			$form = array_merge($form, $user_profile_form);
+			$arr_values = user_registration_load_user_profile($user);
+			$form['account']['#title']='';
+			$form['user_profile']['#title']='';
+			$form['user_profile']['aboutme']['#default_value']=$arr_values['aboutme'];//'Patient';
+			$form['user_profile']['privacy_policy']['#default_value'] = $arr_values['privacy_policy'];
+			$form['theme_select']['themes']['#type'] = 'hidden';
+			$form['account']['mail']['#size']=25;
+			if (empty($form_state['storage']['step'])) {
+				$form['timezone']['#type']='fieldset';
+				$fields = array('mail','pass');
+				$form['#validate'] = array();
+				user_registration_multistep($form, $fields,$form_state, 'user_registration_form_1_handler','profile');
+				
+			}
+			else if($form_state['storage']['step']==1){
+				
+				$fields = array('timezone','aboutme','privacy_policy');
+				$form['#validate'] = array();
+				user_registration_multistep($form, $fields,$form_state, '','profile');
+			}
+			//echo "<pre>";print_r($form);exit;
+			break;
+}
+function custom_user_page(){
+	  global $user;
+	  if ($user->uid) {
+		menu_set_active_item('user/'. $user->uid);
+		return menu_execute_active_handler();
+	  }
+	  else {
+		return drupal_get_form('user_login');
+	  }
+}
+
+function change_pass_form(){
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email address'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['pass'] = array(
+    '#type' => 'password',
+    '#title' => t('Current Password'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['new_pass'] = array(
+    '#type' => 'password',
+    '#title' => t('New password'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['confirm_pass'] = array(
+    '#type' => 'password',
+    '#title' => t('Confirm password'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Change password'),'#attributes'=>array('onclick'=>'return user_change_pass_validate();'));
+
+  return $form;
+}
+
+function change_pass_form_submit($form, &$form_state){
+	
+	
+	$res = db_query("SELECT uid,COUNT(*) as COUNT FROM users WHERE (name='%s' OR mail='%s') AND pass='%s'",$form_state['values']['name'],$form_state['values']['name'],md5($form_state['values']['pass']));
+	$rows = db_fetch_array($res);
+	//echo "<pre>";print_r($rows);exit;
+	if($rows['COUNT'] > 0){	
+		if($form_state['values']['new_pass'] == $form_state['values']['confirm_pass']){
+			db_query("UPDATE users set pass='%s' WHERE uid=%d",md5($form_state['values']['new_pass']),$rows['uid']);	
+			drupal_set_message(t('Password changed successfully'),'changepassword');
+		}
+	}
+}
+function user_registration_multistep(&$form, $fields,&$form_state, $submit_handler,$formname='register') {
+  
+  // Hide all the elements we don't want.
+  foreach (element_children($form['account']) as $child) {
+    if ($child != 'buttons' && !in_array($child, $fields) ) {
+      $form['account'][$child]['#access'] = FALSE;
+    }
+  }
+  foreach (element_children($form['user_profile']) as $child) {
+    if ($child != 'buttons' && !in_array($child, $fields) ) {
+      $form['user_profile'][$child]['#access'] = FALSE;
+    }
+  }
+
+  // Hide the submit button.
+  if(!empty($submit_handler)){
+  	$form['submit']['#access'] = FALSE;
+	$form['timezone']['#access'] = FALSE;
+  	
+  	$form['user_profile']['next'] = array(
+	    '#type' => 'submit',
+	    '#value' => t('Next'),
+	    '#weight' => 999,
+	    '#submit' => array($submit_handler),
+	);
+	
+  }
+  else{
+	$form['timezone']['#access'] = TRUE;
+	$form['submit']['#access'] = TRUE;
+	if($formname=='register'){
+		$form['submit']['#validate'] = array('test_validate','user_register_validate','userAuthvalidate');
+		$form['submit']['#submit'] = array('custom_user_register_submit','userAuthsubmit');
+	}
+	else if($formname=='profile'){
+		
+		$form['submit']['#validate'] = array('test_validate','user_profile_form_validate','logintoboggan_user_edit_validate','userAuthvalidate');
+		$form['submit']['#submit'] = array('user_profile_form_submit','userAuthsubmit');
+	}
+  }
+  
+}
+function user_registration_form_1_handler($form, &$form_state) {
+  	$form_state['storage']['step'] = 1;
+	$form_state['values']['name'] = $form_state['values']['mail'];
+  	if($form_state['clicked_button']['#value']=='Step3'){
+		$form_state['storage']['step'] = 2;
+	}
+	user_registration_step_completed($form, $form_state);
+	store_multistep_form_values($form,$form_state);
+	$form_state['values'] = &$form_state['storage']['values'];	
+  	$form_state['rebuild'] = true;
+}
+function user_registration_step_completed($form, &$form_state){
+	if($form_state['values']['mail']!=""){
+		$form_state['storage']['values']['stepcomplete'] = 1;
+	}
+	if($form_state['values']['timezone']!=""){
+		$form_state['storage']['values']['stepcomplete'] = 2;
+	}
+}
+function store_multistep_form_values($form,&$form_state){
+	$arrval = array();
+
+	foreach($form_state['values'] as $key=>$val){
+	  	if(!is_array($form_state['values'][$key])){
+	  		$form_state['storage']['values'][$key] = $val;
+	  	}
+	}
+}
+function test_validate($form, &$form_state) {
+	//echo "<pre>".print_r($form_state);exit;
+	foreach($form_state['storage']['values'] as $key=>$val){
+	  	if(!empty($form_state['storage']['values'][$key])){
+	  		$form_state['values'][$key] = $form_state['storage']['values'][$key];
+	  	}
+	}
+	
+}
+function user_registration_load_user_profile(&$user) {
+  static $userProfile = null;
+  static $userFlag = TRUE;
+  /********** To avoid profile loading multiple times with in the a single request - For performance optimization ***********/
+  if ($user->uid && $userFlag && (!$userProfile || $userProfile->userId != $user->name)) {
+  	$data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $user->name));
+  	$auth_arr = unserialize($data);
+    if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  $authid=$auth_arr['AuthId'];
+  	  $authUserId=$auth_arr['AuthUserId'];
+  	  if ($authUserId) {
+  	  	$username = $authuserid;
+  	  }
+  	}
+  	else {
+  	  $authid = get_authid_by_sitename();
+  	  $username = $user->name;
+  	}
+  	// Get the user profile data
+  	
+  	$userProfile = fetch_user_profile($user->mail, $username, $authid, $authUserId);
+  	if ($userProfile && (($userProfile->userId) || ($userProfile->userId == 'null' && $authUserId == $userProfile->authUserId))) {
+  	  $user->{userProfileId} = $userProfile->userProfileId;
+  	  $user->siteId = $userProfile->siteId;
+  	  $user->mail = $userProfile->emailId;
+  	  $user->authId = $userProfile->authId;
+  	  $user->authUserId = $userProfile->authUserId;
+  	  $user->UserIdentityId = $userProfile->userIdentityId;
+  	  
+  	  foreach ($userProfile->userProfileInfo as $value) {
+  	  	if ($value->fieldName != '' && $value->fieldName != null) {
+   	  	  	$arr_values[$value->fieldName] = $value->fieldValue;
+   	
+  	  	}
+  	  }
+  	  return $arr_values;
+  	}
+  }
+}
+function user_edit_profile(){
+	global $user;
+	module_load_include('inc','user','user.pages');
+	return user_edit($user->uid);
+}
+function user_registration_confirmed(){
+	global $user;
+	if($user->uid!=0){
+		$text = '<p><b>'.t('You have registered your account. To edit your settings click on "My Account"').'</b></p><p>'.t('You can now continue to build your walking log by
+		creating a plan,logging a walk and tracking your progress.').'</p>';
+		return theme('registration_confirmed',$text);
+	}
+	else{
+		drupal_access_denied();
+	}
+}
+function custom_user_register_submit($form, &$form_state) {
+  global $base_url;
+  
+  $admin = user_access('administer users');
+
+  $mail = $form_state['values']['mail'];
+  $name = $form_state['values']['name'];
+  if (!variable_get('user_email_verification', TRUE) || $admin) {
+    $pass = $form_state['values']['pass'];
+  }
+  else {
+    $pass = user_password();
+  };
+  $notify = isset($form_state['values']['notify']) ? $form_state['values']['notify'] : NULL;
+  $from = variable_get('site_mail', ini_get('sendmail_from'));
+  if (isset($form_state['values']['roles'])) {
+    // Remove unset roles.
+    $roles = array_filter($form_state['values']['roles']);
+  }
+  else {
+    $roles = array();
+  }
+
+  if (!$admin && array_intersect(array_keys($form_state['values']), array('uid', 'roles', 'init', 'session', 'status'))) {
+    watchdog('security', 'Detected malicious attempt to alter protected user fields.', array(), WATCHDOG_WARNING);
+    $form_state['redirect'] = 'user/register';
+    return;
+  }
+  // The unset below is needed to prevent these form values from being saved as
+  // user data.
+  unset($form_state['values']['form_token'], $form_state['values']['submit'], $form_state['values']['op'], $form_state['values']['notify'], $form_state['values']['form_id'], $form_state['values']['affiliates'], $form_state['values']['destination']);
+
+  $merge_data = array('pass' => $pass, 'init' => $mail, 'roles' => $roles);
+  if (!$admin) {
+    // Set the user's status because it was not displayed in the form.
+    $merge_data['status'] = variable_get('user_register', 1) == 1;
+  }
+  $account = user_save('', array_merge($form_state['values'], $merge_data));
+  // Terminate if an error occured during user_save().
+  if (!$account) {
+    drupal_set_message(t("Error saving user account."), 'error');
+    $form_state['redirect'] = '';
+    return;
+  }
+  $form_state['user'] = $account;
+
+  watchdog('user', 'New user: %name (%email).', array('%name' => $name, '%email' => $mail), WATCHDOG_NOTICE, l(t('edit'), 'user/'. $account->uid .'/edit'));
+
+  // The first user may login immediately, and receives a customized welcome e-mail.
+  if ($account->uid == 1) {
+    drupal_set_message(t('Welcome to Drupal. You are now logged in as user #1, which gives you full control over your website.'));
+    if (variable_get('user_email_verification', TRUE)) {
+      drupal_set_message(t('</p><p> Your password is <strong>%pass</strong>. You may change your password below.</p>', array('%pass' => $pass)));
+    }
+
+    user_authenticate(array_merge($form_state['values'], $merge_data));
+
+    $form_state['redirect'] = 'user/1/edit';
+    return;
+  }
+  else {
+    // Add plain text password into user account to generate mail tokens.
+    $account->password = $pass;
+    if ($admin && !$notify) {
+      drupal_set_message(t('Created a new user account for <a href="@url">%name</a>. No e-mail has been sent.', array('@url' => url("user/$account->uid"), '%name' => $account->name)));
+    }
+    else if (!variable_get('user_email_verification', TRUE) && $account->status && !$admin) {
+      // No e-mail verification is required, create new user account, and login
+      // user immediately.
+      _user_mail_notify('register_no_approval_required', $account);
+      if (user_authenticate(array_merge($form_state['values'], $merge_data))) {
+        drupal_set_message(t('Registration successful. You are now logged in.'));
+      }
+      $form_state['redirect'] = 'user-confirmed';
+      return;
+    }
+    else if ($account->status || $notify) {
+      // Create new user account, no administrator approval required.
+      $op = $notify ? 'register_admin_created' : 'register_no_approval_required';
+      _user_mail_notify($op, $account);
+      if ($notify) {
+        drupal_set_message(t('Password and further instructions have been e-mailed to the new user <a href="@url">%name</a>.', array('@url' => url("user/$account->uid"), '%name' => $account->name)));
+      }
+      else {
+        drupal_set_message(t('Your password and further instructions have been sent to your e-mail address.'));
+        $form_state['redirect'] = '';
+        return;
+      }
+    }
+    else {
+      // Create new user account, administrator approval required.
+      _user_mail_notify('register_pending_approval', $account);
+      drupal_set_message(t('Thank you for applying for an account. Your account is currently pending approval by the site administrator.<br />In the meantime, a welcome message with further instructions has been sent to your e-mail address.'));
+      $form_state['redirect'] = '';
+      return;
+
+    }
+  }
+}

@@ -1,0 +1,101 @@
+	body
+		{
+			font-family: Helvetica, Arial;
+		}
+ 
+		.backdrop
+		{
+			position:absolute;
+			top:0px;
+			left:0px;
+			width:100%;
+			height:100%;
+			background:#000;
+			opacity: .0;
+			filter:alpha(opacity=0);
+			z-index:50;
+			display:none;
+		}
+ 
+ 
+
+.close {
+    float: right;
+    font: bold 20px verdana;
+    margin:0!important;
+    position: relative;
+    color:orange;
+    right: -26px;
+    top: -14px;
+	cursor: pointer;
+}
+#hsurvey_container #hsurvey_right #block-block-48 .content .form-checkboxes .form-item, .form-radios .form-item {
+    float: left;
+    margin-right: 15px;
+    margin-top: 0.4em;
+}
+#schizo-survey-form .form-submit {
+    background: url("../custom_schizo_survey/images/close-bg.jpg") no-repeat scroll 0 0 transparent;
+    border: medium none;
+    color: #FFFFFF;
+    font: 19px Arial,Helvetica,sans-serif;
+    height: 43px;
+    margin-top: 20px;
+    text-align: center;
+    width: 220px;
+	margin-left:-300px;
+}
+
+#survey_submit {
+    background: url("../custom_schizo_survey/images/close-bg.jpg") no-repeat scroll 0 0 transparent;
+  border: medium none;
+    color: #FFFFFF;
+    font: 19px Arial,Helvetica,sans-serif;
+    height: 30px;
+    text-align: center;
+    width: 93px;
+    margin-top: 20px;
+}
+/*
+input.form-radio{
+	vertical-align: bottom;
+	font: 20px Arial,Helvetica,sans-serif;
+} */
+#schizo-survey-form .form-item label {
+     color: #0D96D4;
+    display: block;
+    font: 20px Arial,Helvetica,sans-serif;
+}
+#schizo-survey-form .form-item label.option {
+    display: inline;
+    color:#585656 ;
+    font:bold 22px Arial,Helvetica,sans-serif;
+}
+.date-clear-block {
+    display: inline-block !important;
+}
+#schizo_survey tr td{
+   padding:5px 7px;
+   text-align:center;
+   border:1px solid;
+  
+}
+#schizo_survey thead{
+    font-weight:bold;
+    background-color:#EEEEEE;
+}
+#survey-overview-start-end-date-form{
+    width: 200px;
+}
+
+.survey_box {
+    background: none repeat scroll 0 0 #FFFFFF;
+    border: 10px solid #EDEDED;
+    display: none;
+    left: 30%;
+    padding: 10px 30px;
+    position: absolute;
+    top: 260px;
+    z-index: 51;
+	width: 420px;
+}

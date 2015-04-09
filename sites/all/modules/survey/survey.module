@@ -1,0 +1,2668 @@
+<?php
+function survey_init() {
+		$temp_session = session_id();
+		global $session_value, $base_url;
+		drupal_add_css(drupal_get_path('module', 'survey') .'/css/survey.css');
+		drupal_add_css('misc/farbtastic/farbtastic.css', 'module', 'all', FALSE);
+		drupal_add_js('misc/farbtastic/farbtastic.js');
+		
+		drupal_add_js(drupal_get_path('module', 'survey') .'/js/color_picker.js');
+		drupal_add_js(drupal_get_path('module', 'survey') .'/js/survey_admin.js');
+		
+		require_once(drupal_get_path('module', 'survey')."/survey.php");
+		require_once(drupal_get_path('module', 'survey')."/surveydata.php");
+		require_once(drupal_get_path('module', 'survey')."/includes/survey.inc");
+		if(!empty($_COOKIE['cookie-compliance-user-response	'])){
+		if (!isset($_COOKIE['survey_cookie'])){
+			$setCookie = setcookie('survey_cookie', $temp_session, (time()+(3600*24*variable_get('survey_cookie_lifetime',30))), '/');
+			if($setCookie){
+				$session_value = $temp_session;
+			}
+		} else {
+			$session_value = $_COOKIE['survey_cookie'];
+		}
+		_survey_modal_popup_load();
+		}
+}
+
+function survey_perm() {
+		return array('View and take surveys', 'Configure survey settings');
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function survey_menu() {
+		$items = array();
+		$access_config = array('Configure survey settings');
+		$access_content = array('access content');
+		/*
+		*	Creating menu for surverys
+		*/
+
+				$items['survey/%'] = array(
+				'title' => t('Survey'),
+				'access arguments' => array('View and take surveys'),
+				'page callback' => 'survey_page',
+				'page arguments' => array(1, $form_state),
+				'type' => MENU_CALLBACK,
+				'file' => 'includes/survey.inc',
+		);
+				$items['multipath/%'] = array(
+				'title' => t('Survey'),
+				'access arguments' => array('View and take multipath'),
+				'page callback' => 'multipath_survey_page',
+				'page arguments' => array(1, $form_state),
+				'type' => MENU_CALLBACK,
+				'file' => 'includes/survey.inc',
+		);
+				$items['surveytitle'] = array(
+				'title' => t('Survey'),
+				'access arguments' => array('View and take surveys'),
+				'page callback' => 'survey_title_page',
+				'type' => MENU_NORMAL_ITEM,
+				'file' => 'includes/survey.inc',
+				'expanded'=>1,
+		);
+				$items['surveytitle/multipath'] = array(
+				'page callback' => 'survey_multipath',
+				'title' => t('Multipath Survey'),
+				'type' => MENU_NORMAL_ITEM,
+				'access arguments' => array('View and take surveys'),
+				'file' => 'includes/survey.inc',
+		);
+
+		$items['modal-survey-title'] = array(
+				'title' => t('Surveys'),
+				'access arguments' => array('View and take surveys'),
+				'page callback' => 'modal_survey_title_page',
+				'type' => MENU_CALLBACK,
+		);
+
+		$items['result_image'] = array(
+				'access arguments' => array('View and take surveys'),
+				'page callback' => 'survey_result_graph',
+				'type' => MENU_CALLBACK,
+				'file' => 'includes/survey.inc',
+		);
+
+		$items['survey/%/retake'] = array(
+				'title' => t('Survey'),
+				'load arguments' => array(1),
+				'access arguments' => array('View and take surveys'),
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('survey_form'),
+				'type' => MENU_CALLBACK,
+				'file' => 'includes/survey.inc',
+		);
+		$items['survey/result'] = array(
+				'title' => t('Survey Results'),
+				'access arguments' => array('View and take surveys'),
+				'page callback' => 'survey_result',
+				'type' => MENU_CALLBACK,
+				'file' => 'includes/survey.inc',
+		);
+
+		$items['admin/settings/survey'] = array(
+				'title' => t('Survey Configuration'),
+				'description' => t('Configuration options for Survey'),
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('survey_admin_settings_form'),
+				'access arguments' => $access_config,
+				'file' => 'includes/survey.inc',
+		);
+
+		$items['admin/settings/survey/settings'] = array(
+				'title' => t('General'),
+				'description' => t('Survey Configuration'),
+				'type' => MENU_DEFAULT_LOCAL_TASK,
+				'weight' => 1,
+		);
+
+		$items['admin/settings/survey/configure_text_content'] = array(
+				'title' => t('Custom content'),
+				'description' => t(''),
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('survey_admin_text_content_form'),
+				'type' => MENU_LOCAL_TASK,
+				'access arguments' => $access_config,
+				'weight' => 4,
+				'file' => 'includes/survey.inc',
+		);
+
+		$items['admin/settings/survey/survey-page-settings'] = array(
+				'title' => t('Survey Page Settings'),
+				'description' => t(''),
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('survey_page_settings_form'),
+				'type' => MENU_LOCAL_TASK,
+				'access arguments' => $access_config,
+				'weight' => 4,
+				'file' => 'includes/survey.admin.inc',
+		);
+
+		$items['admin/settings/survey/survey-popover-settings'] = array(
+				'title' => t('Survey Popover settings'),
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('survey_popover_settings_form'),
+				'type' => MENU_LOCAL_TASK,
+				'access arguments' => $access_config,
+				'weight' => 4,
+				'file' => 'includes/survey.admin.inc',
+		);
+
+		$items['thank-you/survey'] = array(
+			'page callback' => 'survey_thank_you',
+			'type' => MENU_CALLBACK,
+			'access arguments' => array('View and take surveys'),
+			'file' => 'includes/survey.inc',
+		);
+		$items['no/question'] = array(
+			'page callback' => 'survey_no_question',
+			'type' => MENU_CALLBACK,
+			'access arguments' => array('View and take surveys'),
+			'file' => 'includes/survey.inc',
+		);
+
+		$items['survey/multipath-questions/%'] = array(
+			'title' => t('Multipath Survey'),
+			'page callback'	=> 'drupal_get_form',
+			'page arguments' => array('multipath_questions'),
+			'type' => MENU_CALLBACK,
+			'access arguments' => array('View and take surveys'),
+		);
+		$items['survey/multipath'] = array(
+			'title' => t('Multipath Questions'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('multipath_question_form'),
+			'type' => MENU_CALLBACK,
+			'access arguments' => array('access content'),
+		);
+		/*$items['formwizard/thanks'] = array(
+			'title' => t('Thanks!'),
+			'page callback' => 'formwizard_thanks',
+			'type' => MENU_CALLBACK,
+			'access arguments' => array('access_content'),
+		);*/
+		$items['survey/annoynomus_user'] = array(
+			'title' => t('Get User Details of Anonymous User'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('survey_annoynomus_user'),
+			'type' => MENU_CALLBACK,
+			'access arguments' => array('access content'),
+		);
+		return $items;
+}
+
+
+function display_form_elements($array,$curentPage,$form,$retake_answers) {
+	$qno = 1;
+	if($curentPage == 1) {
+		foreach($array as $key=>$values) {
+
+			$type = strtolower($values['Qtype']);
+
+			if($type == 'radiobutton') {
+				$type = 'radios';
+			} else if($type == 'dropdown') {
+				$type = 'dropdown';
+			}
+			else if($type == 'textbox'){
+			    $type = 'textfield';
+			}
+			else if($type == 'textarea'){
+			    $type = 'textarea';
+			}
+			else if($type == 'multiselect filtered list'){
+			    $type = 'multiselectfilteredlist';
+			}
+			else if($type == 'checkbox'){
+			    $type = 'checkboxes';
+			}
+			else if($type == 'source-target list'){
+			    $type = 'sourceTargetList';
+			} else if($type == 'multiselect list'){
+			    $type = 'multiselectfilteredlist';
+			}
+
+			else{
+			 //echo $type."<br>";
+			 //sourceTargetList
+			}
+
+			$label = "<strong>".$values['Qlbl']."</strong>";
+			$default_answer_array = explode("==",$retake_answers[$values['QId']]);
+			$default_answer = $default_answer_array[0];
+			$default_response = $default_answer_array[1];
+
+			/*$form[]['label'] = array(
+				'#prefix' => "<br><br><br><strong> $qno : </strong>",
+				'#value' => "$values['Qlbl']",
+			);*/
+			$temp_array_for_related_question = array();
+			//p($values);
+			$input = '';
+
+
+			for($c=0;$c < count($values['Answer']);$c++){
+
+			    if($type == 'checkboxes') {
+				   $strcheck[$c] = t($values['Answer'][$c]['test']);
+				}
+
+			    if($type == 'multiselectfilteredlist') {
+				   $strselect[$c] = t($values['Answer'][$c]['test']);
+				}
+
+			    if(($type == 'sourceTargetList') or ($type == 'filteredlist')) {
+				   $strsource[$c] = t($values['Answer'][$c]['test']);
+				}
+
+				if($type == 'radios'){
+				 $str[$values['Answer'][$c]['AnswerId']] = t(html_entity_decode($values['Answer'][$c]['test']));
+				}
+
+				if($type == 'dropdown'){
+				  $strdropdown[$values['Answer'][$c]['AnswerId']] = t(html_entity_decode($values['Answer'][$c]['test']));
+				}
+
+			    if(($type == 'radios') or ($type == 'dropdown')){
+
+					$temp_array_for_related_question[$values['Answer'][$c]['AnswerId']] = $values['Answer'][$c]['relatedQuestionId'];
+
+					if(!empty($values['Answer'][$c]['explanation']))
+						$div_storage .= '<div id="div_id_'.$values['Answer'][$c]['AnswerId'].'" style="display:none"><strong>'.$values['Answer'][$c]['explanation'].'</strong></div>';
+					else
+						$div_storage .= '<div id="div_id_'.$values['Answer'][$c]['AnswerId'].'" style="display:none"><strong>No Explanation of this Answer</strong></div>';
+
+					$input .= '<input type="text" name ="answer_name_'.$values['Answer'][$c]['AnswerId'].'" id="answer_id_'.$values['Answer'][$c]['AnswerId'].'" value="'.$values['Answer'][$c]['relatedQuestionId'].'" style="display:none">';
+				}
+			}
+
+			$isRequired = ($values['isMandatory']) ? TRUE : FALSE;
+			$fieldTitle = $qno.".".$values['Qlbl'];
+			$qno++;
+			if($type == 'radios') {
+				$form[]['answer'.$key] = array(
+					'#type' => $type,
+					'#options' => $str,
+					'#title' => $fieldTitle,
+					'#default_value'=> $default_answer,
+					//'#attributes'=>array('onclick'=>'enabled_button(),display_explanation(this),change_button_lavel(this);'),
+					'#suffix' => $div_storage,
+					'#prefix'=> $input,
+					'#required' => $isRequired,
+				);
+			}
+
+
+			else if($type == 'dropdown')  {
+				$form[]['answer'] = array(
+					'#type' => 'select',
+					'#title' => $fieldTitle,
+					'#options' => $strdropdown,
+					//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+					'#default_value'=> $default_answer,
+					//'#attributes'=>array('onchange'=>'enabled_button(),display_explanation(this),change_button_lavel(this);'),
+					'#suffix' => $div_storage,
+					'#prefix'=> $input,
+					'#required' => $isRequired,
+				);
+			}
+			else if($type == 'textfield')  {
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							'#title' => $fieldTitle,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							//'#options' => $str,
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+					);
+			}
+
+			else if($type == 'textarea')  {
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							'#title' => $fieldTitle,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							//'#options' => $str,
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+					);
+			}
+
+			else if($type == 'checkboxes')  {
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							'#title' => $fieldTitle,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							'#options' => $strcheck,
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+					);
+			}
+
+			else if($type == 'multiselectfilteredlist')  {
+					$form[]['answer'.$key] = array(
+							'#type' => 'select',
+							'#title' => $fieldTitle,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							'#options' => $strselect,
+							'#multiple' => 'true',
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+					);
+			}
+
+
+			else if($type == 'sourceTargetList')  {
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							'#title' => $fieldTitle,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							'#options' => $strsource,
+							'#multiple' => 'true',
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+					);
+			}
+
+
+			if(variable_get('explanation_configure',0))  {
+				$form[]['explanation_of_answer'] = array(
+					'#value' => t('<div id="explanation_of_answer_id"></div>'),
+				);
+			}
+			// if(!empty($values['associatedText'])) {
+				$form[]['explanation_answer'] = array(
+					'#title' => t('Explanation of Answer'),
+					'#type' => 'textfield',
+					//'#id' => 'explanation_answer',
+					//'#required' => true,
+					'#attributes'=>array('onkeyup'=>'check_values(this)','id'=>'explanation_answer'),
+					'#default_value'=> $default_response,
+				);
+			//}
+			$form[]['question_id'] = array(
+					'#value' => $values['QId'],
+					'#type' => 'hidden',
+			);
+			$form[]['related_question_id'] = array(
+					'#value' => $temp_array_for_related_question,
+					'#type' => 'hidden',
+			);
+			$flag = 0;
+			foreach ($values['Answer']	as $keys => $answers){
+			  if($answers[relatedQuestionId]!=0){
+			    $flag = 1;
+				 break;
+				}
+			}
+			if($flag == 1) break;
+			}
+			return $form;
+	}
+	else {
+
+		 $serial_number = 1;
+	     foreach($array as $key=>$values) {
+		   $type = strtolower($values['Qtype']);
+
+			//$type = strtolower($array['Qtype']);
+			if($type == 'radiobutton') {
+				$type = 'radios';
+			} else if($type == 'dropdown') {
+				$type = 'dropdown';
+			}
+			else if($type == 'textbox'){
+			    $type = 'textfield';
+			}
+			else if($type == 'textarea'){
+			    $type = 'textarea';
+			}
+			else if($type == 'multiselect filtered list'){
+			    $type = 'multiselectfilteredlist';
+			}
+			else if($type == 'checkbox'){
+			    $type = 'checkboxes';
+			}
+			else if($type == 'source-target list'){
+			    $type = 'sourceTargetList';
+			}
+			else if($type == 'filtered list'){
+			    $type = 'filteredlist';
+			} else if($type == 'multiselect list'){
+			    $type = 'multiselectfilteredlist';
+			}
+
+			else{
+			 //echo $type."<br>";
+			 $type;
+			 //sourceTargetList
+			}
+
+
+			$label = "<strong>".$values['Qlbl']."</strong>";
+			$default_answer_array = explode("==",$retake_answers[$values['QId']]);
+			$default_answer = $default_answer_array[0];
+			$default_response = $default_answer_array[1];
+
+			/*$form[]['label'] = array(
+				'#prefix' => "<br><br><br> <strong> ".$serial_number." :</strong>",
+				'#value' => " ",
+			);*/
+
+
+			$input = '';
+
+		    for($c=0;$c < count($values['Answer']);$c++){
+			    if($type == 'checkboxes') {
+				   $strcheck[$c] = t($values['Answer'][$c]['test']);
+				}
+
+			    if($type == 'multiselectfilteredlist') {
+				   $strselect[$c] = t($values['Answer'][$c]['test']);
+				}
+
+			    if(($type == 'sourceTargetList') or ($type == 'filteredlist')) {
+				   $strsource[$c] = t($values['Answer'][$c]['test']);
+				}
+
+				if($type == 'radios'){
+				  $str[$values['Answer'][$c]['AnswerId']] = t(html_entity_decode($values['Answer'][$c]['test']));
+				}
+
+				if($type == 'dropdown'){
+				  $strdropdown[$values['Answer'][$c]['AnswerId']] = t(html_entity_decode($values['Answer'][$c]['test']));
+				}
+
+			    if(($type == 'radios') or ($type == 'dropdown')){
+					$temp_array_for_related_question[$values['Answer'][$c]['AnswerId']] = $values['Answer'][$c]['relatedQuestionId'];
+					if(!empty($values['Answer'][$c]['explanation']))
+						$div_storage .= '<div id="div_id_'.$values['Answer'][$c]['AnswerId'].'" style="display:none"><strong>'.$values['Answer'][$c]['explanation'].'</strong></div>';
+					else
+						$div_storage .= '<div id="div_id_'.$values['Answer'][$c]['AnswerId'].'" style="display:none"><strong>No Explanation of this Answer</strong></div>';
+
+					$input .= '<input type="text" name ="answer_name_'.$values['Answer'][$c]['AnswerId'].'" id="answer_id_'.$values['Answer'][$c]['AnswerId'].'" value="'.$values['Answer'][$c]['relatedQuestionId'].'" style="display:none">';
+				}
+			}
+			$isRequired = ($values['isMandatory']) ? TRUE : FALSE;
+			$fieldTitle = $serial_number.".".$values['Qlbl'];
+			$serial_number ++;
+			if($type == 'radios') {
+				$form[]['answer'.$key] = array(
+					'#type' => $type,
+					'#options' => $str,
+					//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+					'#default_value'=> $default_answer,
+					//'#attributes'=>array('onclick'=>'enabled_button(),display_explanation(this),change_button_lavel(this);'),
+					'#suffix' => $div_storage,
+					'#prefix'=> $input,
+					'#required' => $isRequired,
+					'#title' => $fieldTitle,
+				);
+			}
+
+
+			else if($type == 'dropdown')  {
+				$form[]['answer'] = array(
+					'#type' => 'select',
+					'#options' => $strdropdown,
+					//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+					'#default_value'=> $default_answer,
+					//'#attributes'=>array('onchange'=>'enabled_button(),display_explanation(this),change_button_lavel(this);'),
+					'#suffix' => $div_storage,
+					'#prefix'=> $input,
+					'#required' => $isRequired,
+					'#title' => $fieldTitle,
+
+				);
+			}
+			else if($type == 'textfield')  {
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							//'#options' => $str,
+							//'#required'=>'true',
+							//'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+							'#title' => $fieldTitle,
+					);
+			}
+
+			else if($type == 'textarea')  {
+
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							//'#options' => $str,
+							//'#required'=>'true',
+							//'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+							'#title' => $fieldTitle,
+					);
+
+			}
+
+			else if($type == 'checkboxes')  {
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							'#options' => $strcheck,
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+							'#title' => $fieldTitle,
+					);
+			}
+
+			else if($type == 'multiselectfilteredlist')  {
+					$form[]['answer'.$key] = array(
+							'#type' => 'select',
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							'#options' => $strselect,
+							'#multiple' => 'true',
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+							'#title' => $fieldTitle,
+					);
+			}
+
+
+			else if($type == 'sourceTargetList')  {
+					$form[]['answer'.$key] = array(
+							'#type' => $type,
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							'#options' => $strsource,
+							'#multiple' => 'true',
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+							'#title' => $fieldTitle,
+					);
+			}
+
+			else if($type == 'filteredlist')  {
+					$form[]['answer'.$key] = array(
+							'#type' => 'sourceTargetList',
+							//'#prefix'=> '<span>&nbsp;<font color="red">*</font><span>',
+							'#options' => $strsource,
+							'#multiple' => 'false',
+							//'#required'=>'true',
+							'#default_value'=> $default_answer,
+							'#suffix' => $div_storage,
+							'#prefix'=> $input,
+							'#required' => $isRequired,
+							'#title' => $fieldTitle,
+					);
+			}
+
+
+
+			if(variable_get('explanation_configure',0))  {
+				$form[]['explanation_of_answer'] = array(
+					'#value' => t('<div id="explanation_of_answer_id"></div>'),
+				);
+			}
+
+			// if(!empty($array['associatedText'])) {
+				$form[]['explanation_answer'] = array(
+					'#title' => t('Explanation of Answer'),
+					'#type' => 'textfield',
+					//'#id' => 'explanation_answer',
+					//'#required' => true,
+					'#attributes'=>array('onkeyup'=>'check_values(this)','id'=>'explanation_answer'),
+					'#default_value'=> $default_response,
+				);
+			//}
+			$form[]['question_id'] = array(
+			'#value' => $values['QId'],
+			'#type' => 'hidden',
+			);
+
+			$form[]['related_question_id'] = array (
+				'#value' => $temp_array_for_related_question,
+				'#type' => 'hidden',
+			);
+
+
+		}
+		//print_r($form);
+		return $form;
+
+	}
+}
+
+
+
+function get_survey_details($surveyId) {
+			//echo arg(2);
+			//echo $surveyId;
+			//$surveyId = arg(2);
+			global $session_value, $itrinno_site_id;
+			$objSurveyData = new SurveyData();
+			$objSurveyData->SetServiceName('evaluation');
+			$objSurveyData->SetServiceIdentity('multipathforevaluation');
+			$objSurveyData->SetSiteId($itrinno_site_id);
+			$objSurveyData->SetMethod('get');
+			$objSurveyData->set_evaluation_id($surveyId);
+			$objSurveyData->set_operation_for_multipath('multipath');
+			$objSurvey = new survey();
+			$processedData = $objSurvey->get_evaluation_details($objSurveyData);
+			$question_array = array();
+			for($counter=0;$counter<count($processedData->Question);$counter++) {
+					$question_array[$processedData->Question[$counter]->QuestionId]['Qlbl'] = $processedData->Question[$counter]->DisplayText;
+					$question_array[$processedData->Question[$counter]->QuestionId]['Qtype'] = $processedData->Question[$counter]->RenderType;
+					$question_array[$processedData->Question[$counter]->QuestionId]['QId'] = $processedData->Question[$counter]->QuestionId;
+					$question_array[$processedData->Question[$counter]->QuestionId]['associatedText'] = $processedData->Question[$counter]->AssociatedText;
+					$question_array[$processedData->Question[$counter]->QuestionId]['isMandatory'] = $processedData->Question[$counter]->isMandatory;
+
+					for($i=0;$i<count($processedData->Question[$counter]->Answer);$i++) {
+						$question_array[$processedData->Question[$counter]->QuestionId]['Answer'][$i] =  array('test'=>$processedData->Question[$counter]->Answer[$i]->DisplayText,'AnswerId'=>$processedData->Question[$counter]->Answer[$i]->AnswerId,'relatedQuestionId'=>$processedData->Question[$counter]->Answer[$i]->relatedQuestionId,'explanation'=>$processedData->Question[$counter]->Answer[$i]->explanation);
+					}
+			}
+			$question_array['Total_record'] = count($processedData->Question);
+			$question_array['evaluation_name'] = $processedData->EvaluationText;
+			//p($question_array);
+			return $question_array;
+}
+
+function survey_retake_answers($surveyId) {
+		global $user;
+		$page = 1;
+		$question_per_page = 1000;
+		$objSurveyData = new SurveyData();
+		$objSurveyData->SetServiceName('evaluation');
+		$objSurveyData->SetServiceIdentity('retake');
+		$objSurveyData->SetMethod('get');
+		$objSurveyData->set_evaluation_id($surveyId);
+		$objSurveyData->set_current_page_no($page);
+		$objSurveyData->set_user_id($user->uid);
+		$objSurveyData->set_no_of_questions_per_page($question_per_page);
+
+		$objSurveyData->set_user_operation('retake');
+        $objSurvey = new survey();
+	    $processedData = json_decode($objSurvey->get_evaluation_retake_answers($objSurveyData));
+
+
+
+
+
+		//p($processedData->evaluationResult);
+		$answer_array = array();
+		for($counter=0;$counter<count($processedData->evaluationResult[0]->evaluationQuestionResult);$counter++) {
+				if($processedData->evaluationResult[0]->evaluationQuestionResult[$counter]->type == 'multipath') {
+					$answer_array[$processedData->evaluationResult[0]->evaluationQuestionResult[$counter]->questionId][$processedData->evaluationResult[0]->evaluationQuestionResult[$counter]->resultId] = $processedData->evaluationResult[0]->evaluationQuestionResult[$counter]->answerId;
+					$response_array[$processedData->evaluationResult[0]->evaluationQuestionResult[$counter]->questionId]['response'] = $processedData->evaluationResult[0]->evaluationQuestionResult[$counter]->responseText;
+				}
+		}
+		$tmp_array = array();
+		$temp = '';
+
+		$tmp = array();
+		foreach($answer_array AS $key=>$values) {
+			$max = max(array_keys($answer_array[$key]));
+			$tmp_array[$key] = $answer_array[$key][$max].'=='.$response_array[$key]['response'];
+		}
+
+		return $tmp_array;
+
+
+}
+/*
+*	Function to diaplay the titles for modal window
+*/
+function modal_survey_title_page(){
+
+	modalframe_child_js();
+
+/*
+    global $itrinno_site_id;
+    if(arg(1)){
+					$page = arg(1);
+				}else{
+					$page = 1;
+				}
+
+				$blockSurveyEvaluationData = new SurveyData();
+
+			$blockSurveyEvaluationData->SetServiceName('evaluation');
+			$blockSurveyEvaluationData->SetServiceIdentity('loadall');
+			$blockSurveyEvaluationData->SetSiteId($itrinno_site_id);
+			$blockSurveyEvaluationData->SetMethod('get');
+			$blockSurveyEvaluationData->set_current_page_no($page);
+			$blockSurveyEvaluationData->set_no_of_questions_per_page(5);
+			$blockSurveyEvaluationData->set_evaluation_type_name('Survey');
+
+			$blockSurvey = new survey();
+			$processedData = $blockSurvey->get_evaluations($blockSurveyEvaluationData);
+			$decodedData = json_decode($processedData);
+
+						$output = survey_display_textual_data('survey_textual_data_activesurvey','survey_flag_show_textual_data_activesurvey');
+
+	foreach($decodedData->Evaluation as $element){
+		$output.='<div style="width:100%; float:left"><a class="modalframe-exclude" href="survey/'.$element->EvaluationId.'">asd'.$element->DisplayName.'</a></div>';
+	}
+			if($page > 1){
+				$first = '<span style="margin:5px;">'.l('First', 'survey-title/1').'</span>';
+		$previous = '<span style="margin:5px;">'.l('Previous','survey-title/'.($page-1)).'</span>';
+			}
+
+			if($decodedData->TotalCount > 5){
+				for($i = 1; $i<=ceil($decodedData->TotalCount/5); $i++){
+			if($i == $page){
+				$pager.='<span style="margin:5px;">'.$i.'</span>';
+			}else{
+				$pager.='<span style="margin:5px;">'.l($i, 'survey-title/'.$i).'</span>';
+			}
+				}
+			}
+
+			if($page < ceil($decodedData->TotalCount/5)){
+
+				$next = '<span style="margin:5px;">'.l('Next', 'survey-title/'.($page+1)).'</span>';
+		$last = '<span style="margin:5px;">'.l('Last', 'survey-title/'.ceil($decodedData->TotalCount/5)).'</span>';
+			}
+
+			$pagination = $first.$previous.$pager.$next.$last;
+
+			return $output.$pagination;
+*/
+	return drupal_get_form('survey_form');
+
+}
+
+function initialize_survey_client() {
+		$obj_survey = new survey();
+		return $obj_survey;
+}
+
+function survey_help($path, $arg ) {
+		$obj_survey = initialize_survey_client();
+		$survey_id = arg(1);
+		switch ( $path ) {
+				case 'survey':
+				case 'survey/%/retake':
+						$err_msg='';
+						$survey_id = arg(1);
+
+						if (arg(1) == 'surveyofthemonth' ) {
+								$survey_id = variable_get('survey_of_month', '');
+								if (!$survey_id || $survey_id == 0 ) {
+										$op= '<p>'.t("Error! Could not retrieve title!").'</p>';
+								}
+						}
+
+						//$survey_content = $obj_survey->getsurveyTitle($survey_id, $err_msg);
+
+						if( strlen($err_msg) < 1 ) {
+								//$pub_date_display = variable_get('survey_addeddate_display', 0);
+								//if ( $pub_date_display && $survey_content['published_date'] ) {
+										//$pub_date = '&nbsp;<div class=\'survey-form-published_on\'><span class=\'survey-form-published_on-text\'>'.t('Published on ').'</span><span class=\'survey-form-published_on-date\'>'.date('m-d-Y',strtotime($survey_content['published_date'])).'</span></div>';
+										//$pub_date = '&nbsp;<div class=\'survey-form-published_on\'><span class=\'survey-form-published_on-text\'>&nbsp;|&nbsp;</span><span class=\'survey-form-published_on-date\'>'.date('Y-m-d',strtotime($survey_content['published_date'])).'</span></div>';
+								//}
+							$op = '';
+							//$op .= survey_display_textual_data('survey_textual_data_top','survey_flag_show_textual_data_top');
+								//$op .= '<h2 class=\'survey-form-title\'>'.$survey_content['display_title'].$pub_date.'</h2>';
+								$op .= survey_display_textual_data('survey_textual_data_abovedesc','survey_flag_show_textual_data_abovedesc');
+								$op .= '<div class=\'survey-form-description\'>'.$survey_content['description_text'].'</div>';
+								$op .= survey_display_textual_data('survey_textual_data_belowdesc','survey_flag_show_textual_data_belowdesc');
+						}
+						else
+								$op='<p>'.t("Error! Could not retrieve title!!!").'</p>';
+			return $op;
+		}
+}
+
+function survey_cron() {
+		//Update backend to flag expired surveys (those whose end date has exceeded current date) with status 0
+		/*
+		This 'DoCompletesurvey' method is not declare anywhere in the application. Its affecting the cron in ipp rules module. So commented this cron.  - Senthil
+		$err_msg='';
+		$obj_survey= initialize_survey_client();
+		$result= $obj_survey->DoCompletesurvey($err_msg);*/
+}
+
+function survey_block($op = 'list', $delta = 0, $edit = array()) {
+		global $session_value;
+    global $itrinno_site_id;
+		$obj_survey = initialize_survey_client();
+		$obj_survey= initialize_survey_client();
+
+		if ($op == 'list') {
+
+			$blocks[1]['info'] = t('Survey Block Form');
+
+			//Survey Blocks
+			$blocks[2]['info'] = t('Active Surveys');
+			// Not worth caching.
+			$blocks[2]['cache'] = BLOCK_NO_CACHE;
+			return $blocks;
+		}
+		else if ($op == 'view') {
+			$block = array();
+			switch ($delta) {
+
+			case 1:
+				$block['subject'] = t('Survey Title');
+				survey_block_contents($block);
+				return $block;
+			break;
+
+			case 2:
+			if(user_access('View and take surveys')){
+			$block['subject'] = survey_display_textual_data('survey_textual_title_activesurvey','survey_flag_show_textual_data_activesurvey');
+			$block['content'] = '<div id="survey-title-block">'.survey_title_page('block').'</div>';
+			return $block;
+			}
+
+			case 3:
+
+/* $output = '';
+						$err_msg='';
+						$block['subject'] = t('Past Surveys');
+
+						//getEvaluations method
+						//chnaged now $result = $obj_survey->getEvaluations(10,0,$session_value,1,$err_msg);
+						$output = survey_display_textual_data('survey_textual_data_pastsurvey','survey_flag_show_textual_data_pastsurvey');
+						$output .= '<br class=\'survey-line-break\' />';
+
+						if ( strlen($err_msg) < 1 ) {
+								$list_expired_survey = variable_get('survey_expired',array());
+								if ( !$list_expired_survey || $list_expired_survey == '' ) {
+										$output .= t('No records found');
+								}
+								foreach ( $list_expired_survey as $survey_key ) {
+										if( isset($result["GetEvaluationsResponse"]["Count"]) && $result["GetEvaluationsResponse"]["Count"] > 1 ) {
+												foreach ( $result["GetEvaluationsResponse"]["Evaluations"]["Evaluation"] as $element ) {
+														if ( $survey_key == $element["EvaluationId"] ) {
+																$output .= l($element["EvaluationName"], 'survey/result/' . $element["EvaluationId"]) . "<br />";
+														}
+												}
+										}
+										elseif( $result["GetEvaluationsResponse"]["Count"]==1 ) {
+												if ( $survey_key == $result["GetEvaluationsResponse"]["Evaluations"]["Evaluation"]["EvaluationId"] ) {
+														$output.= l($result["GetEvaluationsResponse"]["Evaluations"]["Evaluation"]["EvaluationName"], 'survey/result/' . $result["GetEvaluationsResponse"]["Evaluations"]["Evaluation"]["EvaluationId"]) . "<br />";
+												}
+										}
+								}
+						}
+						else {
+								$output.= $err_msg;
+						}
+						$block['content'] = $output;
+						return $block;
+*/
+			case 4:
+
+/* $output = '';
+						$err_msg = '';
+
+						$block['subject'] = t('Survey of the Month');
+						$survey_of_month = variable_get('survey_of_month','');
+						$output .= survey_display_textual_data('survey_textual_data_surveyofmonth','survey_flag_show_textual_data_surveyofmonth');
+						$output .= '<br class=\'survey-line-break\' />';
+						if( empty($survey_of_month) ) {
+								$output.= t("No records found");
+						}
+						else {
+								//getEvaluationTitle method
+								$details = $obj_survey->getEvaluationTitle($survey_of_month,$err_msg);
+								if ( strlen($err_msg)<1 ) {
+										$output .= l($details["display_title"], 'survey/surveyofthemonth') . "<br />";
+								}
+								else {
+										$output.= $err_msg;
+								}
+						}
+						$block['content'] = $output;
+						return $block;
+
+*/
+
+				}
+		}else if($op == 'save'){
+			switch($delta){
+				case 1:
+					db_query("UPDATE {blocks} SET visibility = %d WHERE module = '%s' AND delta = '%s'", 1, 'survey', $delta);
+				return $block;
+			}
+		}
+}
+
+function log_survey_err($method, $err, $type="other") {}
+
+function survey_session() {
+		return session_id();
+}
+
+function survey_theme(){
+		return array(
+				'survey_title' => array(
+						'arguments' => array('evaluation' => NULL, 'count' => NULL, 'type' => NULL,'operation' => NULL ),
+						'template' => 'survey-title',
+				),
+				'survey_multipath_title' => array(
+						'arguments' => array('evaluation' => NULL, 'count' => NULL, 'type' => NULL,'operation' => NULL,'array_of_survey'=>NULL),
+						'template' => 'survey-multipath-title',
+				),
+				'survey_class' => array('template' => 'survey-class'),
+				'survey_form_prefix' => array(
+										'arguments' => array('surveyData' => NULL, 'params' => NULL),
+										'template' => 'survey-form-prefix',
+									),
+
+				);
+}
+
+function survey_get_item($title, $path, $size = NULL) {
+		$options = array('attributes' => array('class' => 'survey-popover-style modalframe-exclude'. (!empty($size) ? ' survey-size['. $size .']' : '')));
+		return l($title, $path, $options);
+}
+
+function example_form(&$form_state) {
+
+	global $session_value;
+  global $itrinno_site_id;
+	$survey_id = 1;//arg(1);
+	$session = $session_value;
+	$survey_title = "";
+	$total_result = 0;
+	$survey_questions = array();
+	$survey_answers = array();
+	$can_retake = 0;
+	$err_msg = '';
+	$question_per_page = variable_get('survey_questions_per_page','5');
+	$totalQuestCountPerPage = variable_get('survey_questions_per_page','5');
+	$start_question = 0;
+	$t_submit = t('Submit');
+	$t_next = t('Next');
+
+	// Rdirect to result page if the survey has taken
+	survey_has_taken($survey_id);
+
+	if(isset($form_state['storage']['page'])) {
+		$page = $form_state['storage']['page'];
+		$itration = $form_state['values']['itration']+1;
+		$start_question = (($page-1) * $question_per_page);
+		$question_and_answer = '';
+	} else {
+		$page = 1;
+		$form_state['storage']['page'] = 1;
+		$start_question = 0;
+		$itration = 0;
+	}
+
+	$objSurveyData = new SurveyData();
+	$objSurveyData->SetServiceName('evaluation');
+	$objSurveyData->SetServiceIdentity('load');
+	$objSurveyData->SetSiteId($itrinno_site_id);
+	$objSurveyData->SetMethod('get');
+	$objSurveyData->set_evaluation_id($survey_id);
+	$objSurveyData->set_current_page_no($page);
+	$objSurveyData->set_no_of_questions_per_page($question_per_page);
+        $objSurvey = new survey();
+	$processedData = $objSurvey->get_evaluation_details($objSurveyData);
+	$total_question = $processedData->TotalCount;
+	//$objEvaluationData->SetServiceURL('http://172.16.5.217:8080/evaluationService/evaluation/'.$evaluationId.'/1/5');
+
+
+
+
+	//echo "total". $total_question."<br>";
+	$survey_questions = $objSurveyData->get_questions();
+	$survey_answers = $objSurveyData->get_answers();
+	$question_per_page = count($survey_questions);
+
+	if( $total_question <= $question_per_page ) {
+		$question_per_page = $total_question;
+	}
+	else {
+		//echo "($start_question + $question_per_page) > $total_question ? ($start_question + $question_per_page + 1) - $total_question:$question_per_page <br />";
+		$question_per_page = ($start_question + $question_per_page) > $total_question ? ($start_question + $question_per_page + 1) - $total_question : $question_per_page;
+	}
+
+	if (!$total_question ) {
+		return;
+	}
+
+	$submit_value = t('Submit');
+	if ( $total_question <= $question_per_page )
+		$submit_value = t('Submit');
+	else {
+		if ( $start_question + $question_per_page >= $total_question ) {
+			$submit_value = t('Submit');
+		}
+		else {
+			$submit_value = t('Next');
+		}
+	}
+
+	if(strlen($objSurveyData->get_error_message())<1) {
+
+		// $survey_content = $obj_survey->getEvaluationTitle($evaluation_id, $err_msg);
+		if( strlen($err_msg) < 1 ) {
+			$pub_date_display = variable_get('survey_addeddate_display', 0);
+			if ( $pub_date_display && $survey_content['published_date'] ) {
+			//$pub_date = '&nbsp;<div class=\'survey-form-published_on\'><span class=\'survey-form-published_on-text\'>'.t('Published on ').'</span><span class=\'survey-form-published_on-date\'>'.date('m-d-Y',strtotime($survey_content['published_date'])).'</span></div>';
+				$pub_date = '&nbsp;<div class=\'survey-form-published_on\'><span class=\'survey-form-published_on-text\'>&nbsp;|&nbsp;</span><span class=\'survey-form-published_on-date\'>'.date('Y-m-d',strtotime($survey_content['published_date'])).'</span></div>';
+			}
+			drupal_set_title($objSurveyData->get_evaluation_title().$pub_date);
+		}
+		$PageTotal =ceil($total_question/$totalQuestCountPerPage);
+		$form = array(
+			'#id' => 'mysurveyform',
+			'#attributes' => array('name' => 'survey_name'),
+			'#prefix' => '<div style="float:left;width:100%"><div class=\'survey-form-required\' style="float:left;width:49%">*<span class=\'survey-required_text\'> = Required Field</span></div>
+			<div style="float:left;width:49%" align="right">'.($processedData->location=='header'?(!empty($processedData->CustomContent)?$processedData->CustomContent:"Page {$page} of {$PageTotal}"):"Page {$page} of {$PageTotal}").'</div></div>',
+			'#suffix' => '<div>'.$processedData->location=='footer'?$processedData->CustomContent:'If location is footer the content will display here. No i am the test message for footer '.'</div>',
+			);
+		$form['style'] = array(
+			'#type' => 'markup',
+			/*'#value' => "<style>.survey-questioncolor { color: ".variable_get('survey_question_color','#000000')." } </style>",*/
+			'#value' => "",
+			);
+		$form['questions_count'] = array(
+			'#type' => 'hidden',
+			'#value' => count($survey_questions),
+			);
+		//echo "\$question_per_page : $question_per_page<br />";
+		//echo "<pre>";print_r($survey_questions);echo "</pre>";
+
+		for ( $inc = 0; $inc < $question_per_page; $inc++ ) {
+			$question = $survey_questions[$inc]['title'];
+			$question_id = $survey_questions[$inc]['id'];
+			$multiple = FALSE;
+			$answer_option = $survey_questions[$inc]['questionTypeName'];
+
+			foreach ( $survey_answers as $element ) {
+				if( $element['questionid']==$question_id ) {
+					$answer_id = $element['id'];
+					//echo "\$answer_id :$answer_id ,\$question_id: $question_id<br />";
+					$answer_title = htmlentities($element['title']);
+					$answers[$answer_id] = htmlentities($answer_title);
+				}
+			}
+			$form_req = $survey_questions[$inc]['required'] == 1 ? "&nbsp;<span class='survey-form-required'>*</span>":'';
+
+			//echo "{$start_question}+{$inc}<br />";
+			$question_title = '<span class=\'survey-questioncolor\'>'.($start_question+$inc+1) . '. '. t($question).'</span>'.$form_req;
+			$option_description = '';
+
+			$answerAttributeArray = array(
+				'answers' => $answers,
+				'question_title' => $question_title,
+				'option_description' => $option_description,
+				'required' => $survey_questions[$inc]['required'] == 1?TRUE:FALSE,
+				);
+
+			get_answer_option_type($form, $answer_option, $inc, $answerAttributeArray);
+
+			//echo "\$answer_option_type: $answer_option_type<br />";
+			$form['question_'.$inc] = array(
+				'#type' => 'hidden',
+				'#value' => $question_id,
+				);
+			$form['questiontitle_'.$inc] = array(
+				'#type' => 'hidden',
+				'#value' => $question,
+				);
+			$form['answer_type_'.$inc] = array(
+				'#type' => 'hidden',
+				//'#type' => 'textfield',
+				'#value' => $answer_option_type,
+				);
+			$form['required_'.$inc] = array(
+				'#type' => 'hidden',
+				'#value' => $survey_questions[$inc]['required'],
+				);
+			unset($answers);
+		}
+
+		$form['current_session'] = array(
+			'#type' => 'hidden',
+			'#value' => $session,
+			);
+		$form['next_start'] = array(
+			'#type' => 'hidden',
+			//'#type' => 'textfield',
+			'#value' => ($start_question+$inc),
+			);
+
+		$form['survey_id'] = array(
+			'#type' => 'hidden',
+			'#value' => $survey_id,
+			);
+		$form['selected_answers'] = array(
+			'#type' => 'hidden',
+			//'#type' => 'textfield',
+			'#value' => $question_and_answer,
+			);
+		$form['itration'] = array(
+			'#type' => 'hidden',
+			'#value' => $itration,
+			);
+
+		$form['totalpage'] = array(
+			'#type' => 'hidden',
+			'#value' => ceil($total_question/$totalQuestCountPerPage),
+			);
+		$form['retake'] = array(
+			'#type' => 'hidden',
+			'#value' => arg(2)=='retake'? '1':'0',
+			);
+		$textual_data_abovebutton = survey_display_textual_data('survey_textual_data_abovesubmit','survey_flag_show_textual_data_abovesubmit');
+		$textual_data_bottom = survey_display_textual_data('survey_textual_data_bottom','survey_flag_show_textual_data_bottom');
+		$form['submit'] = array(
+
+			'#type' => 'submit',
+			//'#attributes' => array('class' => 'survey-submit'),
+			'#id' => 'survey-submit',
+			'#value' => $submit_value,
+			'#prefix' => $textual_data_abovebutton,
+			'#suffix' => $textual_data_bottom,
+			);
+
+		if($page>1){
+			$form['survey_previous'] = array(
+
+			'#type' => 'submit',
+			//'#attributes' => array('class' => 'survey-submit'),
+			'#id' => 'survey_previous',
+			'#value' => 'Previous',
+			'#attributes' => array('onclick'=>'javascript: history.go(-1);return false;'),
+			'#prefix' => $textual_data_abovebutton,
+			'#suffix' => $textual_data_bottom,
+			);
+
+		}
+
+		//survey_form_myvalidate($form);
+		if (trim($ermsg)==""){
+		//$form = drupal_rebuild_form('survey_dynamic_form',$form,null,null);
+		//return $form;
+		}
+		return $form;
+	}
+	else {
+	drupal_set_message($err_msg, 'status',FALSE);
+	}
+return $form;
+}
+function example_form_validate($form, &$form_state) {}
+
+function example_form_submit($form, &$form_state) {
+
+	p($form_state); exit;
+	if($form_state['storage']['page'] < $form_state['values']['totalpage']) {
+		$form_state['rebuild'] = TRUE;
+		$form_state['storage'][$form_state['storage']['page']]['values'] = $form_state['values'];
+		$result = create_survey_evaluation($form_state);
+	//print_r($result);exit;
+		if ( $result->Message=='Success'){
+		drupal_set_message(t('Your Survey on the page number has been posted'), 'status',FALSE);
+		}
+		else{
+			form_set_error('submit', t('Oops! An error has occured, please try again later!'));
+		}
+		$form_state['storage']['page']++;
+	} else {
+		$result = create_survey_evaluation($form_state);
+		if ( $result->Message=='Success'){
+			drupal_set_message(t('Thanks for taking the survey'), 'status',FALSE);
+			survey_redirect($form_state['values']['survey_id']);
+			exit;
+		}
+		else
+			$err_msg= t('Oops! An error has occured, please try again later!');
+		}
+}
+
+function create_survey_evaluation($form_state) {
+// p($form_state); exit;
+ if($form_state['clicked_button']['#post']['op']!='Previous') {
+   $current_page_number = $form_state['values']['currentPageNo'];
+    global $itrinno_site_id;
+		$obj_survey = new survey();
+		$question_answer_array = array();
+		$session = $form_state['values']['current_session'];
+		$survey_id = $form_state['values']['survey_id'];
+		$question_per_page = variable_get('survey_questions_per_page','5');
+		$retake = $form_state['values']['retake'];
+		$start_question = ( $form_state['values']['itration'] ) ? ( $form_state['values']['itration']*$question_per_page ):0;
+
+		$question_and_answer = '';
+		if ( $form_state['values']['selected_answers'] ) {
+			$question_and_answer .= $form_state['values']['selected_answers'];
+		}
+
+		for ( $i = 0; $i < $form_state['values']['questions_count']; $i++ ) {
+			$question = 'question_' . $i;
+			$answer = 'answer_' . $i;
+			$answer_type = 'answer_type_' . $i;
+			if (array_key_exists($question, $form_state['values']) ) {
+				$question_value = $form_state['values'][$question];
+				$answer_value = $form_state['values'][$answer];
+				$answer_type_name = $form_state['values'][$answer_type];
+				//if (!empty($answer_value) ) {
+				if ( is_array($answer_value) ) {
+					$answer_value = array_unique($answer_value);
+					foreach ( $answer_value as $ans_cnt => $ans_value ){
+					if($ans_value == 0){
+						continue;
+					}
+						//echo "\$answer_type_name: $answer_type_name<br />";
+						$double_tiled = $answer_type_name == 'textfield' ? '~':''; // double tiled is used to indicate text filed value
+						$question_and_answer .= $question_value.":$double_tiled".$ans_value.",";
+					}
+				}
+				else {
+					$double_tiled = $answer_type_name == 'textfield' ? '~':'';
+					$question_and_answer .= $question_value.":$double_tiled".$answer_value.",";
+				}
+			}
+		}
+		//Build question-answer response array
+		$question_and_answer = rtrim($question_and_answer,",");
+		$item_list = split(",", $question_and_answer);
+		$i=0;
+
+		foreach ( $item_list as $key => $list ) {
+			$qa = split(":", $list);
+			if (is_array($qa) ) {
+					$ques = $qa[0];
+					$ans = $qa[1] ? $qa[1]:0;
+			}
+			else {
+					$ques = $qa;
+					$ans = '0';
+			}
+			$response_arr[$i] = "{$ques}~{$ans}";
+
+			$serviceReqObj->EvaluationResult->ResultInfo[$i]->Question_id = $ques;
+			$serviceReqObj->EvaluationResult->ResultInfo[$i]->Answer_id = $ans;
+			$serviceReqObj->EvaluationResult->ResultInfo[$i]->Score = 0;
+			if(is_numeric($ans)){
+				$serviceReqObj->EvaluationResult->ResultInfo[$i]->ResponseText = '';
+			}else{
+				$serviceReqObj->EvaluationResult->ResultInfo[$i]->Answer_id = 0;
+				$serviceReqObj->EvaluationResult->ResultInfo[$i]->ResponseText = ltrim($ans, '~');
+			}
+			$serviceReqObj->EvaluationResult->ResultInfo[$i]->type = '';
+			$i++;
+		}
+		$retake = ( $retake )? 1:0;
+		//Web Services call - CreateEvaluation method
+		//$err_msg= '';
+		global $user;
+		$serviceReqObj->EvaluationResult->Evaluation_id = $survey_id;
+		$serviceReqObj->EvaluationResult->UserSession_id = $session;
+		$serviceReqObj->EvaluationResult->User_id = $user->uid;
+		if(variable_get('user_first_last_configure',0)) {
+			if($user->uid > 0) {
+				$serviceReqObj->EvaluationResult->firstName = 'null';
+				$serviceReqObj->EvaluationResult->lastName = 'null';
+			} else {
+				$serviceReqObj->EvaluationResult->firstName = variable_get('annonymus_user_first_name',0);
+				$serviceReqObj->EvaluationResult->lastName = variable_get('annonymus_user_last_name',0);
+
+			}
+		} else {
+			$serviceReqObj->EvaluationResult->firstName = 'null';
+			$serviceReqObj->EvaluationResult->lastName = 'null';
+		}
+		$serviceReqObj->EvaluationResult->page = $current_page_number;
+		$serviceReqObj->EvaluationResult->type = 'null';
+
+
+		//echo '<pre>';
+		//print_r($form_state['values']);exit;
+		if($form_state['values']['op'] == 'Submit'){
+			$serviceReqObj->EvaluationResult->Status = TRUE;
+		}else{
+			$serviceReqObj->EvaluationResult->Status = FALSE;
+		}
+
+	//echo "<pre>";
+		//print_r($serviceReqObj);
+
+
+		$createEvaluationData = new SurveyData();
+		$createEvaluationData->SetServiceName('evaluation');
+		$createEvaluationData->SetServiceIdentity('create');
+		$createEvaluationData->SetSiteId($itrinno_site_id);
+		$createEvaluationData->SetMethod('post');
+
+
+		$createEvaluationData->SetPostedData($createEvaluationData->DataEncode($serviceReqObj));
+		//echo $createEvaluationData->DataEncode($serviceReqObj);
+		$result = $obj_survey->create_evaluation($createEvaluationData);
+		$_SESSION['result_id'] = $result->ResultId;
+		//p($result);
+		//echo $createEvaluationData->DataEncode($serviceReqObj); exit;
+		return $result;
+	}
+
+}
+function survey_has_taken($survey_id){
+	global $session_value, $user;
+        global $itrinno_site_id;
+	$objCheckData = new SurveyData();
+
+	if($user->uid == 0){
+		$objCheckData->set_user_session($session_value);
+	}else{
+		$objCheckData->set_user_id($user->uid);
+	}
+
+	$objCheckData->SetServiceName('evaluation');
+	$objCheckData->SetServiceIdentity('check');
+	$objCheckData->SetSiteId($itrinno_site_id);
+	$objCheckData->SetMethod('get');
+	$objCheckData->set_evaluation_id($survey_id);
+	//$objEvaluationData->SetServiceURL('http://172.16.5.217:8080/evaluationService/evaluation/'.$evaluationId.'/1/5');
+
+	$objCheck = new survey();
+	$hasTakedResult = $objCheck->get_evaluation_times_taken($objCheckData);
+	//$result= $obj_survey->getEvaluationTimesTaken($session_value, $evaluation_id, $err_msg);
+
+	//if ((strlen($err_msg)<1 && arg(2)!= 'retake' && $total>0) || ($status==0)) {
+	if ($hasTakedResult->TakenDate) {
+		//drupal_set_message('You Have already took the survey', 'status',FALSE);
+		return true;
+		//survey_redirect($survey_id);
+	}
+	return false;
+
+}
+
+function get_answer_option_type(&$form,$answer_option, $inc, $answerAttributeArray,$explanation_array,$question_id){
+	//print_r($answerAttributeArray);
+	//echo $question_id;
+	$div_for_explanation = '';
+	//$div_for_explanation = '<input type="hidden" id="edit-explanation-configure-val-1" value='.variable_get('explanation_configure',0).'>';
+	if(is_array($answerAttributeArray) and count($answerAttributeArray) > 0){
+		foreach($answerAttributeArray as $key=>$values) {
+		  if(is_array($values) and count($values) > 0){
+				foreach($values as $index=>$val) {
+					if($explanation_array[$index]) {
+						$div_for_explanation .='<div id="div_id_'.$index.'" style="display:none"><strong>'.$explanation_array[$index].'</strong></div>';
+					} else {
+						$div_for_explanation .='<div id="div_id_'.$index.'" style="display:none"><strong>No Explanation For This Answer</strong></div>';
+					}
+				}
+			}
+		}
+	}
+
+//p($answerAttributeArray);exit;
+if($answerAttributeArray['required'] == 1)
+  $required = true;
+else
+ $required = false;
+
+if(strtolower($answer_option) == 'radiobutton' || strtolower($answer_option) == 'singleselectlistbox' || strtolower($answer_option) == 'dropdown' || strtolower($answer_option) == 'textbox') {
+    if (empty($answerAttributeArray['default_value'][0])) {
+      $answerAttributeArray['default_value'][0] = '';
+    }
+  }
+  else if(strtolower($answer_option) == 'textarea'){
+    if(empty($answerAttributeArray['default_value'])) {
+       $answerAttributeArray['default_value'] = '';
+    }
+  }
+  else {
+    if (!is_array($answerAttributeArray['default_value'])) {
+      $answerAttributeArray['default_value'] = array(1 => '');
+    }
+  }
+   $def_value = array();
+   if($answerAttributeArray['default_value'][0] != ''){
+     $def_value = $answerAttributeArray['default_value'];
+   }
+   else{
+     $def_value = $answerAttributeArray['default_value'][1];
+   }
+
+	$explanation_settings = variable_get('explanation_configure',0);
+
+	switch ( strtolower($answer_option) ) {
+		case 'radiobutton':
+		$answer_option_type = 'radios';
+		$answer_option_display = 'survey-form-'.$answer_option_type.'-'.variable_get('survey_answer_display_type', 'ver');
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display,'onclick'=>'display_explanation_for_survey(this,1,'.$explanation_settings.','.$question_id.')'),
+			'#title' => $answerAttributeArray['question_title'],
+			'#options' => $answerAttributeArray['answers'],
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $required,
+			'#default_value' => $answerAttributeArray['default_value'][0],
+			'#prefix'=>$div_for_explanation,
+			'#suffix'=>t('<div id="explanation_of_answer_id_1_'.$question_id.'"></div>'),
+			);
+		break;
+
+		case 'checkbox':
+		$answer_option_type = 'checkboxes';
+		$answer_option_display = 'survey-form-radios-'.variable_get('survey_answer_display_type', 'ver');
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display,'onclick'=>'display_explanation_for_survey_for_checkbox(this,2,'.$explanation_settings.','.$question_id.','.count($answerAttributeArray['answers']).')'),
+			'#title' => $answerAttributeArray['question_title'],
+			'#options' => $answerAttributeArray['answers'],
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			'#default_value' => $answerAttributeArray['default_value'],
+			'#prefix'=>$div_for_explanation,
+			'#suffix'=>t('<div id="explanation_of_answer_id_2_'.$question_id.'"></div>'),
+			);
+		break;
+		case 'singleselectlistbox':
+		case 'dropdown':
+		$answer_option_type = 'select';
+		$answer_option_display = 'survey-form-'.$answer_option_type;
+
+		foreach($answerAttributeArray['answers'] as $key=>$value){
+		  $answerAttributeArray['answers'][$key] = html_entity_decode($value);
+		}
+
+
+		if(is_array($answerAttributeArray['answers'])){
+			$arr_select = array(''=>t('--Select--'));
+			$selectBoxOptions = $arr_select+$answerAttributeArray['answers'];
+		}else{
+			$selectBoxOptions = array();
+		}
+		$multiple = FALSE;
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display,'onchange'=>'display_explanation_for_survey(this,3,'.$explanation_settings.','.$question_id.')'),
+			'#title' => $answerAttributeArray['question_title'],
+			'#options' => $selectBoxOptions,
+			'#multiple' => $multiple,
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			'#default_value' => $answerAttributeArray['default_value'][0],
+			'#prefix'=>$div_for_explanation,
+			'#suffix'=>t('<div id="explanation_of_answer_id_3_'.$question_id.'"></div>'),
+
+			);
+		break;
+
+		case 'filtered list':
+		//print_r( $answerAttributeArray);
+
+		foreach($answerAttributeArray['answers'] as $key=>$value){
+		  $answerAttributeArray['answers'][$key] = html_entity_decode($value);
+		}
+
+
+		$ans_str = implode("'],['", $answerAttributeArray['answers']);
+		$ele['filter_'.$inc] = array(
+                    '#type' => 'textfield',
+					'#required' => $answerAttributeArray['required'],
+                    '#title' => $answerAttributeArray['question_title'],
+                    '#attributes' => array('class'=> $answer_option_display, 'onkeyup'=>'survey_filteredList("'.$inc.'", [[\''.$ans_str.'\']])'),
+                    '#id' => 'filter_inp_'.$inc
+                );
+
+		$answer_option_type = 'select';
+		$answer_option_display = 'survey-form-'.$answer_option_type;
+		$multiple = FALSE;
+		$option_description = t('Use ctrl to Select/Unselect multiple answers.');
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display, 'size'=>5,'onchange'=>'display_explanation_for_survey(this,4,'.$explanation_settings.','.$question_id.')'),
+			'#options' => $answerAttributeArray['answers'],
+			'#multiple' => $multiple,
+			'#title' => $answerAttributeArray['question_title'],
+			'#prefix' => $div_for_explanation . drupal_render($ele),
+			'#id' => 'filter_sel_'.$inc,
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			'#default_value' => $def_value,
+			'#suffix'=>t('<div id="explanation_of_answer_id_4_'.$question_id.'"></div>'),
+
+			);
+		break;
+		case 'multiselect filtered list':
+		//echo $answerAttributeArray['question_title']; exit;
+
+		foreach($answerAttributeArray['answers'] as $key=>$value){
+		  $answerAttributeArray['answers'][$key] = html_entity_decode($value);
+		}
+
+		$ans_str = implode("'],['", $answerAttributeArray['answers']);
+		$ele = array(
+         		'#type' => 'textfield',
+			    '#title' => $answerAttributeArray['question_title'],
+			    '#required' => $answerAttributeArray['required'],
+          		'#attributes' => array('class'=> $answer_option_display, 'onkeyup'=>'survey_filteredList("'.$inc.'", [[\''.$ans_str.'\']])','onchange'=>'display_explanation_for_survey(this,5,'.$explanation_settings.','.$question_id.')'),
+		  	    '#id' => 'filter_inp_'.$inc
+       	 );
+
+		$answer_option_type = 'select';
+		$answer_option_display = 'survey-form-'.$answer_option_type;
+		$multiple = TRUE;
+		$option_description = t('Use ctrl to Select/Unselect multiple answers.');
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#title' => $answerAttributeArray['question_title'],
+			'#attributes' => array('class'=> $answer_option_display, 'size'=>5,'onclick'=>'display_explanation_for_survey_for_multiple_box(this,5,'.$explanation_settings.','.$question_id.')'),
+			'#options' => $answerAttributeArray['answers'],
+			'#multiple' => $multiple,
+			'#prefix' => $div_for_explanation . drupal_render($ele),
+			'#id' => 'filter_sel_'.$inc,
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			'#default_value' => $def_value,
+			'#suffix'=>t('<div id="explanation_of_answer_id_5_'.$question_id.'"></div>'),
+
+			);
+		break;
+
+		case 'source-target list':
+
+		foreach($answerAttributeArray['answers'] as $key=>$value){
+		  $answerAttributeArray['answers'][$key] = html_entity_decode($value);
+		}
+
+		if($answerAttributeArray['required'] == 1)
+		  $req = "<span style='color:#E87830;'><small>&nbsp;*</small></span>";
+
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => 'sourceTargetList',
+			'#attributes' => array('class'=> $answer_option_display, 'size'=>5),
+			'#options' => $answerAttributeArray['answers'],
+			'#multiple' => $multiple,
+			'#prefix' => '<span style="font-weight:bold">'.$answerAttributeArray['question_title'].":</span>".$req,
+			'#title' => $answerAttributeArray['question_title'],
+			'#id' => 'filter_sel_'.$inc,
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			'#default_value' => $def_value,
+			//'#prefix'=>$div_for_explanation,
+			'#suffix'=>t('<div id="explanation_of_answer_id_6_'.$question_id.'"></div>'),
+
+			);
+		break;
+
+		case 'multiselectfilteredlist':
+
+		$answer_option_type = 'select';
+		$answer_option_display = 'survey-form-'.$answer_option_type;
+		$multiple = TRUE;
+		$option_description = t('Use ctrl to Select/Unselect multiple answers.');
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display),
+			'#title' => $answerAttributeArray['question_title'],
+			'#options' => $answerAttributeArray['answers'],
+			'#multiple' => $multiple,
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			'#default_value' => $answerAttributeArray['default_value'],
+			'#prefix'=>$div_for_explanation,
+			'#suffix'=>t('<div id="explanation_of_answer_id_7_'.$question_id.'"></div>'),
+
+			);
+		break;
+
+		case 'multiselectlistbox':
+		case 'multiselect':
+    case 'multiselect list':
+		$answer_option_type = 'select';
+		$answer_option_display = 'survey-form-'.$answer_option_type;
+		$multiple = TRUE;
+		$option_description = t('Use ctrl to Select/Unselect multiple answers.');
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display,'onclick'=>'display_explanation_for_survey_for_multiple_box(this,8,'.$explanation_settings.','.$question_id.')'),
+			'#title' => $answerAttributeArray['question_title'],
+			'#options' => $answerAttributeArray['answers'],
+			'#multiple' => $multiple,
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			'#default_value' => $answerAttributeArray['default_value'],
+			'#prefix'=>$div_for_explanation,
+			'#suffix'=>t('<div id="explanation_of_answer_id_8_'.$question_id.'"></div>'),
+
+
+			);
+			break;
+		case 'textbox':
+		$answer_option_type = 'textfield';
+		$answer_option_display = 'survey-form-'.$answer_option_type;
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display),
+			'#title' => $answerAttributeArray['question_title'],
+			'#default_value' => $answerAttributeArray['default_value'][0],
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' => $answerAttributeArray['required'],
+			);
+		break;
+      case 'textarea':
+        $answer_option_type = 'textarea';
+        $answer_option_display = 'survey-form-'.$answer_option_type;
+        $form['survey']['answer_'.$inc] = array(
+          '#type' => $answer_option_type,
+          '#attributes' => array('class'=> $answer_option_display),
+          '#title' => $answerAttributeArray['question_title'],
+          '#default_value' => $answerAttributeArray['default_value'][0],
+          '#description' => $answerAttributeArray['option_description'],
+	      '#required' => $answerAttributeArray['required'],
+        );
+        break;
+
+
+		default:
+		$answer_option_type = 'radios';
+		$answer_option_display = 'survey-form-'.$answer_option_type.'-'.variable_get('survey_answer_display_type', 'ver');
+		$form['survey']['answer_'.$inc] = array(
+			'#type' => $answer_option_type,
+			'#attributes' => array('class'=> $answer_option_display),
+			'#title' => $answerAttributeArray['question_title'],
+			'#options' => $answerAttributeArray['answers'],
+			'#description' => $answerAttributeArray['option_description'],
+			'#required' =>$answerAttributeArray['required'],
+			'#default_value' => $answerAttributeArray['default_value'][0],
+			'#prefix'=>$div_for_explanation,
+			'#suffix'=>t('<div id="explanation_of_answer_id_9_'.$question_id.'"></div>'),
+
+			);
+		break;
+	}
+
+
+}
+
+/*
+*	Function determine whether the survey have to be load in
+*	Modal popup or not and also specify the type of modal popup
+*/
+function _survey_modal_popup_load(){
+//echo variable_get('survey_modalpopup_display', 0);exit;
+	if(variable_get('survey_modalpopup_display', 0) == 1){
+	modalframe_parent_js();
+	if(user_access('View and take surveys')){
+	   
+	if(variable_get('survey_trigger_popup', 0) == 0){
+	    //echo '<BR> q : ' . $_GET['q'];
+	    //die;
+
+		$values = survey_page_load(array('page'=>$_GET['q']));
+		if($values){
+			foreach($values as $key) {
+			    if($key['render_type'] == 0) {
+				    drupal_add_js('(function ($) {					
+				    Drupal.behaviors.survey = function() {
+				    $(\'.survey-popover-style:not(.survey-processed)\').addClass(\'survey-processed\').'.variable_get('survey_popup_uievent', 'click').'(
+				    function()
+				    {
+				    modalframe_popup_show(this.href, this.className);return false;
+				    });};})(jQuery);', 'inline');
+			    } else {
+				    survey_back_js();
+				    drupal_add_js('(function ($) {
+				    Drupal.behaviors.survey = function() {
+				    $(\'.survey-popover-style:not(.survey-processed)\').addClass(\'survey-processed\').'.variable_get('survey_popup_uievent', 'click').'(
+				    function()
+				    {
+				    modalframe_popup_show(this.href, this.className);return false;
+				    });};})(jQuery);', 'inline');
+			    }
+			}
+		} else {
+/*		drupal_add_js('(function ($) {
+		Drupal.behaviors.survey = function() {
+		$(\'.survey-popover-style:not(.survey-processed)\').addClass(\'survey-processed\').'.variable_get('survey_popup_uievent', 'click').'(
+		function()
+		{
+		modalframe_popup_show(this.href, this.className);return false;
+		});};})(jQuery);', 'inline');
+*/	}
+	}else if(variable_get('survey_trigger_popup', 0) == 1){
+		$values = survey_page_load(array('page'=>$_GET['q']));
+		if($values){
+			foreach($values as $key){
+				if(!survey_has_taken($key['survey_id']) && ($key['render_type'] == 0)){
+					survey_back_js();
+					drupal_add_js('$(document).ready(function(){modalframe_popup_show(Drupal.settings.basePath+"survey/'.$key['survey_id'].'?renderType=popover", "survey-popover-style survey-size['.variable_get('survey_modalpopup_width',350).','.variable_get('survey_modalpopup_height', 400).'] survey-processed");return false;});', 'inline');
+				} else {
+				    survey_back_js();
+					drupal_add_js('$(document).ready(function(){modalframe_popup_show(Drupal.settings.basePath+"survey/'.$key['survey_id'].'?renderType=popover", "survey-popover-style survey-size['.variable_get('survey_modalpopup_width',350).','.variable_get('survey_modalpopup_height', 400).'] survey-processed");return false;});', 'inline');
+				}
+			}
+		}
+	}else if(variable_get('survey_trigger_popup', 0) == 2){
+
+	$values = survey_page_load(array('page'=>$_GET['q']));
+	if($values){
+		foreach($values as $key){
+			if(!survey_has_taken($key['survey_id']) && ($key['render_type'] == 0)){
+				survey_back_js();
+				drupal_add_js('$(document).ready(function(){setTimeout("modalframe_popup_show(Drupal.settings.basePath+\"survey/'.$key['survey_id'].'?renderType=popover\", \\"survey-popover-style survey-size['.variable_get('survey_modalpopup_width',350).','.variable_get('survey_modalpopup_height', 400).'] survey-processed\")", '.(variable_get('survey_popup_amount_of_time', '1')*1000).');return false;});', 'inline');
+			}
+			else {
+			    survey_back_js();
+				drupal_add_js('$(document).ready(function(){setTimeout("modalframe_popup_show(Drupal.settings.basePath+\"survey/'.$key['survey_id'].'?renderType=popover\", \\"survey-popover-style survey-size['.variable_get('survey_modalpopup_width',350).','.variable_get('survey_modalpopup_height', 400).'] survey-processed\")", '.(variable_get('survey_popup_amount_of_time', '1')*1000).');return false;});', 'inline');
+			}
+		}
+		}
+	}
+	//drupal_add_js(drupal_get_path('module', 'survey') .'/survey.js');
+}
+}	drupal_add_js(drupal_get_path('module', 'survey') .'/survey.js');
+}
+
+/*
+*	Function to get the latest Survey id
+*/
+function _get_latest_survey_id(){
+        global $itrinno_site_id;
+	$blockSurveyEvaluationData = new SurveyData();
+	$blockSurveyEvaluationData->SetServiceName('evaluation');
+	$blockSurveyEvaluationData->SetServiceIdentity('loadall');
+	$blockSurveyEvaluationData->SetSiteId($itrinno_site_id);
+	$blockSurveyEvaluationData->SetMethod('get');
+	$blockSurveyEvaluationData->set_current_page_no(1);
+	$blockSurveyEvaluationData->set_no_of_questions_per_page(1);
+	$blockSurveyEvaluationData->set_evaluation_type_name('Survey');
+	$blockSurvey = new survey();
+	$processedData = $blockSurvey->get_evaluations($blockSurveyEvaluationData);
+	$decodedData = json_decode($processedData);
+	foreach($decodedData->Evaluation as $element){
+		return $element->EvaluationId;
+	}
+
+}
+
+/*
+*	Format the survey page listing
+*/
+function survey_page_load_list(){
+	global $options;
+	$surveyResults = survey_page_load();
+	if(is_array($surveyResults)){
+		foreach($surveyResults as $surveyResultId => $surveyDetails){
+			if($surveyDetails['render_type'] == 1){
+				$renderType = t('Inline');
+			}else{
+				$renderType = t('Pop Over');
+			}
+			$rows[] = array('data'=>array(
+				$surveyDetails['page'],
+				$options[$surveyDetails['survey_id']],
+				$renderType,
+				l(t('Edit'), 'admin/settings/survey/survey-page-settings/edit/'. $surveyResultId),
+				l(t('Delete'), 'admin/settings/survey/survey-page-settings/delete/'. $surveyResultId, array('attributes'=>array('id'=>'survey-delete', 'onclick'=>'DelConfirm = confirm(\'Do you want to delete this record?\');if(DelConfirm){return true;}else{return false;}')))), 'id'=>$surveyResultId
+				);
+		}
+	}else{
+	$rows[]=array(array('data'=>'<font color="red">No Record found</font>', 'colspan'=>5, 'align'=>'center', 'id'=>0));
+	}
+	$header = array(t('Page'), t('Survey Title'), t('Render Type'), array('data' => t('Operations'), 'colspan' => 2));
+	$message = theme('table', $header, $rows);
+	return $message;
+
+}
+
+/*
+*	Retrieve the survey page details
+*/
+
+function survey_page_load($spid = ''){
+
+	if(empty($spid)){
+		
+		$result = db_query("SELECT * FROM {survey_page} WHERE status = '1'");
+		while($resultObj = db_fetch_object($result)){
+			$return[$resultObj->spid]['page'] = $resultObj->page;
+			$return[$resultObj->spid]['survey_id'] = $resultObj->survey_id;
+			$return[$resultObj->spid]['render_type'] = $resultObj->render_type;
+		}
+
+	}else if(is_array($spid)){
+	    
+		foreach($spid as $key => $value){
+			$condn[] = "{$key} = '{$value}'";
+		}		
+		$result = db_query("SELECT * FROM {survey_page} WHERE status = 1 AND ".implode(' AND ', $condn));
+		while($resultObj = db_fetch_object($result)){
+			$return[$resultObj->spid]['page'] = $resultObj->page;
+			$return[$resultObj->spid]['survey_id'] = $resultObj->survey_id;
+			$return[$resultObj->spid]['render_type'] = $resultObj->render_type;
+		}
+
+		if(empty($return)){
+			$return = false;
+		}
+		return $return;
+	}else{
+		return db_fetch_object(db_query('SELECT * FROM {survey_page} WHERE spid = %d', $spid));
+	}
+	return $return;
+}
+
+/*
+*	Delete the record from survey page records
+*/
+function survey_page_delete($spid = ''){
+	db_query("DELETE FROM {survey_page} WHERE spid = %d", $spid);
+	return true;
+}
+
+/*
+*	Retrieve the survey titles from the service
+*/
+
+function get_survey_titles($page = 1, $noOfQuestionsPerPage = 0) {
+
+			global $itrinno_site_id;
+			$blockSurveyEvaluationData = new SurveyData();
+
+			$blockSurveyEvaluationData->SetServiceName('evaluation');
+			$blockSurveyEvaluationData->SetServiceIdentity('loadall');
+			$blockSurveyEvaluationData->SetSiteId($itrinno_site_id);
+			$blockSurveyEvaluationData->SetMethod('get');
+			$blockSurveyEvaluationData->set_current_page_no($page);
+			$blockSurveyEvaluationData->set_no_of_questions_per_page($noOfQuestionsPerPage);
+			$blockSurveyEvaluationData->set_evaluation_type_name('Survey');
+
+			$dataObject = $blockSurveyEvaluationData;
+
+			if($noOfQuestionsPerPage == 0){
+				$blockSurveyEvaluationData->set_no_of_questions_per_page(1);
+				$blockSurveyEvaluationData->set_evaluation_type_name('Survey');
+				$blockNewSurvey = new survey();
+				$processedData = $blockNewSurvey->get_evaluations($blockSurveyEvaluationData);
+				$updatedCountDataObj = new SurveyData();
+				$decodedData = json_decode($processedData);
+				$noOfQuestionsPerPage = $decodedData->TotalCount;
+
+//				$updatedCountDataObj->SetServiceName('evaluation');
+//				$updatedCountDataObj->SetServiceIdentity('loadall');
+//				$updatedCountDataObj->SetSiteId($itrinno_site_id);
+//				$updatedCountDataObj->SetMethod('get');
+//				$updatedCountDataObj->set_current_page_no($page);
+//				$updatedCountDataObj->set_no_of_questions_per_page($noOfQuestionsPerPage);
+//				$updatedCountDataObj->set_evaluation_type_name('Survey');
+
+//				$dataObject = $updatedCountDataObj;
+			}
+
+             $blockSurvey = new survey();
+	         $processedData = $blockSurvey->get_evaluations($dataObject);
+             $decodedData = json_decode($processedData);
+	   /*echo '<BR> $decodedData <BR><pre>';
+		print_r($decodedData);
+		echo '</pre>';die;*/
+			return $decodedData;
+}
+
+function get_multipath_survey_titles($page = 1, $noOfQuestionsPerPage = 0) {
+			global $itrinno_site_id;
+			$blockSurveyEvaluationData = new SurveyData();
+
+			$blockSurveyEvaluationData->SetServiceName('evaluation');
+			$blockSurveyEvaluationData->SetServiceIdentity('multipath');
+			$blockSurveyEvaluationData->SetSiteId($itrinno_site_id);
+			$blockSurveyEvaluationData->SetMethod('get');
+			$blockSurveyEvaluationData->set_current_page_no($page);
+			$blockSurveyEvaluationData->set_no_of_questions_per_page($noOfQuestionsPerPage);
+			$blockSurveyEvaluationData->set_evaluation_type_name('Survey');
+			$blockSurveyEvaluationData->set_multipath_evaluation_operation('Multipath');
+
+
+			$dataObject = $blockSurveyEvaluationData;
+
+			if($noOfQuestionsPerPage == 0) {
+				$blockSurveyEvaluationData->set_no_of_questions_per_page(1);
+				$blockSurveyEvaluationData->set_evaluation_type_name('Survey');
+				$blockNewSurvey = new survey();
+				$processedData = $blockNewSurvey->get_evaluations($blockSurveyEvaluationData);
+				$updatedCountDataObj = new SurveyData();
+				$decodedData = json_decode($processedData);
+				$noOfQuestionsPerPage = $decodedData->TotalCount;
+			}
+
+                $blockSurvey = new survey();
+             $processedData = $blockSurvey->get_evaluations($dataObject);
+
+
+        $decodedData = json_decode($processedData);
+	return $decodedData;
+}
+
+/*
+*	Function to load the survey
+*/
+
+function get_survey($surveyId, $page, $pageSize){
+	global $session_value;
+	global $itrinno_site_id;
+	$session = $session_value;
+
+	$question_per_page = $pageSize;
+
+	//echo '$current_page'.$current_page.'<br />';
+	$objSurveyData = new SurveyData();
+	$objSurveyData->SetServiceName('evaluation');
+	$objSurveyData->SetServiceIdentity('load');
+	$objSurveyData->SetSiteId($itrinno_site_id);
+	$objSurveyData->SetMethod('get');
+	$objSurveyData->set_evaluation_id($surveyId);
+	$objSurveyData->set_current_page_no($page);
+	$objSurveyData->set_no_of_questions_per_page($question_per_page);
+
+	$objSurvey = new survey();
+	$processedData = $objSurvey->get_evaluation_details($objSurveyData);
+
+
+
+
+	$survey->header = 'This is my header';
+	$survey->titleDescriptionContent = survey_display_textual_data('survey_textual_data_abovedesc', 'survey_flag_show_textual_data_abovedesc');
+	$survey->descriptionFormContent = survey_display_textual_data('survey_textual_data_belowdesc', 'survey_flag_show_textual_data_belowdesc');
+	$survey->bottomAboveButtonContent = survey_display_textual_data('survey_textual_data_abovesubmit', 'survey_flag_show_textual_data_abovesubmit');
+	$survey->bottomBelowButtonContent = survey_display_textual_data('survey_textual_data_bottom', 'survey_flag_show_textual_data_bottom');
+	$survey->data = $processedData;
+	$survey->answers = $objSurveyData->get_answers();
+	$survey->questions = $objSurveyData->get_questions();
+	$survey->footer = 'This is my footer';
+
+	$output = json_encode($survey);
+	return $output;
+
+}
+
+
+/*
+*	Function to load the survey specific to the particular survey
+*/
+function survey_load($surveyId, $page=1, $pageSize = 0){//print_r($_POST);exit;
+	//echo 'asd'; exit;
+	global $session_value, $itrinno_site_id;
+
+	$session = $session_value;
+
+	if(isset($_POST['op'])) {
+		if($_POST['difference_flag'] && $_POST['difference_flag']=='multipath_form') {
+			$form_id = 'multipath_survey_form';
+		} else {
+			$form_id = 'survey_form';
+		}
+		$form_state = array('storage' => NULL, 'submitted' => FALSE);
+		if (isset($_POST['form_id']) && $_POST['form_id'] == $form_id && !empty($_POST['form_build_id'])) {
+		  $form = form_get_cache($_POST['form_build_id'], $form_state);
+		}
+		$form['#post'] = $_POST;
+			if(empty($surveyId))
+			$surveyId = $_POST['survey_id'];
+
+		drupal_process_form($form_id, $form, $form_state);
+
+		$formError = form_get_errors();
+	}
+
+	if(arg(1)!='multipath-questions') {
+
+			if($page == 1 && isset($_POST['currentPageNo']) && strtolower($_POST['op']) == 'next'){
+				$page = is_array($formError)?$_POST['currentPageNo']:$_POST['currentPageNo']+1;
+			}else if($page == 1 && isset($_POST['currentPageNo']) && strtolower($_POST['op']) == 'previous'){
+				$page = is_array($formError)?$_POST['currentPageNo']:$_POST['currentPageNo']-1;
+			}else if(strtolower($_POST['op']) == 'submit'){
+				$page = is_array($formError)?$_POST['currentPageNo']:'';
+				$page = 1;
+				if($_POST['difference_flag'] && $_POST['difference_flag']=='multipath_form') {
+					$question_per_page = 1;
+				} else {
+					$question_per_page = 5;
+				}
+			}
+
+			//End of Removeing Code
+			if($pageSize == 0){
+				if($_POST['difference_flag'] && $_POST['difference_flag']=='multipath_form') {
+					$pageSize = 1;
+				} else {
+					$pageSize = variable_get('survey_questions_per_page','5');
+				}
+			}
+			$question_per_page = $pageSize;
+
+			$HasTaken = survey_has_taken($surveyId);
+			if(arg(2) == '') {
+				if($HasTaken){
+					$survey->status = 1;
+					$survey->statusMessage = t('Already Taken');
+				}else{
+		//			$question_per_page = 100;
+					//echo '$current_page'.$current_page.'<br />';
+					$objSurveyData = new SurveyData();
+					$objSurveyData->SetServiceName('evaluation');
+					$objSurveyData->SetServiceIdentity('load');
+					$objSurveyData->SetSiteId($itrinno_site_id);
+					$objSurveyData->SetMethod('get');
+					$objSurveyData->set_evaluation_id($surveyId);
+					$objSurveyData->set_current_page_no($page);
+					$objSurveyData->set_no_of_questions_per_page($question_per_page);
+
+					$objSurvey = new survey();
+					$processedData = $objSurvey->get_evaluation_details($objSurveyData);
+					if($objSurveyData->get_error_message()){
+						$survey->statusMessage = $objSurveyData->get_error_message();
+						$survey->status = 4;
+					}else{
+						$survey->data = $processedData;
+						$survey->answers = $objSurveyData->get_answers();
+						$survey->questions = $objSurveyData->get_questions();
+						$survey->status = 0;
+						$survey->statusMessage = t('Has not taken');
+					}
+				}
+			} else {
+					$objSurveyData = new SurveyData();
+					$objSurveyData->SetServiceName('evaluation');
+					$objSurveyData->SetServiceIdentity('load');
+					$objSurveyData->SetSiteId($itrinno_site_id);
+					$objSurveyData->SetMethod('get');
+					$objSurveyData->set_evaluation_id($surveyId);
+					$objSurveyData->set_current_page_no($page);
+					$objSurveyData->set_no_of_questions_per_page($question_per_page);
+
+					$objSurvey = new survey();
+					$processedData = $objSurvey->get_evaluation_details($objSurveyData);
+					if($objSurveyData->get_error_message()){
+						$survey->statusMessage = $objSurveyData->get_error_message();
+						$survey->status = 4;
+					}else{
+						$survey->data = $processedData;
+						$survey->answers = $objSurveyData->get_answers();
+						$survey->questions = $objSurveyData->get_questions();
+						$survey->status = 0;
+						$survey->statusMessage = t('Has not taken');
+					}
+			}
+
+			$survey->header = 'This is my header';
+			$survey->titleDescriptionContent = survey_display_textual_data('survey_textual_data_abovedesc', 'survey_flag_show_textual_data_abovedesc');
+			$survey->descriptionFormContent = survey_display_textual_data('survey_textual_data_belowdesc', 'survey_flag_show_textual_data_belowdesc');
+			$survey->bottomAboveButtonContent = survey_display_textual_data('survey_textual_data_abovesubmit', 'survey_flag_show_textual_data_abovesubmit');
+			$survey->bottomBelowButtonContent = survey_display_textual_data('survey_textual_data_bottom', 'survey_flag_show_textual_data_bottom');
+			$survey->footer = 'This is my footer';
+			$survey->surveyId = $surveyId;
+			$survey->page = $page;
+
+			$output = json_encode($survey);
+		//	$output = json_decode($output);
+		//	echo "<pre>";
+		//	print_r($output);
+		//	exit;
+			return $output;
+	}
+
+////	return $surveyId;
+}
+
+
+
+/*
+*	Function to get the survey ID associate with this page
+*/
+function get_survey_id($surveyRenderType = ''){
+	switch($surveyRenderType){
+
+		case 'Popover':
+			$params['render_type'] = 0;
+		break;
+
+		case 'inline':
+			$params['render_type'] = 1;
+		break;
+
+	}
+
+	$params['page'] = $_GET['q'];
+
+	$suveyIds = survey_page_load($params);
+
+	if($suveyIds){
+		foreach($suveyIds as $key){
+			$surveyId = $key['survey_id'];
+		}
+	}
+
+	return $surveyId;
+}
+
+
+function update_survey_block_page($page, $renderType = 0){
+	 $module = 'survey';
+	 $delta = '1';
+
+	$edit = db_fetch_array(db_query("SELECT pages, region FROM {blocks} WHERE module = '%s' AND delta = '%s'", $module, $delta));
+	$region = empty($edit['region'])?'content':$edit['region'];
+	$pathFound = drupal_match_path($page, $edit['pages']);
+	if(!$pathFound && $renderType == 1){
+		$pagesArray[] = $edit['pages'];
+		$pagesArray[] = $page;
+		$pages = implode("\n", $pagesArray);
+		db_query("UPDATE {blocks} SET pages = '%s', region = '%s' WHERE module = '%s' AND delta = '%s'", $pages, $region, $module, $delta);
+	}else if($pathFound && $renderType == 0){
+		$pages = str_replace($page, '', $edit['pages']);
+		db_query("UPDATE {blocks} SET pages = '%s', region = '%s' WHERE module = '%s' AND delta = '%s'", $pages, $region, $module, $delta);
+	}
+}
+
+
+/*
+*	Function to get the survey form block contents
+*/
+function survey_block_contents(&$block){
+	$survey_id = get_survey_id('inline');
+	$survey = survey_load($survey_id);
+	if($survey){
+		$surveyResult = json_decode($survey);
+
+		$block['subject'] = t('Survey Title');
+		//echo $surveyResult." <br>Status".$surveyResult->status;exit;
+		if($surveyResult->status == 1){ 
+			//$block['content'] = survey_result_value($survey_id);
+			//global $blockTitle;
+			//$block['subject'] = $blockTitle;
+			$formContent = drupal_get_form('survey_form', $surveyResult);
+			global $blockTitle;
+			$block['content'] = $formContent;			
+		}else{
+			$formContent = drupal_get_form('survey_form', $surveyResult);
+			global $blockTitle;
+			$block['content'] = $formContent;
+			$block['subject'] = $blockTitle;
+		}
+	}
+
+}
+
+
+
+/*
+*	Function to display the text after takeing the survey
+*/
+function survey_result_value($survey_id){
+	switch(variable_get('survey_page_redirect', 0)){
+
+		case 0:
+		/*	Redirect to thank you page where we display the thank you
+		*	Message Display by the admin
+		*/
+			$message = survey_thank_you(FALSE);
+		break;
+
+		case 1:
+		/*	Redirect to Survey result page
+		*/
+			$message = survey_result(FALSE);
+		break;
+
+		case 2:
+		/*	Redirect to relative url or custome url
+		*/
+			$variable = variable_get('survey_redirect_custom_url', '');
+			if(!empty($variable)){
+				drupal_goto($variable);exit;
+			}else{
+				drupal_set_message(t('You will be redirecting a page which is not set by admin'), 'error',FALSE);
+				drupal_goto('survey/result/' . $survey_id);exit;
+			}
+		break;
+
+	}
+
+	return $message;
+}
+
+
+
+function survey_back_js(){
+	drupal_add_js('function noBack(){window.history.forward()};
+noBack();
+window.onload=noBack;
+window.onpageshow=function(evt){if(evt.persisted)noBack()};
+window.onunload=function(){void(0)};', 'inline');
+}
+
+
+
+function multipath_question_form($form_state) {
+	global $base_url,$user;
+	drupal_set_title('Multipath Questions');
+	$get_configure_variable = variable_get('user_first_last_configure',0);
+	if(variable_get('annonymus_user_session_id',0) != session_id())  {
+		//variable_del('user_first_last_configure');
+		variable_del('annonymus_user_first_name',0);
+		$get_user_first_name = variable_get('annonymus_user_first_name',0);
+	} else  {
+		$get_user_first_name = variable_get('annonymus_user_first_name',0);
+	}
+	if($user->uid ==0 && $get_configure_variable && empty($get_user_first_name)) {	   
+		drupal_goto('survey/annoynomus_user/'.arg(2).'/2');
+		exit;
+	}
+	// Replced into init function.
+	//drupal_add_js(drupal_get_path('module', 'survey') .'/js/survey_admin.js');
+	if (empty($form_state['storage']['step'])) {
+     $step = 1;
+	 $form_state['storage']['step'] = $step;
+    } else {
+	$step = $form_state['storage']['step'];
+	}
+	//echo "step".$step," <br />";
+		$flag = false;
+		if($step == 1) {
+			$survey_id = arg(2);
+			$get_survey_details_array = get_survey_details($survey_id);
+			$total_page = $get_survey_details_array['Total_record'];
+			if($total_page == 0) {
+				drupal_goto('no/question');
+			}
+			$evaluation_name = $get_survey_details_array['evaluation_name'];
+			$question_array = $get_survey_details_array;
+			$count = 0;
+			$mappedarray = array();
+			$questionkeys   = array();
+			foreach($question_array as $key1 => $value1){
+			  if(is_numeric($key1)){
+			   $questionkeys[$count] = $key1;
+			   $count++;
+			   }
+			   foreach($question_array as $key2 => $value2){
+					 if(is_array($value2['Answer'])){
+						  for($i=0;$i < count($value2['Answer'][$i]);$i++){
+							 if($key1 == $value2['Answer'][$i]['relatedQuestionId']){
+							   $mappedarray[$key1]=array('Qlbl'=>$value2['Qlbl'], 'Qtype'=>$value2['Qtype'],'QId'=>$value2['QId'],'associatedText'=>$value2['associatedText']);
+							 }
+						  }
+					  }
+			   }
+			}
+
+		} else {
+			$survey_id = (int)$form_state['clicked_button']['#post']['surveyId'];
+			$get_survey_details_array = get_survey_details($survey_id);
+			$total_page = $get_survey_details_array['Total_record'];
+			$evaluation_name = $get_survey_details_array['evaluation_name'];
+			$question_id =  $form_state['values']['question_id'];
+			$formvalues_array =  $form_state['values'];
+			$related_ques_arr = $form_state['values']['related_question_id'];
+			$related_ques_arr1 = $form_state['values']['related_question_id'];
+			$related_ques_arr2 = $form_state['values']['related_question_id'];
+			$answer = $form_state['values']['answer'.$question_id];
+			$answer1 = $form_state['values']['answer'];
+
+			// This will get the id of related questions of selected question. Not selected answer
+			if(array_key_exists($answer,$related_ques_arr1)) {
+				foreach($related_ques_arr1 as $related_keys1 => $related_values1) {
+					if($related_values1 != '' && $related_values1 != $answer) {
+							$skip_arr[] = $related_values1;
+					}
+				}
+			}
+			// This will get the id of related questions of selected question. Not selected answer
+			if(array_key_exists($answer1,$related_ques_arr2)) {
+				foreach($related_ques_arr2 as $keys_avd => $values_avd) {
+					if($values_avd != '' && $values_avd != $answer1) {
+							$skip_arr[] = $values_avd;
+					}
+				}
+			}
+			//print_r($skip_arr);
+		//print_r($get_survey_details_array);
+
+		// This will get the related question id of related questions id of selected question. Not selected answer.
+		foreach($skip_arr as $skip_arr_key => $skip_arr_val) {
+			foreach($get_survey_details_array as $child_key2 => $child_value2){
+				if($skip_arr_val == $child_key2) {
+					 if(is_array($child_value2['Answer'])){
+						  for($i=0;$i<count($child_value2['Answer']);$i++){
+							 if($child_value2['Answer'][$i]['relatedQuestionId'] != ''){
+							 	$skip_child_arr[] = $child_value2['Answer'][$i]['relatedQuestionId'];
+							 }
+						  }
+					  }
+				 }
+			   }
+		}
+		//print_r($skip_child_arr);
+		// Merge$ the all the arrays to skip from list the quesstions.
+		if(count($skip_arr) && count($skip_child_arr)) {
+			$final_skip_arr = array_merge($skip_arr, $skip_child_arr);
+		} elseif (count($skip_arr)) {
+			$final_skip_arr = $skip_arr;
+		} elseif (count($skip_child_arr)) {
+			$final_skip_arr = $skip_child_arr;
+		}
+		//print_r($final_skip_arr);
+
+			// To get the exact related question id
+			$last_answer_id = '';
+
+			foreach ($related_ques_arr as $keys => $values)  {
+				foreach ($formvalues_array as $keys1 => $values1)  {
+					if($keys == $values1) {
+						$last_answer_id = $keys;
+					}
+				}
+			}
+			$next_question_id = $form_state['values']['related_question_id'][$last_answer_id];
+			//$question_array[$next_question_id] = $get_survey_details_array[$next_question_id];
+
+
+			$total_page = $get_survey_details_array['Total_record'];
+			$get_survey_details_array = get_survey_details($survey_id);
+			$question_array1 = $get_survey_details_array;
+			$count = 0;
+			$mappedarray = array();
+			$questionkeys   = array();
+			$qflag = 0;
+			//echo "<pre>";
+			//print_r($question_array1);
+			foreach($question_array1 as $key1 => $value1){
+			   if($next_question_id == $key1){
+				 $qflag = 1;
+			   }
+			   else if(in_array($key1,$final_skip_arr)) {
+				 $qflag = 1;
+				 continue;
+			   }
+			  if($qflag == 0) continue;
+			  if(is_numeric($key1)){
+			     $questionkeys[$count] = $key1;
+			     $count++;
+			   }
+			   foreach($question_array1 as $key2 => $value2){
+					 if(is_array($value2['Answer'])){
+						  for($i=0;$i<count($value2['Answer'][$i]);$i++){
+							 if($key1 == $value2['Answer'][$i]['relatedQuestionId']){
+							    $mappedarray[$key1]=array('Qlbl'=>$value2['Qlbl'], 'Qtype'=>$value2['Qtype'],'QId'=>$value2['QId'],'associatedText'=>$value2['associatedText']);
+							 }
+						  }
+					  }
+			   }
+			}
+		$mappedkeys = array_keys($mappedarray);
+
+		foreach($question_array1 as $qaKey => $qaVal) {
+			if(is_numeric($qaKey)) {
+				$questionArr[] = $qaKey;
+			}
+		}
+		sort($questionArr);
+		$finalQuestion_survey = $questionArr[count($questionArr)-1];
+		//echo $next_question_id, "<br />";
+		 for($i=0;$i<count($questionkeys);$i++){
+					   // Its enough to check the next question id with current form elements.
+					   if(($questionkeys[$i] == $next_question_id)) {
+						  $question_array[$questionkeys[$i]] = $question_array1[$questionkeys[$i]];
+						  $brk_flg = 0;
+						  for($s = 0; $s < count($question_array[$questionkeys[$i]]['Answer']); $s++) {
+							if(is_numeric($question_array[$questionkeys[$i]]['Answer'][$s]['relatedQuestionId'])) {
+							 $brk_flg = 1;
+							}
+						  }
+						  if($brk_flg == 1) { break; }
+					   }
+					   else{
+						  $question_array[$questionkeys[$i]] = $question_array1[$questionkeys[$i]];
+						  $flag = true;
+					   }
+					   // This will give the submit button if question is last one.
+					   if($finalQuestion_survey == $next_question_id) {
+					   	$flag = true;
+					   }
+		 }
+		}
+		$form['evalutaion_title'] = array(
+		'#value' => '<strong>'.$evaluation_name.'</strong>'
+		);
+		$get_old_answers = survey_retake_answers($survey_id);
+		//$get_old_answers = array();
+		$form = display_form_elements($question_array,$step,$form,$get_old_answers);
+		$form['explanation_configure_val'] = array(
+			'#type' => 'hidden',
+			'#value' => variable_get('explanation_configure',0),
+		);
+		$form['surveyId'] = array(
+			'#type' => 'hidden',
+			'#value' => $survey_id,
+		);
+		$form['storage']['Page'] = array(
+			'#type' => 'hidden',
+			'#value' => $step,
+		);
+
+
+	// The button will say Next until the last step, when it will say Submit.
+	$button_name = t('Submit');
+
+	if($flag) {
+		$form['submit'] = array(
+			'#type' => 'submit',
+			'#value' => t('Submit'),
+		);
+	} else {
+		$form['submit'] = array(
+			'#type' => 'submit',
+			'#value' => t('Next'),
+			//'#attributes'=>array('disabled'=>true),
+		);
+	}
+	$form['Cancel'] = array(
+		'#type' => 'submit',
+		'#value' => 'Cancel',
+		'#attributes' => array('onclick'=>'back_to_list("'.$base_url.'",2);return false;'),
+	);
+
+	switch($step) {
+		case 2:
+		// Save ingredient in storage bin.
+		$form_state['storage']['ingredient_1'] =		$form_state['values']['ingredient_1'];
+		break;
+		case 3:
+		// Add ingredient to storage bin.
+		$form_state['storage']['ingredient_2'] =		$form_state['values']['ingredient_2'];
+	}
+					//echo "<pre>";
+		//print_r($form);
+
+
+	return $form;
+}
+/**
+* Validate handler for form ID 'formwizard_multiform'.
+*/
+
+/*
+function multipath_question_form_validate($form, &$form_state) {
+	// Show user which step we are on.
+	//drupal_set_message(t('Validation called for step @step',array('@step' => $form_state['storage']['step'] - 1)));
+	if(empty($form_state['values']['answer'])) {
+		$form_state['storage']['step'] = $form_state['storage']['step'] - 1;
+		form_set_error('answer','field is required');
+		return false;
+	}
+}
+*/
+
+/**
+* Submit handler for form ID 'formwizard_multiform'.
+*/
+
+function multipath_question_form_submit($form, &$form_state) {
+	//p($form_state); exit;
+//	if($form_state['values']['op'] == 'Submit') {
+	if($form_state['clicked_button']['#post']['op'] == 'Submit') {
+		global $user,$itrinno_site_id;
+		session_start();
+		$_SESSION['values'][$step]['Question_id'] = $form_state['values']['question_id'];
+		$_SESSION['values'][$step]['Answer_id'] = $form_state['values']['answer'];
+		if($form_state['values']['explanation_answer']) {
+			$_SESSION['values'][$step]['explanation_answer'] = $form_state['values']['explanation_answer'];
+		} else {
+			$_SESSION['values'][$step]['explanation_answer'] = '';
+		}
+
+//		p($_SESSION); exit;
+		if($user->uid>0) {
+			$annonymus_user_first_name = '';
+			$annonymus_user_last_name = '';
+		} else {
+			$annonymus_user_first_name = variable_get('annonymus_user_first_name',0);
+			$annonymus_user_last_name = variable_get('annonymus_user_last_name',0);
+		}
+		$session_id = session_id();
+
+		$array['ResultInfo'] = $_SESSION['values'];
+		foreach ($_SESSION['values'] as $akey => $aval) {
+			if(empty($json_str))
+				$json_str = '{EvaluationResult:{"ResultInfo":[{"Question_id":'.$aval["Question_id"].',"Answer_id":'.$aval["Answer_id"].',"Score":0,"type":"multipath","ResponseText":"'.$aval["explanation_answer"].'"}';
+			else
+				$json_str .= ",".'{"Question_id":'.$aval["Question_id"].',"Answer_id":'.$aval["Answer_id"].',"Score":0,"type":"multipath","ResponseText":"'.$aval["explanation_answer"].'"}';
+        	}
+		$json_str .= '],"Evaluation_id":"'.$form_state['values']['surveyId'].'","firstName":"'.$annonymus_user_first_name.'","lastName":"'.$annonymus_user_last_name.'","UserSession_id":"'.$session_id.'","User_id":"'.$user->uid.'","Status":true,"page":"1"}}}';
+		//echo $json_str;  exit;
+		$obj_survey = new survey();
+		$createEvaluationData = new SurveyData();
+		$createEvaluationData->SetServiceName('evaluation');
+		$createEvaluationData->SetServiceIdentity('create');
+		$createEvaluationData->SetSiteId($itrinno_site_id);
+		$createEvaluationData->SetMethod('post');
+		$createEvaluationData->SetPostedData($json_str);
+		$result = $obj_survey->create_evaluation($createEvaluationData);
+		if(variable_get('annonymus_user_session_id',0) != session_id())  {
+			variable_del('annonymus_user_first_name');
+			variable_del('annonymus_user_last_name');
+		}
+//		exit;
+		//echo $result->Message; exit;
+		if($result->Message == 'Success') {
+			drupal_set_message('Thanks for the Survey');
+			drupal_goto('thank-you/survey/multipath/'.$form_state['values']['surveyId']);
+		} else {
+			form_set_error('','Some Service Problem , try agian ');
+			drupal_goto('thank-you/survey/multipath/'.$form_state['values']['surveyId']);
+		}
+	} else {
+		session_start();
+		$step = $form_state['storage']['step'];
+		$_SESSION['values'][$step]['Question_id'] = $form_state['values']['question_id'];
+		$_SESSION['values'][$step]['Answer_id'] = $form_state['values']['answer'];
+		if($form_state['values']['explanation_answer']) {
+			$_SESSION['values'][$step]['explanation_answer'] = $form_state['values']['explanation_answer'];
+		} else {
+			$_SESSION['values'][$step]['explanation_answer'] = '';
+		}
+		$form_state['storage']['step']++;
+		$form_state['rebuild'] = TRUE;
+		//return;
+	}
+}
+
+function survey_annoynomus_user($form_state=null) {
+    if(variable_get('survey_modalpopup_display', 0) == 1){
+		  $module_path = drupal_get_path('module', 'survey');
+		  drupal_add_css($module_path .'/css/survey_modal.css');
+		if(variable_get('survey_trigger_popup', 0) != 0){
+			if($_GET['renderType'] == 'popover'){
+				modalframe_child_js();
+				}
+		}else{
+			if($_GET['renderType'] == 'popover'){
+			modalframe_child_js();
+			}
+		}
+	}
+	
+	drupal_set_title('Get User Details of Anonymous User');	
+	$form = array();
+	$form['annonymus_user_first_name'] = array(
+		'#type' => 'textfield',
+		'#required'=>true,
+		'#title'=>t('First Name'),
+	);
+	$form['annonymus_user_last_name'] = array(
+		'#type' => 'textfield',
+		'#required'=>true,
+		'#title'=>t('Last Name'),
+	);
+	$form['hidden_survey_id'] = array(
+		'#type'=>'hidden',
+		'#default_value'=>arg(2),
+	);
+	$form['coming_from'] = array(
+		'#type'=>'hidden',
+		'#default_value'=>arg(3),
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save Details'),
+	);
+	return $form;
+}
+function survey_annoynomus_user_validate($form,$form_state) {
+	if (preg_match ("/[&<>%\*\,\.@!#$$%^%$%^%&*()]/i", $form_state['values']['annonymus_user_first_name'])) {
+		form_set_error('annonymus_user_first_name','Special Characters are not allowed for first name');
+		return;
+	}
+	if (preg_match ("/[&<>%\*\,\.@!#$$%^%$%^%&*()]/i", $form_state['values']['annonymus_user_last_name'])) {
+		form_set_error('annonymus_user_first_name','Special Characters are not allowed for last name');
+		return;
+	}
+}
+function survey_annoynomus_user_submit($form,$form_state) {
+    if(isset($_GET['renderType'])){
+		$query = 'renderType=popover';
+	}else{
+		$query = NULL;
+	}
+	variable_set('annonymus_user_first_name',$form_state['values']['annonymus_user_first_name']);
+	variable_set('annonymus_user_last_name',$form_state['values']['annonymus_user_last_name']);
+	variable_set('annonymus_user_session_id',session_id());
+
+	$survey_id = $form_state['values']['hidden_survey_id'];
+	drupal_set_message('Thanks for the details');
+	if($form_state['values']['coming_from'] == 1) {
+		drupal_goto('survey/'.$survey_id, $query);
+	} else {
+		drupal_goto('survey/multipath/'.$survey_id, $query);
+	}
+}

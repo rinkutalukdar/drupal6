@@ -1,0 +1,137 @@
+<?php
+// $Id: endusersitemap.module,v 1.0 2008/09/09 13:33:21 Exp $
+
+function endusersitemap_menu() {
+  $items = array();
+  $access_config = array('administer site configuration');
+  $access_content = array('access content');
+
+  $items['xmlsitemap'] = array(
+    'title' => 'Site Map',
+    'description' => t('Displays Site Map.'),
+    'page callback' => 'endusersitemap_list',
+    'access arguments' => $access_content,
+  );
+  $items['admin/settings/enduser'] = array(
+    'title' => 'Modify End User Sitemap',
+    'description' => t('Modify the contents of the End Site Map.'),
+    'position' => 'right',
+    'weight' => -8,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('admin_endusersitemap_form'),
+    'access arguments' => $access_config,
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function endusersitemap_init() {
+  $path = drupal_get_path('module', 'endusersitemap');
+  drupal_add_js($path .'/endusersitemap.js');
+  drupal_add_js(array('endusersitemap' => array('resetMsg' => t('You are about to delete the contents of End user sitemap and copy the contents of XML Sitemap to the End user sitemap. Click Ok to continue or Cancel to abort')
+                                          )), 'setting');
+  drupal_add_css($path .'/endusersitemap.css');
+}
+
+function admin_endusersitemap_form() {
+  $form = array();
+  $form['enduser_xmldata'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Site Map Content'),
+    '#default_value' => generate_enduser_sitemap(),
+    '#required' => TRUE,
+    '#description' => t('To display the current end user sitemap.'),
+  );
+  $form['enduser_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save Configuration'),
+    '#weight' => 9,
+  );
+  $form['enduser_cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Reset & copy contents from XML Sitemap'),
+    '#weight' => 10,
+  );
+  return $form;
+}
+
+
+function admin_endusersitemap_form_submit($form, &$form_state) {
+  $op = isset($form_state['clicked_button']['#parents'][0]) ? $form_state['clicked_button']['#parents'][0] : '';
+  if ($op == t('enduser_submit')) {
+    $result = get_enduser_data();
+    if (!$result) {
+      db_query("INSERT INTO {endusersitemap} (xmlid, xmldata) VALUES (NULL, '%s')", $form_state['values']['enduser_xmldata']);
+    }
+    else {
+      db_query("UPDATE {endusersitemap} SET xmldata='%s'", $form_state['values']['enduser_xmldata']);
+    }
+  }
+  else {
+    db_query("DELETE FROM {endusersitemap}");
+  }
+  drupal_set_message(t('The configuration options have been saved.'));
+}
+
+/**
+ * Displays the sitemap at User End.
+ */
+function endusersitemap_list() {
+  $output = generate_enduser_sitemap();
+  return $output;
+}
+
+function generate_enduser_sitemap() {
+  global $base_url;
+  static $script;
+  static $clean_url;
+  $data = get_enduser_data();
+  if ($data) {
+    $output = $data;
+  }
+  else {
+    $script = isset($script) ? $script : strpos($_SERVER['SERVER_SOFTWARE'], 'Apache') === FALSE ? 'index.php' : '';
+    $clean_url = isset($clean_url) ? $clean_url : variable_get('clean_url', FALSE);
+    $base = ($absolute ? $base_url .'/' : base_path());
+    $server_root = 'http://'. $_SERVER['HTTP_HOST'] . $base . $script;
+  
+    $output = drupal_set_title(t('Site Map'));
+    $output = drupal_set_breadcrumb();
+    $inc = 0;
+    $output .= '<ul>';
+    $sitemap = _xmlsitemap_links();
+    foreach ($sitemap as $key => $value) {
+      $flag = FALSE;
+      if (!$sitemap[$inc]['#title']) {
+        $server_url = variable_get('clean_url', 0) == '1' ? $server_root : $server_root . '?q=';
+	
+	$location = substr($sitemap[$inc]['#loc'], strlen($server_url));
+        $query = db_query("SELECT link_title FROM {menu_links} WHERE link_path = '%s' AND mlid = %d", $location, $sitemap[$inc]['#mlid']);
+        while ($links = db_fetch_object($query)) {
+          $output .= '<li>' . l($links->link_title, $sitemap[$inc]['#loc']) . '</li>';
+	  $flag = TRUE;
+        }
+      }
+      else {
+        $output .= '<li>' . l($sitemap[$inc]['#title'], $sitemap[$inc]['#loc']) . '</li>';
+	$flag = TRUE;
+      }
+
+      if ($flag == 0) {
+	$url_value = db_fetch_object(db_query("SELECT m.link_title FROM menu_links m LEFT JOIN url_alias u ON m.link_path = u.src WHERE m.mlid = %d", $sitemap[$inc]['#mlid']));
+	$output .= '<li>' . l($url_value->link_title, $sitemap[$inc]['#loc']) . '</li>';
+      }
+      $inc++;
+    }
+    $output .= '</ul>';
+  }
+  return $output;
+}
+
+function get_enduser_data() {
+  $data = db_fetch_object(db_query("SELECT xmlid, xmldata FROM {endusersitemap} LIMIT 0, 1"));
+  return $data->xmldata;
+}

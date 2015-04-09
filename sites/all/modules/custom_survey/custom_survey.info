@@ -1,0 +1,13 @@
+; $Id: survey.info,v 1.1 2010/11/02 08:57:49 rabith Exp $
+name = custom_survey
+dependencies[] = webform
+dependencies[] = date_popup
+dependencies[] = jquery_ui
+dependencies[] = date
+description = Enables the creation of forms and questionnaires along with webform.
+core = 6.x
+package = custom_survey
+php = 5.0
+version = "6.x-1.1"
+
+

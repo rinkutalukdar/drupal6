@@ -1,0 +1,15 @@
+<?php 
+
+/*
+*REST API Factory module
+*/
+
+/*
+ * Method to create instance
+ */
+
+function GetRestApiInstance(){
+		include_once drupal_get_path('module', 'restapi')."/services/RestApiFactory.php";
+		require_once "services/classes/IRestAPI.php";
+		return RestApiFactory::CreateInstance();
+}

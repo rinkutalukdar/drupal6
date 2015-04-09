@@ -1,0 +1,39 @@
+#leftCol
+{
+	width:135px;
+}
+
+#buttons
+{
+	width:150px;
+	float:left;
+	vertical-align:top;
+}
+
+#properties
+{
+	vertical-align:top;
+}
+
+#preview
+{
+	width:450px;
+	padding:0px;
+}
+
+.button
+{
+	margin-left:0px;
+	margin-right:0px;
+}
+
+
+.buttonImg
+{
+	margin-right:0px;
+}
+.columnHead
+{
+	margin:0px;
+	display:table-column;
+}

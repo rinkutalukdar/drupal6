@@ -1,0 +1,79 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Variable setting/unsetting on module install/uninstall.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function itrinno_form_filter_install() {
+  variable_set('display_link_on_forms', 1);
+  variable_set('excluded_form_ids', '');
+  variable_set('form_error_message', 'Please give proper value or character. Don\'t enter any script tag.');
+  variable_set('url_error_message', 'Please give proper value or character. Don\'t enter any script tag.');
+  variable_set('found_hack_redirection', '<front>');
+
+ 	/*** Capgemini :: Modified the below code */
+	// Removed , and “ and “ from variable: url-protection-conditions as it was badly affecting the normal test cases
+	// Updated variable: url-protection-conditions with more terms	
+	variable_get('url_protection_conditions', 'X3CSCRIPT#\'#%3C#%3E#%2527#>#<#%3CSCRIPT%3E#%22#XSS#%2C#%27#%253C#%253E#%2522#X3CSTYLE#QSS#X3C#X3E#"#JAVASCRIPT#&LT#&GT#%26GT%3B#%26LT%3B#FUNCTION%28%29#FUNCTION()#X3CIFRAME#%3CIFRAME#WAITFOR DELAY#WAITFOR%20DELAY#BENCHMARK#USER()#VERSION()# OR 1=1#+OR+1%3D1#OR 2#OR+2#" AND #%22+AND+#AND 1#AND+1#AND 2#AND+2#DROP TABLE#DROP+TABLE#SELECT *#SELECT+%2A#UNION #UNION+#random(#random%28#BENCHMARK#FUNCTION (#FUNCTION+%28#ONCLICK#ONDBLCLICK#onmousedown#onmousemove#onmouseover#onmouseout#onmouseup#onkeydown#onkeypress#onkeyup#onabort#onerror#onload#onresize#onscroll#onunload#onblur#onchange#onfocus#onreset#onselect#onsubmit#onevent');
+  
+  	/*** Capgemini :: Modified the below code */
+	// Removed , and “ and “ from variable: url-protection-conditions as it was badly affecting the normal test cases
+	// Updated variable: field-protection-conditions with more terms	
+	variable_get('field_protection_conditions', 'X3CSCRIPT,%27 OR ,%22 OR ,FUNCTION%28%29,FUNCTION(),X3CIFRAME,%3CIFRAME,%3CSCRIPT,<SCRIPT,<IFRAME,<?PHP,<%,<?,EXEC SP_ (or EXEC XP_),AND USER_NAME(),; DESC,ASCII,UNI/*,\' OR ,\' AND ," OR  ," AND ,%3C?,%3C%3F,%253C%3F,%3C?PHP,%253CSCRIPT,%2527 OR ,%2522 OR,%27 AND ,%22 AND,%2527 AND ,%2522 AND,WAITFOR DELAY,WAITFOR%20DELAY,BENCHMARK,USER(),VERSION(), WAITFOR+DELAY, OR 1=1,+OR+1%3D1,OR 2,OR+2," AND ,%22+AND+,AND 1,AND+1,AND 2,AND+2,DROP TABLE,DROP+TABLE,SELECT *,SELECT+%2A,UNION ,UNION+,random(,random%28,BENCHMARK,FUNCTION (,FUNCTION+%28,ONCLICK,ONDBLCLICK,onmousedown,onmousemove,onmouseover,onmouseout,onmouseup,onkeydown,onkeypress,onkeyup,onabort,onerror,onload,onresize,onscroll,onunload,onblur,onchange,onfocus,onreset,onselect,onsubmit,onevent');
+  variable_set('excluding_form_message', 'Click here to exclude this form from itrinno form filter check.');
+  variable_set('including_form_message', 'Click here to include this form for itrinno form filter check.');
+  variable_set('itrinno_form_filter_enable_debug_info', FALSE);
+  /*** Capgemini :: Added the below code to include X-Frame-Options related settings fields */
+	// Added setting: enable-iframe-header checkbox to control the usage of the header
+	// Added setting: iframe-header-options to load the value for X-Frame-Options.
+	// Added setting: iframe-header-url to specify url in case ALLOW-FROM is selected for iframe-header-options setting
+	variable_set('enable-iframe-header', 0);
+	variable_set('iframe-header-options', 'SAMEORIGIN');
+	variable_set('iframe-header-url', '');
+	
+	//set weight to -ve number
+	update_sql("UPDATE {system} SET weight = -1024 WHERE name = 'itrinno_form_filter'");
+	// Capgemini changes end
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function itrinno_form_filter_uninstall() {
+  variable_del('display_link_on_forms');
+  variable_del('excluded_form_ids');
+  variable_del('url_protection_conditions');
+  
+  variable_del('field_protection_conditions');
+  
+  variable_del('form_error_message');
+  variable_del('url_error_message');
+  variable_del('found_hack_redirection');
+  variable_del('excluding_form_message');
+  variable_del('including_form_message');
+  variable_del('itrinno_form_filter_enable_debug_info');
+
+  /*** Capgemini :: Added the below code to include X-Frame-Options related settings fields */
+	// Added setting: enable-iframe-header checkbox to control the usage of the header
+	// Added setting: iframe-header-options to load the value for X-Frame-Options.
+	// Added setting: iframe-header-url to specify url in case ALLOW-FROM is selected for iframe-header-options setting
+	variable_del('enable-iframe-header');
+	variable_del('iframe-header-options');
+	variable_del('iframe-header-url');
+	variable_del('itrinno_form_filter_data_process_option');
+	variable_del('itrinno_form_filter_exclude_path');
+	variable_del('all-data-sanitize-options');
+	variable_del('');
+	// Capgemini changes end
+  
+  }
+
+ function itrinno_form_filter_update_001() {
+	$res[] = update_sql("UPDATE {system} SET weight = -1022 WHERE name = 'itrinno_form_filter'");
+    return $res;
+ }

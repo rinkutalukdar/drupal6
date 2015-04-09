@@ -1,0 +1,98 @@
+<?php
+
+/**
+ * Implementation of hook_install().
+ */
+function contactus_install() {
+  // Create tables.
+  drupal_install_schema('contactus');
+  
+  default_contactus_fields();
+  
+  if (module_exists('image_captcha')) {
+    $captcha_module = 'image_captcha';
+    $captcha_type = 'Image';
+  }
+  elseif (module_exists('text_captcha')) {
+    $captcha_module = 'text_captcha';
+    $captcha_type = 'Text';
+  }
+  else {
+    $captcha_module = 'captcha';
+    $captcha_type = 'Math';
+  }
+  db_query("INSERT INTO {captcha_points} (form_id, module, type) VALUES ('%s', '%s', '%s')", 'contactus_list', $captcha_module, $captcha_type);
+  
+   $upload_folder = file_create_path(file_directory_path().'/contactusuploads');
+	if (!is_dir($upload_folder)) {
+		mkdir($upload_folder, 0777);
+	}
+	
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function contactus_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('contactus');
+  db_query("DELETE FROM {variable} WHERE name like '%%%s%%'", 'contactus_');
+  db_query("DELETE FROM {captcha_points} WHERE form_id='%s'", 'contactus_list');
+  
+  @db_query("DELETE FROM {formbuilder_form} WHERE form_type like '%%%s%%'", 'contactus');
+  
+  //db_query("DELETE FROM {contactus} WHERE 1 = 1");
+  //db_query("DELETE FROM {formbuilder_form} WHERE form_type='%s'", 'contactus');
+  //db_query("TRUNCATE TABLE {contactus}");
+ 
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function contactus_schema() {
+  $schema['contactus'] = array(
+    'description' => t('Contact form field settings.'),
+    'fields' => array(
+      'subject_id' => array(
+        'type' => 'varchar',
+        'length' => 225,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => t('Primary Key: Unique subject id.'),
+      ),
+      'form_id' => array(
+        'type' => 'varchar',
+        'length' => 225,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => t('values of the form fields.'),
+      ),
+    ),
+    'primary key' => array('subject_id'),
+    
+  );
+
+  return $schema;
+}
+
+function default_contactus_fields() {
+  if(!class_exists('Services_JSON')){
+	  include_once 'sites/all/modules/formbuilder/JSON/JSON.php';
+	  include_once 'sites/all/modules/formbuilder/JSON/class.json.php';
+  }
+  
+  $form = '{"name":{"#type":"textfield","#prefix":"","#suffix":"","#after_build":{},"#attributes":{},"#title":"Name","#default_value":"","#description":"","#required":true,"#validations":"ctype_alnum","#dontdelete":true,"#input":true,"#size":60,"#maxlength":70,"#autocomplete_path":false,"#process":{"0":"form_expand_ahah","1":"fckeditor_process_input"},"#encryption":false},  
+  
+"email":{"#type":"textfield","#prefix":"","#suffix":"","#after_build":{},"#attributes":{},"#title":"Email Address","#default_value":"","#description":"","#required":true,"#dontdelete":true,"#input":true,"#size":60,"#maxlength":128,"#autocomplete_path":false,"#process":{"0":"form_expand_ahah","1":"fckeditor_process_input"},"#encryption":false},
+
+"message":{"#type":"textarea","#prefix":"","#suffix":"","#after_build":{},"#attributes":{},"#title":"Message","#default_value":"","#description":"","#required":true,"#dontdelete":false,"#input":true,"#cols":60,"#rows":5,"#resizable":true,"#process":{"0":"form_expand_ahah","1":"fckeditor_process_textarea"},"#encryption":false},"#id":"contactus_form","#prefix":"","#suffix":"","#method":"post","#action":"","#value":""}';
+$form_name = 'contactus_form';
+
+
+  $json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
+  $form = $json->decode($form);
+  $form_id = "contactus_".time()."_form";
+  
+  db_query("INSERT INTO {formbuilder_form}  (form_type, form_name, form_id, form, active, default_form) VALUES ('%s', '%s','%s', '%s', '%s', '%s')", 'contactus', $form_name, $form_id, serialize($form), '1', '1');
+}

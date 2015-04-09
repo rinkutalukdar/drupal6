@@ -1,0 +1,16 @@
+.latest_news_block h2{
+	background:url(../images/latest_news.gif) left top no-repeat;
+	height: 24px;
+	margin-bottom: 24px;
+	margin-top: 5px;
+	width:69px;
+}
+.block-menu_block_split {
+    margin-top:10px !important;
+}
+#internetsearch-form .search_button {
+    margin-top:-52px !important;
+}
+#gtb {
+  float:none !important;
+}

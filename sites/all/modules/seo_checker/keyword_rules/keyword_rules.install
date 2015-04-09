@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * @file
+ * Installer for the Keyword Rules for the SEO Checker
+ */
+
+
+require_once(drupal_get_path('module', 'content') .'/includes/content.crud.inc');
+define('SEO_KEYWORD_FIELD_NAME', 'field_seo_keywords');
+
+/**
+ * Implementation of hook_install().
+ */
+function keyword_rules_install() {
+  if (module_exists('nodewords')) {
+    variable_set('keyword_rules_keywords_driver', 'nodewords');
+  } 
+  else {
+    drupal_set_message(t('
+      In order to be able to use the Keyword Rules you have to create a CCK field
+      for keywords and assign it to the content types that use the SEO Checker.
+      Afterwards you should select this field in the '. l('Keyword Rules settings',
+      'admin/settings/seo_checker/keyword_rules') .'.'), 'warning');
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function keyword_rules_uninstall() {
+  include_once(drupal_get_path('module', 'seo_checker') .'/seo_checker.install');
+  variable_del('keyword_rules_keywords_field');
+  variable_del('keyword_rules_keywords_driver');
+  seo_checker_submodule_uninstall('keyword_rules');
+}
+
+function keyword_rules_requirements() {
+    $requirements = array();
+    if (variable_get('keyword_rules_keywords_driver', 'cck') == 'cck') {
+      $t = get_t();
+      $keywords_field = variable_get('keyword_rules_keywords_field', NULL);
+     if (is_null($keywords_field) || !content_fields($keywords_field)) {
+        $requirements['field'] = array(
+          'title' => $t('SEO Compliance Checker'),
+          'description' => $t('The keyword rules module of the SEO Compliance Checker has to be configured properly. In particular, '.
+                              'you have to choose which CCK field holds the keywords to be checked against. Please visit '.
+                              '<a href="@url">its configuration page</a> to do so.', array('@url' => url('admin/settings/seo_checker/keyword_rules'))),
+          'severity' => REQUIREMENT_WARNING,
+          'value' => $t('CCK Field not set'),
+        );
+      }
+    }
+    return $requirements;
+}

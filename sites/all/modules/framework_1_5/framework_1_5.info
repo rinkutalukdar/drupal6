@@ -1,0 +1,11 @@
+; $Id: framework_1_5.info, Jag; 26-Sep-2009 $
+name = Framework_1_5
+description = Framework core module that is used by other ITrInno modules
+package = ITrInno Framework
+core = 6.x
+dependencies[]= pear
+dependencies[]= restapi
+
+version = "1.5"
+project = "framework_1_5"
+datestamp = "1250585275"

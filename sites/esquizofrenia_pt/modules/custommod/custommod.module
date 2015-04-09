@@ -1,0 +1,769 @@
+<?php
+
+/**
+* A call back menu for the url website/emailformat
+*/
+function custommod_init(){
+                // ignore for user and admin screens
+                global $base_url;
+				drupal_add_js(drupal_get_path('module', 'custommod').'/jquery.cookie.js');
+                if(arg(0) !="admin" && arg(0) !="user" && !$_GET['v']) {
+                                global $base_url;
+                                //drupal_add_js(drupal_get_path('module', 'custommod').'/jquery.cookie.js');
+                                drupal_add_js(drupal_get_path('module', 'custommod').'/customSelect.jquery.js');
+                                drupal_add_js(drupal_get_path('module', 'custommod').'/custommod.js');
+
+                                // use trim to remove trailing slashes
+                                /*$c = trim($_COOKIE['schizophernia-language'], "/");
+                                if($c && $c != trim($base_url,"http://") || $c && $c != trim($base_url,"https://")) {
+                                                drupal_goto("http://".$c);
+                                                exit;
+                                }*/
+                }
+
+if (drupal_is_front_page() || arg(0) == 'set-survey-cookie') {
+  $GLOBALS['conf']['cache'] = FALSE;
+}
+                /*           session_destroy();
+                                setcookie('survey_cookie', '', 1);
+                                $temp_session = session_id();
+                                global $session_value;
+                                $setCookie = setcookie('survey_cookie', $temp_session, (time()+(3600*24*variable_get('survey_cookie_lifetime',30))), '/');
+                                if($setCookie){
+                                                $session_value = $temp_session;
+                                }
+                                */
+                                if(!isset($_COOKIE['survey_cookie'])){
+                                                variable_set('custommod_survey_success', 0);
+                                }
+}
+
+function custommod_menu() {
+                // Admin settings
+                $items['admin/settings/country-selector-settings'] = array(
+                                'title' => t('Country selector settings'),
+                                'page callback' => 'drupal_get_form',
+                                'page arguments' => array('custommod_admin_settings'),
+                                'access arguments' => array('administer site configuration'),
+                                'file' => 'custommod.admin.inc'
+                );
+                $items['admin/settings/tell-a-friend-settings'] = array(
+                                'title' => t('Tell a friend settings'),
+                                'page callback' => 'drupal_get_form',
+                                'page arguments' => array('custommod_tell_a_friend_admin_settings'),
+                                'access arguments' => array('administer site configuration'),
+                                'file' => 'custommod.admin.inc'
+                );
+                // General
+                $items['country-selector'] = array(
+                                'title' => t('Choose Language'),
+                                'page callback' => 'custommod_country_selector',
+                                'access arguments' => array('access content'),
+                                'type' => MENU_CALLBACK
+                );
+                $items['setcookie'] = array(
+                                'page callback' => 'custommod_set_cookie',
+                                'access arguments' => array('access content'),
+                                'type' => MENU_CALLBACK
+                );
+                $items['tell-a-friend'] = array(
+                                'page callback' => 'custommod_tell_a_friend',
+                                'access arguments' => array('access content'),
+                                'type' => MENU_CALLBACK
+                );
+                $items['patient-carer-video-gallery'] = array(
+                                'title'=>t('Living with schizophrenia films'),
+                                'page callback' => 'custommod_patient_vgallery',
+                                'access arguments' => array('access content'),
+                                'type' => MENU_NORMAL_ITEM
+                );
+                $items['download'] = array(
+                                'page callback' => 'custommod_download_air_file',
+                                'access callback' => TRUE
+                );
+                $items['questionaire/print'] = array(
+                                'page callback' => 'custommod_process_questionaire_print',
+                                'access callback' => TRUE
+                );
+                $items['markinspace'] = array(
+                                'page callback' => 'custommod_markinspace',
+                                'access callback' => TRUE
+                );
+                $items['markinspace/send_email'] = array(
+                                'page callback' => 'custommod_markinspace_send_email',
+                                'access callback' => TRUE
+                );
+                $items['markinspace_videos_to_load'] = array(
+                                'page callback' => 'custommod_markinspace_videos_to_load',
+                                'access callback' => TRUE,
+								
+                );
+				
+				/* Temporary URL */
+				
+                $items['download/esquizocom/videos'] = array(
+								'title' => t('VIDEOS-TICKET-ESQUIZOCOM-40'),
+                                'page callback' => 'download_esquizocom_videos',
+                                'access callback' => TRUE,
+                                'type' => MENU_CALLBACK
+                );				
+				
+                return $items;
+}
+function custommod_tell_a_friend_success(){
+                return 'Thank you!<br />The email has been sent';
+}
+
+function download_esquizocom_videos(){
+	global $base_url;
+	$output = '';
+	$basePath = str_replace("http://" ,"", $base_url);
+	
+	$filePathOne = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2779044091001_Friends-and-family.mp4";
+	$filePathTwo = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2779050804001_Woking-with-people-with-schizophrenia-1.mp4";
+	$filePathThree = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2779042881001_Living-with-schizophrenia-for-a-while.mp4";
+	$filePathFour = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2779034529001_Recently-diagnosed.mp4";
+	$filePathFive = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2174842599001_Keeping-well-Evelyn.mp4";
+	$filePathSix = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2174848912001_GB-personal-and-social-functioning-Terry.mp4";
+	$filePathSeven = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2174863589001_Different-treatments-Terry.mp4";
+	$filePathEight = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2174850874001_Friends-and-family-tips-for-carers-Terry.mp4";
+	$filePathNine = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2174857771001_Friends-and-family-Kevin.mp4";
+	$filePathTen = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2174850420001_Friends-and-family-tips-for-carers-Kevin.mp4";
+	$filePathEleven = "/sites/".$basePath."/files/VIDEOS-TICKET-ESQUIZOCOM-40/1475651728001_2174848928001_GB-Into-employment-Ronen.mp4";
+	
+	$output .= "<table  border='1' style='height:500px;width:500px;'>";
+	$output .= "<thead><tr><th style='text-align:center;font-weight:bold;'>Videos</th><th style='text-align:center;font-weight:bold;'>Links</th></tr></thead>";
+	$output .="<tbody style='text-align:center;'>";
+	$output .= "<tr><td>Friends and family</td><td><a href='$filePathOne'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Woking with people with schizophrenia </td><td><a href='$filePathTwo'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Living with schizophrenia for a while</td><td><a href='$filePathThree'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Recently diagnosed</td><td><a href='$filePathFour'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Keeping well Evelyn</td><td><a href='$filePathFive'>Click to download</a></td></tr>";
+	$output .= "<tr><td>GB personal and social functioning -Terry</td><td><a href='$filePathSix'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Different treatments -Terry</td><td><a href='$filePathSeven'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Friends and family tips for carers -Terry</td><td><a href='$filePathEight'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Friends and family - Kevin</td><td><a href='$filePathNine'>Click to download</a></td></tr>";
+	$output .= "<tr><td>Friends and family tips for carers - Kevin</td><td><a href='$filePathTen'>Click to download</a></td></tr>";
+	$output .= "<tr><td>GB Into employment - Ronen</td><td><a href='$filePathEleven'>Click to download</a></td></tr>";
+	$output .="</tbody>";	
+	$output .= "</table>";
+	
+	return $output;
+}
+
+
+/**
+*  Implementation of hook_theme
+* */
+function custommod_theme() {
+                return array(
+                                /* this template is used to display the country selector popup which appears when
+                                * a user clicks on "Select country" link on the top of the page
+                                */
+                                'custommod-country-selector' => array(
+                                                'template' => 'custommod-country-selector',
+                                                'arguments' => array('countries' => NULL)
+                                ),
+                                'custommod_language_dropdown' => array(
+                                                'template' => 'language-dropdown'
+                                ),
+                                'patient-carer-vgallery' => array(
+                                                'template' => 'patient-carer-vgallery',
+                                                'arguments' => array('vars' => NULL)
+                                ),
+                );
+}
+
+/**
+* Implementation of hook_menu_alter
+*/
+/* Implementation of hook_menu_alter */
+function custommod_menu_alter(&$items) {
+    $items['aggregator'] = array(
+    'title' => 'Feed aggregator',
+    'page callback' => 'aggregator_page_modified',
+    'access arguments' => array('access news feeds'),
+    'weight' => 5,
+    //'file' => 'aggregator.pages.inc',
+  );
+  // translation client module - override function callback for 'save' operation
+  $items['l10n_client/save']['page callback'] = 'custommod_save_string';
+  $items['google_appliance']['access arguments'] = array('access content');
+}
+
+//
+function aggregator_page_modified() {
+                drupal_add_feed(url('aggregator/rss'), variable_get('site_name', 'Drupal') .' '. t('aggregator'));
+
+  //$items = aggregator_feed_items_load('SELECT i.*, f.title AS ftitle, f.link AS flink FROM {aggregator_item} i INNER JOIN {aggregator_feed} f ON i.fid = f.fid ORDER BY i.timestamp DESC, i.iid DESC');
+$sql = 'SELECT i.*, f.title AS ftitle, f.link AS flink FROM {aggregator_item} i INNER JOIN {aggregator_feed} f ON i.fid = f.fid ORDER BY i.timestamp DESC, i.iid DESC';
+$items = array();
+  if (isset($sql)) {
+    $result = pager_query($sql, 10);
+    while ($item = db_fetch_object($result)) {
+
+      $result_category = db_query('SELECT c.title, c.cid FROM {aggregator_category_item} ci LEFT JOIN {aggregator_category} c ON ci.cid = c.cid WHERE ci.iid = %d ORDER BY c.title', $item->iid);
+      $item->categories = array();
+      while ($item_categories = db_fetch_object($result_category)) {
+
+        $item->categories[] = $item_categories;
+      }
+      $items[$item->iid] = $item;
+    }
+  }
+
+  $feed_source = arg(1);
+
+  if (user_access('administer news feeds') && ($op == 'categorize')) {
+    // Get form data.
+    $output = aggregator_categorize_items($items, $feed_source);
+  }
+  else {
+    // Assemble themed output.
+    $output = $feed_source;
+    foreach ($items as $item) {
+      $output .= theme('aggregator_item', $item);
+    }
+    $output = theme('aggregator_wrapper', $output);
+  }
+  return $output;
+}
+/*
+* Implementation of hook_form_alter
+*/
+/*function custommod_form_alter(&$form, &$form_state, $form_id){
+                switch($form_id){
+                                case 'search_form':
+                                                unset($form['basic']);
+                                                unset($form['advanced']);
+                                                //echo "<PRE>";print_r($form);
+                                                break;
+                                case 'aggregator_admin_settings':
+                                $form['aggregator_clear']['#options'][19353600]  = "32 weeks";
+                                $form['aggregator_clear']['#options'][29030400]  = "48 weeks";
+                                break;
+                }
+}*/
+function custommod_form_alter(&$form, &$form_state, $form_id){
+                global $theme;
+     switch($form_id){
+            case 'search_form':
+                                                                                unset($form['basic']);
+                                                                                unset($form['advanced']);
+                                                                                //echo "<PRE>";print_r($form);
+                                                                                break;
+                                                case 'aggregator_admin_settings':
+                                                                                $form['aggregator_clear']['#options'][19353600]  = "32 weeks";
+                                                                                $form['aggregator_clear']['#options'][29030400]  = "48 weeks";
+                                                                                break;
+                                                case 'internetsearch_form': {
+                                                                                  $path = base_path() . drupal_get_path('theme', $theme);
+                                                                                  //echo $path;
+                                                                                  $form['search_term']['#prefix'] = '<div id="search_txt"><img title="Search" alt="Search" src="'.$path . '/images/hd_search.gif">';
+                                                                                  $form['search_term']['#suffix'] = '</div>';
+                                                                                  $form['search_term']['#title'] = '';
+                                                                                  $form['search_term']['#size'] = 15;
+                                                                                  $form['search_term']['#value'] = '';
+                                                                                  $form['search_term']['#attributes'] = array('class' => 'search_box');
+                                                                                  unset($form['internet_search']);
+                                                                                  $form['submit'] = array(
+                                                                                                  '#theme' => 'button',
+                                                                                                  '#button_type' => 'image',
+                                                                                                  '#id' => 'btn_search_top',
+                                                                                                  '#class' => 'form-submit',
+                                                                                                  '#value' => '',
+                                                                                                  '#custom_button' => 'true',
+                                                                                                  '#attributes' => array('src' => $path . '/images/icon_go.gif'),
+                                                                                                  '#prefix' => '<div class="search_button">',
+                                                                                                  '#suffix' => '</div>',
+                                                                                                  '#weight' => 10,
+                                                                                  );
+                                                                                }
+                                                                                break;
+                                                case 'survey_form':
+                                                                                unset($form['#prefix']);
+                                                                                unset($form['#suffix']);
+                                                                                $form['#prefix'] = '<div class="survey"><h2>Your opinion</h2>';
+                                                                                $form['#suffix'] = '</div>';
+                                                                                $form['survey']['answer_0']['#attributes'] = array('class'=>'noclass');
+                                                                                unset($form['#submit']);
+                                                                                $form['#submit'][] = 'custommod_survey_submit';
+                                                                                break;
+                                                case 'user_register':
+                                                                                $form['user_profile']['consent']['#default_value'] = 1;
+                                                                                break;
+        }
+
+}
+function custommod_survey_submit($form, &$form_state){
+                                
+                                if($form_state['storage']['page'] < $form_state['values']['totalpage']) {
+                                                $form_state['rebuild'] = TRUE;
+                                                $form_state['storage'][$form_state['storage']['page']]['values'] = $form_state['values'];
+                                                $result = create_survey_evaluation($form_state);
+                                                //print_r($result);exit;
+                                                if ( $result->Message=='Success'){
+                                                                drupal_set_message(t('Your Survey on the page number has been posted'), 'status',FALSE);
+                                                }
+                                                else{
+                                                                form_set_error('submit', t('Oops! An error has occured, please try again later!'));
+                                                }
+                                                $form_state['storage']['page']++;
+                                } else {
+                                                $result = create_survey_evaluation($form_state);
+                                                //echo "<pre>";print_r($form_state);exit;
+                                                if ( $result->Message=='Success'){
+                                                                variable_set('custommod_survey_success', 1);
+                                                                drupal_set_message(t('Thanks for taking the survey'), 'status',FALSE);
+                                                                //setcookie("survey_cookie_success", "1", time()+3600*24*30, '/');
+                                                                //survey_redirect($form_state['values']['survey_id']);
+                                                                //exit;
+                                                }
+                                                else{
+                                                                $err_msg= t('Oops! An error has occured, please try again later!');
+                                                }
+                                }
+}
+
+
+
+/*
+* This menu alter function callback is written for the menu I10n_client/save - calling my own function which
+* is a copy of the original funciton from i10n_client.module file, with a few modifications to fix a bug
+* Fix - $report['skips'] is replaced by $report[3]
+*     - $report['additions'] is replaced by $report[0]
+*     - $report['updates'] is replaced by $report[1]
+*     - $report['deletes'] is replaced by $report[2]
+* */
+function custommod_save_string() {
+  global $user, $language;
+  if (l10n_client_access()) {
+    if (isset($_POST['source']) && isset($_POST['target']) && !empty($_POST['textgroup']) && !empty($_POST['form_token']) && drupal_valid_token($_POST['form_token'], 'l10n_client_form')) {
+      // Ensure we have this source string before we attempt to save it.
+      $lid = db_result(db_query("SELECT lid FROM {locales_source} WHERE source = '%s' AND textgroup = '%s'", $_POST['source'], $_POST['textgroup']));
+
+      if (!empty($lid)) {
+        include_once 'includes/locale.inc';
+        $report = array('skips' => 0, 'additions' => 0, 'updates' => 0, 'deletes' => 0);
+        _locale_import_one_string_db($report, $language->language, $_POST['source'], $_POST['target'], $_POST['textgroup'], NULL, LOCALE_IMPORT_OVERWRITE);
+        cache_clear_all('locale:', 'cache', TRUE);
+        _locale_invalidate_js($language->language);
+        if (!empty($report[3])) {
+          $message = theme('l10n_client_message', t('Not saved locally due to invalid HTML content.'));
+        }
+        elseif (!empty($report[0]) || !empty($report[1])) {
+          $message = theme('l10n_client_message', t('Translation saved locally.'), WATCHDOG_INFO);
+        }
+        elseif (!empty($report[2])) {
+          $message = theme('l10n_client_message', t('Translation successfuly removed locally.'), WATCHDOG_INFO);
+        }
+        else {
+          $message = theme('l10n_client_message', t('Unknown error while saving translation locally.'), WATCHDOG_ERROR);
+        }
+
+        // Submit to remote server if enabled.
+        if (variable_get('l10n_client_use_server', FALSE) && user_access('submit translations to localization server') && ($_POST['textgroup'] == 'default')) {
+          if (!empty($user->l10n_client_key)) {
+            $remote_result = l10n_client_submit_translation($language->language, $_POST['source'], $_POST['target'], $user->l10n_client_key, l10n_client_user_token($user));
+            $message .= theme('l10n_client_message', $remote_result[1], $remote_result[0] ? WATCHDOG_INFO : WATCHDOG_ERROR);
+          }
+          else {
+            $server_url = variable_get('l10n_client_server', 'http://localize.drupal.org');
+            $user_edit_url = url('user/'. $user->uid .'/edit', array('absolute' => TRUE));
+            $message .= theme('l10n_client_message', t('You could share your work with !l10n_server if you set your API key at !user_link.', array('!l10n_server' => l($server_url, $server_url), '!user_link' => l($user_edit_url, 'user/'. $user->uid .'/edit'))), WATCHDOG_WARNING);
+          }
+        }
+      }
+      else {
+        $message = theme('l10n_client_message', t('Not saved due to source string missing.'));
+      }
+    }
+    else {
+      $message = theme('l10n_client_message', t('Not saved due to missing form values.'));
+    }
+  }
+  else {
+    $message = theme('l10n_client_message', t('Not saved due to insufficient permissions.'));
+  }
+  drupal_json(array('message' => $message));
+  exit;
+}
+
+
+
+function custommod_get_country_array(){
+                $c = variable_get('custommod_languages', '');
+                $c = explode("\n",$c);
+                $data = array();
+                for($i = 0; $i <sizeof($c); $i++) {
+                                $temp = explode("|", $c[$i]);
+                                $data[$temp[0]] = $temp[1];
+                }
+                // sort countries alphabetically
+                asort($data);
+                return $data;
+}
+
+function custommod_get_current_country_array(){
+                $c = variable_get('custommod_additional_languages', '');
+                $c = explode("\n",$c);
+                $data = array();
+                for($i = 0; $i <sizeof($c); $i++) {
+                                $temp = explode("|", $c[$i]);
+                                $data[$temp[0]] = $temp[1];
+                }
+                // sort countries alphabetically
+                asort($data);
+                return $data;
+}
+
+function custommod_country_selector(){
+                $data = custommod_get_current_country_array();
+                // print and exit here to avoid site template from showing up in the popup.
+                print theme('custommod-country-selector', $data);
+print "<script>$(document).ready(function(){
+                                if(document.getElementById('language_selector_popup')){
+                                                $('body').addClass('country_selector-form');
+                                }
+                });</script>";
+
+                exit;
+}
+
+function custommod_set_cookie(){
+                if($_GET['v']){
+                                $expire = time()+3600*24*30;
+                                $val = trim($_GET['v'], "http://");
+                                $val = trim($val, "/");
+                                //setcookie('schizophernia-language', $val, $expire);
+                }
+                if(!$_GET['context']){
+                                $url = "http://".$_GET['v'];
+                                drupal_goto($url);
+                }
+                else{
+                                return "";
+                }
+}
+/**
+* Function to get the ookie value of a cookie name
+*/
+function custommod_get_cookie(){
+                return $_COOKIE['schizophernia-language'];
+}
+
+function custommod_tell_a_friend(){
+
+                $form =  drupal_get_form('custommod_tell_a_friend_form');
+
+  $script = "<script>$(document).ready(function(){
+                                if(document.getElementById('custommod-tell-a-friend-form')){
+                                                $('body').addClass('custommod-tell-a-friend-form');
+                                }
+                });</script>";
+                return $form.$script;
+                //exit;
+}
+function custommod_tell_a_friend_form(){
+                //$form['#attributes'] = array('class' => 'exit-popup');
+                $form['txt'] = array(
+                                '#type' => 'markup',
+                                '#value' => '<img src="'.url().path_to_theme().'/images/tell-your-friend.jpg" alt="'.t("Tell your friend").'"/><br/><p>'.t("Fill in the fields and send to a friend...").'</p>'
+                );
+                $form['your_name'] = array(
+                                '#type' => 'textfield',
+                                '#required' => TRUE,
+                                '#maxlength' => '62',
+                                '#title' => t('Your name')
+                );
+                $form['your_email'] = array(
+                                '#type' => 'textfield',
+                                '#required' => TRUE,
+                                '#maxlength' => '62',
+                                '#title' => t('Your email')
+                );
+                $form['friend_name'] = array(
+                                '#type' => 'textfield',
+                                '#required' => TRUE,
+                                '#maxlength' => '62',
+                                '#title' => t("Friend's name")
+                );
+                $form['friend_email'] = array(
+                                '#type' => 'textfield',
+                                '#required' => TRUE,
+                                '#maxlength' => '62',
+                                '#title' => t("Friend's email")
+                );
+                $form['message'] = array(
+                                '#type' => 'textarea',
+                                '#required' => TRUE,
+                                '#maxlength' => '2000',
+                                '#title' => t('Personal message')
+                );
+                $form['submit'] = array(
+                                '#type' => 'submit',
+                                '#value' => t('Submit'),
+                                '#submit' => array('custommod_tell_a_friend_submit'),
+                                '#attributes' => array('onclick' => 'return custommod_tell_friend_validate();')
+                );
+                return $form;
+}
+
+function custommod_tell_a_friend_submit($form_state, $form_values) {
+                //ini_set('SMTP','smtp.eu.jnj.com');
+    //ini_set('smtp_port','25');
+                global $base_url;
+                $v = $form_values['values'];
+                $tokens = array();
+                $tokens['!friend_name'] = $v['friend_name'];
+                $tokens['!friend_email'] = $v['friend_email'];
+                $tokens['!sender_name'] = $v['your_name'];
+                $tokens['!sender_email'] = $v['your_email'];
+                $tokens['!your_name'] = $v['your_name'];
+                $tokens['!your_email'] = $v['your_email'];
+                $tokens['!message'] = $v['message'];
+                $tokens['!site_url'] = $base_url;
+                $tokens['!site_name'] = variable_get('site_name', '');
+
+                $email_body = t(variable_get('custommod_taf_email_template', ''), $tokens);
+                $email_subject = t(variable_get('custommod_taf_email_subject', ''), $tokens);
+                $params['from'] = $v['your_email'];
+                $params['body'] = $email_body;
+                $params['subject'] = $email_subject;
+                /*echo $email_body;
+                echo "<br/>";
+                echo $email_subject;
+                exit;*/
+               drupal_mail('custommod', 'tellfriend', $v['friend_email'], language_default(), $params);
+               //drupal_goto("tellfriend-success");
+               print t('Please wait...');
+               drupal_set_message(t('Thank you! The email has been sent'));
+                //echo "<script>window.parent.location.reload(true); </script>";
+                echo "<script>parent.location.href ='".url('node/'.$_GET['destination'])."';</script>";
+exit;
+}
+
+function custommod_mail($key, &$message, $params){
+                $message['headers'] = array('From' => $params['from'], 'X-Mailer' => 'Drupal Webform (PHP/'. phpversion() .')', 'Content-Type' => 'text/html; charset=UTF-8; format=flowed;');
+                if($key == "tellfriend") {
+						$language = $message['language'];
+						$message['subject'] = $params['subject'];
+						$message['body'][] =  $params['body'];
+                }
+				else if($key=='custommod_tell_friend'){
+						$message['subject'] = $params['subject'];
+						$message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed;';
+						$message['from'] = $params['from'];
+						$message['body'][] =  $params['body'];
+						$message['headers']['Sender']=$message['headers']['From'];
+				}
+}
+/**
+* Function to downlaod .air files
+*/
+function custommod_download_air_file(){
+                //locale_update_js_files();return null;
+                global $base_path;
+                $file_name = arg(1);
+                $pth=rtrim($_SERVER["DOCUMENT_ROOT"],"/").$base_path.variable_get('file_directory_path', 'dfghdfhdfh' ).'/pdf/'.$file_name;
+                header('Content-disposition: attachment; filename='.$file_name);
+                header('Content-type: application/air');
+                readfile($pth);
+}
+
+function custommod_patient_vgallery(){
+                $vars = array();
+                return theme('patient-carer-vgallery',$vars);
+}
+
+function custommod_process_questionaire_print(){
+                $json = array();
+                if(!empty($_REQUEST['json'])){
+                                $json = json_decode($_REQUEST['json'],true);
+                }
+                if(isset($_SESSION['questionaire'])){
+                                unset($_SESSION['questionaire']);
+                }
+                foreach($json as $key=>$value){
+                                $_SESSION['questionaire'][$key] = $value;
+                }
+                echo 'success';
+}
+
+function custommod_markinspace(){
+                $content = '<div class="write-to-frnd-container">
+								<div class="form-wrapper">
+								<div class="multi-frnd-pop">
+							    <h1>Send to multiple friends</h1>
+                                <div class="btn-row">
+                                <input type="button" value="Cancel" id="send-multi-cancel"><input type="button" value="Done" id="send-multi-done">
+                                </div>
+                                <p class="msg">You can send to a maximum of 6 friends</p>';
+                for($i=0;$i<6;$i++){
+                 $content .= '<div class="item-row">
+                 <div class="col1">
+                 <label>Your friend\'s name</label>
+                <input type="text" id="mark-in-space-frnd-'.$i.'" name="mark-in-space-frnd-'.$i.'">
+                </div>
+                <div class="col2">
+                <label>Your friend\'s email</label>
+                <input type="text" id="mark-in-space-frnd-email-'.$i.'" name="mark-in-space-frnd-email-'.$i.'">
+                </div>
+                </div>';
+                }
+                $content .= '</div>
+                <div class="pop-shaded-bg"></div>
+                <div class="ini-info">
+                <h1>Escreva a um amigo</h1>
+                <p>Se já se sentiu isolado  ou conhece alguém que já se sentiu isolado, envie um email ou publique este filme com um convite pessoal através de email, a solicitar-lhes que passem  algum tempo consigo em breve.</p>
+				<a href="javascript:void(0);" class="expand-link">Crie a sua mensagem</a>
+				</div>                                                   
+				<form class="write-frnd">
+				<h2>Crie a sua mensagem</h2>
+				<div class="item-row">
+								<label>O seu nome</label>
+								<input id="your_name" type="text" value="">
+				</div>
+				<div class="item-row" id="friend-name-ctr">
+								<label>O nome do seu amigo</label>
+								<input id="friend_name" type="text" class="markinspace_friend_name">
+								<div class="markinspace-frnd-send-ctr"></div>
+				</div>
+				<div class="item-row" id="friend-email-ctr">
+								<label>Endereço eletrónico do seu amigo</label>
+								<input id="friend_email" type="text" class="markinspace_friend_email">
+								<a href="javascript:void(0);" class="send-multiple">Enviar para vários amigos</a>
+				</div>
+				<div class="item-row">
+								<label>Selecione uma atividade para  convidar o seu amigo</label>
+								<label id="radio_label_1" class="radio selected"><input id="radio_1" type="radio"> aparecer para conversar</label>
+								<label id="radio_label_2" class="radio"><input id="radio_2" type="radio"> encontro num local a decidir</label>
+								<label id="radio_label_3" class="radio"><input id="radio_3" type="radio"> ir comer uma pizza</label>
+								<label id="radio_label_4" class="radio"><input id="radio_4" type="radio"> juntar-se a nós na próxima reunião de grupo</label>
+								<label id="radio_label_5" class="radio"><input id="radio_5" type="radio"> fazer uma refeição na minha casa</label>
+								<label id="radio_label_6" class="radio"><input id="radio_6" type="radio"> ir dar um passeio no parque</label>
+								<label id="radio_label_7" class="radio"><input id="radio_7" type="radio"> ir ao cinema</label>
+								<label id="radio_label_8" class="radio"><input id="radio_8" type="radio"> participar numa atividade decidida em conjunto</label>
+				</div>
+				<div class="item-row">
+								<!--<label>Escreva uma mensagem pessoal / adicione mais informação sobre a atividade</label>
+								<textarea id="your_message"></textarea>-->
+				</div>
+				<div class="btn-row">
+								<input type="button" value="Pré-visualizar a sua mensagem" onclick="open_preview_letter();"><input type="button" value="Enviar a sua mensagem por email" onclick="markinspace_email_friends();"><input type="button" value="Imprimir e publicar a sua mensagem" onclick="markinspace_email_print();">
+				</div>
+				<div class="info-content">Schizophrenia24x7 não captará endereços de email ou quaisquer outras. <br>informações pessoais. Consulte a nossa política de privacidade para obter mais informações.</div>
+				</form>
+				<div id="dhtmlwindowholder-1"><span style="display:none">.</span></div>
+				<div id="modalalertdiv" style="display:none;">
+					<div class="mailer-preview">
+						<h1>Preview</h1>
+						<div class="btn-row">
+										<input type="button" value="Email" onclick="markinspace_email_friends();"><input type="button" value="Print and post" onclick="markinspace_email_print();"><input type="button" value="Cancel" id="mailer_preview_cancel" onclick="close_preview_letter();">
+						</div>
+						<div class="mailer-content">
+										<p>Dear XYZ</p>
+										<p>There\'s a short film I\'ve seen on the internet I\'d like to share with you. Look at <a href="http://www.schizophrenia24x7.com/markinspace">www.schizophrenia24x7.com/markinspace</a> i hope you like it too. It\'s about spending time with friends.</p>
+										<img src="/sites/all/themes/psychiatry24x7/images/invite.png" style="float:right; margin-bottom:10px;">
+										<p>So...<br>...when you\'ve looked, maybe you\'d like to come around and have a chat?</p>
+										<hr style="clear:both;">
+										<p>Would you have a small get togather at xyz place &amp; will share the tea over noon at 24 Aug 2013.</p>
+										<img src="/sites/all/themes/psychiatry24x7/images/markinspace-banner.png">
+						</div>
+					</div>
+				</div>
+				<div id="emailalertdiv" style="display:none;">
+								<div class="mailer-preview">
+												<h1>Preview</h1>
+												<div class="mailer-content">
+																<p>Email has been sent!</p>
+												</div>
+								</div>
+				</div>
+				</div>
+				<div class="clear"></div>
+				</div>';
+				return $content;
+}
+
+function custommod_markinspace_send_email(){
+                global $language;
+                
+                $action = $_REQUEST['action'];
+                $theme_path = drupal_get_path('theme','psychiatry24x7');
+                $json = $_REQUEST['json'];
+                $data = json_decode($json,true);
+                
+								$arr_friend_name[] = $data['friend_name'];
+                $arr_friend_email[] = $data['friend_email'];
+                for($i=0;$i<6;$i++){
+                                if(!empty($data['friend_name_'.$i])){
+                                                $arr_friend_name[] = $data['friend_name_'.$i];
+                                }
+                                if(!empty($data['friend_email_'.$i])){
+                                                $arr_friend_email[] = $data['friend_email_'.$i];
+                                }
+                }
+                $str_your_name = $data['your_name'];
+                $str_your_email = 'noreply@its.jnj.com';
+                $str_friend_name = implode(',',$arr_friend_name);
+                $str_friend_email = implode(',',$arr_friend_email);
+                $radio_option = $data['radio_option'];
+                
+                $mail_params['from'] = $str_your_email;
+                $mail_params['subject'] = t('Markinspace');
+                /*
+                <style type="text/css">
+                .mailer-preview{
+                background:#dcdcdc;
+                border:20px #dcdcdc solid;
+                width:425px;
+                margin:auto;
+                font-family:Arial,Helvetica,sans-serif;
+}
+.mailer-content{
+                background:#fff;
+                padding:20px;
+                margin-top:20px;
+}
+.mailer-content hr{
+                border:none;
+                border-bottom:3px #dcdcdc dashed;
+}
+.clear{
+                clear:both;
+}
+.mailer-preview-adjust{
+                background: none repeat scroll 0 0 transparent !important;
+    border: none !important;
+    margin: 0 !important;
+}
+                </style>
+                */
+                $mail_params['body'] = '<html><head></head><body><div style="background: none repeat scroll 0 0 transparent;border: none;margin: 0;width:425px;font-family:Arial,Helvetica,sans-serif;">
+                                <p>Dear '.$str_friend_name.'</p>
+                                <p>There\'s a short film I\'ve seen on the internet I\'d like to share with you. Look at <a href="http://www.schizophrenia24x7.com/markinspace">www.schizophrenia24x7.com/markinspace</a> i hope you like it too. It\'s about spending time with friends.</p>
+                                <img style="float:right; margin-bottom:10px;" src="'.'http://'.$_SERVER['HTTP_HOST'].url($theme_path.'/images/markinspace-banner.png').'" />
+                                <p>So...<br>...when you\'ve looked, maybe you\'d like to '.$radio_option.'?</p>
+                                <hr style="clear:both;" />
+                                <p>'.$str_your_name.'</p>
+                                <img src="'.'http://'.$_SERVER['HTTP_HOST'].url($theme_path.'/images/markinspace-banner.png').'" />
+                </div>
+</div></body></html>';
+                if($action=='email'){
+                                drupal_mail('custommod', 'custommod_tell_friend', $str_friend_email, language_default(), $mail_params,$str_your_email);
+                                echo "success";
+                }else{
+                                
+                                $arr_response = array('data'=>$mail_params['body']);
+                                watchdog('markinspace',json_encode($arr_response));
+                                echo json_encode($arr_response);
+                }
+}
+
+function custommod_markinspace_videos_to_load(){
+                $array[]='2174761591001';
+                $array[]='2174845128001';
+                $arr_response['data'] = $array;
+                echo json_encode($arr_response);
+}

@@ -1,0 +1,4 @@
+; $Id: custom_aggregator.info,v 1.4 2007/06/08 05:50:55 dries Exp $
+name = custom_aggregator
+description = "Custom module to display aggregator feeds."
+core = 6.x

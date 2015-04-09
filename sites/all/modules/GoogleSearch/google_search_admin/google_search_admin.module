@@ -1,0 +1,57 @@
+<?php
+// $Id: google_search_admin.module,v 1.0 2008/09/09 13:33:21 Exp $
+
+/**
+ * Implementation of hook_init().
+ */ 
+function google_search_admin_init() {
+  $path = drupal_get_path('module', 'google_search_admin');
+  drupal_add_js($path .'/google_search_admin.js');
+  drupal_add_js(array('google_search_admin' => array('autoComplete' => variable_get('search_auto_complete', ''),
+						'autoCompleteTemp' => $_REQUEST['search_auto_complete'],
+						'autoCompleteLocTemp' => $_REQUEST['search_auto_complete_location']
+                                          )), 'setting');
+}
+
+function google_search_admin_form_validate($form, &$form_state) {
+  if ($form_state['values']['search_auto_complete']) {
+    if (!empty($form_state['values']['search_auto_complete_location'])) {
+      $validate_xml = validate_xml_extensions($form_state['values']['search_auto_complete_location'], 'xml');
+      if (!empty($validate_xml))
+        form_set_error('error', $validate_xml);
+    }
+    
+    return FALSE;
+  }
+}
+
+/**
+ * Validate the xml file location.
+ */ 
+function validate_xml_extensions($file, $extensions) {
+  $errors = '';
+  $regex = '/\.('. ereg_replace(' +', '|', preg_quote($extensions)) .')$/i';
+  if (!preg_match($regex, $file)) {
+    $errors = t('Only xml files are allowed.');
+  }
+  return $errors;
+}
+
+function google_search_admin_form_submit($form, &$form_state) {
+  $op = isset($form_state['clicked_button']['#parents'][0]) ? $form_state['clicked_button']['#parents'][0] : '';
+
+  // Exclude unnecessary elements.
+  unset($form_state['values']['submit'], $form_state['values']['reset'], $form_state['values']['form_id'], $form_state['values']['op'], $form_state['values']['form_token'], $form_state['values']['form_build_id']);
+
+  foreach ($form_state['values'] as $key => $value) {
+    if (is_array($value) && isset($form_state['values']['array_filter'])) {
+      $value = array_keys(array_filter($value));
+    }
+    variable_set($key, $value);
+  }
+  
+  drupal_set_message(t('The configurations settings have been saved.'));
+
+  cache_clear_all();
+  drupal_rebuild_theme_registry();
+}

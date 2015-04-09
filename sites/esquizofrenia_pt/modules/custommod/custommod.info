@@ -1,0 +1,3 @@
+name = custommod
+description = "Custom module to control pagination for feed aggregator."
+core = 6.x

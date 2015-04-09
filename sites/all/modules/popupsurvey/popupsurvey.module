@@ -1,0 +1,197 @@
+<?php
+function popupsurvey_menu() {
+  $items['admin/settings/popupsurvey'] = array(
+  'title' => 'Survey popup settings',
+  'page callback' => 'drupal_get_form',
+  'page arguments' => array('popupsurvey_admin_setting'),
+  'access arguments' => array('administer popupsurvey')
+  );
+  $items['download_mars'] = array(
+  'page callback' => 'popupsurvey_download_mars_file',
+  'access callback' => TRUE
+  );
+  $items['continue-survey'] = array(
+  'page callback' => 'popupsurvey_popup_continue_survey',
+  'type' => MENU_CALLBACK,
+  'access callback' => TRUE
+  );
+  $items['set-survey-cookie'] = array(
+  'page callback' => 'popupsurvey_popup_checkboxstatus',
+  'type' => MENU_CALLBACK,
+  'access callback' => TRUE
+  );
+  $items['stayin-survey'] = array(
+  'page callback' => 'popupsurvey_popup_stayin_survey',
+  'type' => MENU_CALLBACK,
+  'access callback' => TRUE
+  );
+  $items['remove-survey-cookie'] = array(
+  'page callback' => 'popupsurvey_popup_removecookie',
+  'type' => MENU_CALLBACK,
+  'access callback' => TRUE
+  );
+  $items['contactus-popup'] = array(
+  'page callback' => 'popupsurvey_contactus_popup',
+  'type' => MENU_CALLBACK,
+  'access callback' => TRUE
+  );
+  $items['contactus-popupredirect'] = array(
+  'page callback' => 'popupsurvey_contactus_popupredirect',
+  'type' => MENU_CALLBACK,
+  'access callback' => TRUE
+  );
+  return $items;
+}
+function popupsurvey_admin_setting() {
+  $form['popupsurvey_continuesurvey_diary'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Continue survey diary'),
+    '#default_value' => variable_get('popupsurvey_continuesurvey_diary', ''),
+    '#required' => TRUE
+  );
+   $form['popupsurvey_continuesurvey_mars'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Continue survey mars'),
+    '#default_value' => variable_get('popupsurvey_continuesurvey_mars', ''),
+    '#required' => TRUE
+  );
+  $form['popupsurvey_stayinsurvey'] = array(
+    '#type' => 'textarea',
+    '#title' => t('You want to stay in survey'),
+    '#default_value' => variable_get('popupsurvey_stayinsurvey', ''),
+    '#required' => TRUE
+  );
+  $form['popupsurvey_filepath'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Enter file path where the MARS files are stored under files directory'),
+    '#default_value' => variable_get('popupsurvey_filepath', ''),
+    '#required' => TRUE
+  );
+  $form['popupsurvey_surveyurl'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Enter survey url'),
+    '#default_value' => variable_get('popupsurvey_surveyurl', ''),
+    '#required' => TRUE
+  );
+   return system_settings_form($form);
+}
+function popupsurvey_download_mars_file() {
+  global $base_path;
+  $file_name = arg(1);
+  $pth=rtrim($_SERVER["DOCUMENT_ROOT"], "/") . $base_path . 'sites/default/files/' . variable_get('popupsurvey_filepath', '') . '/' . $file_name;
+  header('Content-disposition: attachment; filename=' . $file_name);
+  header('Content-type: application/mars');
+  readfile($pth);
+  exit;
+}
+
+function popupsurvey_popup_continue_survey() {
+  if (arg(1)=='air'){$template = variable_get('popupsurvey_continuesurvey_diary', '');}
+  if (arg(1)=='mars'){$template = variable_get('popupsurvey_continuesurvey_mars', '');}
+
+  $chkbx = '<input type="checkbox" id="checksurvey" name="checksurvey" value="check" />';
+  $button = '<input type="button" name="survey" value="Submit" onclick="popupsurvey();"/>';
+  $output = t($template, array('!checkbox' => $chkbx, '!button' => $button));
+  echo $output;
+  print "<script>$(document).ready(function(){
+		if(document.getElementById('lightbox')){
+			$('body').addClass('popup_continue_survey');
+		}
+	});</script>";
+}
+function popupsurvey_init() {
+  drupal_add_js(drupal_get_path('module', 'popupsurvey') . '/popupsurvey.js');
+  drupal_add_js(drupal_get_path('module', 'popupsurvey') . '/popupsurvey_stay.js');
+}
+  /*
+  * here based on check box status were are placing cookie time
+  */
+function popupsurvey_popup_checkboxstatus() {
+  global $base_url;
+  if ( arg(1) == 1) {
+  $time = time()+ 60*60;
+  setcookie("stay", "5", 0, '/');
+  setcookie("popupsurvey", $time, 0, '/');
+  setcookie("popupsurvey_days", $time, 0, '/');//days
+
+}
+else{
+  setcookie("popupsurvey", "", time()- (60*60*24*366), '/');
+  setcookie("popupsurvey_days", "", time()- (60*60*24*366), '/');
+}
+  //$path = trim($_GET['redirect'], $base_url."/");
+  drupal_goto($_GET['redirect']); //- This is adding extra slash after base_path, so header used.
+  //header("Location:/".$path);
+exit;
+}
+  /*
+  * placing the text in popup
+  */
+function popupsurvey_popup_stayin_survey() {
+  $stayin = variable_get('popupsurvey_stayinsurvey', '');
+  $yesbutton = '<input type="button" name="survey" value="Yes" onclick="popupsurvey_stay();"/>';
+  $nobutton = '<input type="button" name="survey" value="No" onclick="popupsurvey_stayno();"/>';
+  $valuepass ='<input type="hidden" id="stayinsurvey" value="' . variable_get("popupsurvey_surveyurl", "") . '" />';
+  $continue = t($stayin, array('!yes' => $yesbutton, '!no' => $nobutton));
+  echo $continue . $valuepass;
+    print "<script>$(document).ready(function(){
+		if(document.getElementById('lightbox')){
+			$('body').addClass('popup_stayin_survey');
+		}
+	});</script>";
+  exit;
+}
+function popupsurvey_popup_removecookie() {
+  if ( arg(1) == 2) {
+  setcookie("popupsurvey", "", time()- (60*60*24*366), '/');
+  setcookie("popupsurvey_days", "", time()- (60*60*24*366), '/');
+  }
+  drupal_goto();
+  exit;
+}
+  /*
+  * Implemenation of hook_form_alter()
+  */
+function popupsurvey_form_alter(&$form, &$form_state, $form_id) {
+  /*
+  * Alter a contact us admin settings
+  * Adding a new textarea for custom thank you message.
+  */
+  if ($form_id == 'contactus_adminpage') {
+  $form['contactus_forms_redirect']['contactus_redirect_custom_url_thankyou_message'] = array(
+  '#prefix' => '<div id="contactus_redirect_custom_url_thankyou_message" style="display:none">',
+  '#type' => 'textarea',
+  '#title' => '<b>' . t('Enter Custom URL thank you message') . '</b>',
+  '#default_value' => variable_get('contactus_redirect_custom_url_thankyou_message', t('Thank you for your message')),
+  '#suffix' => '</div>',
+  );
+  $form['#submit'][] = 'contactus_thankyou_submit_handler'; //adding a custom submit
+  }
+  if ($form_id == 'contactus_list') {
+  	$form['email']['#default_value'] = '';
+  }
+}
+/*
+ * Custom submit function to save the thank you message.
+ */
+function contactus_thankyou_submit_handler($form, &$form_state) {
+  variable_set('contactus_redirect_custom_url_thankyou_message', $form_state['values']['contactus_redirect_custom_url_thankyou_message']);
+}
+/*
+ * To bring popup to display contactus thank u message
+ */
+function popupsurvey_contactus_popup() {
+  $output = '<a style="display:none;" id="contact-popup" href="' . base_path() . 'contactus-popupredirect" rel="lightmodal[|width:450px; height:200px;]">' . t('test') . '</a>';
+  drupal_add_js('var expir = 1000;$(document).ready(function(){setTimeout(function() {$("#contact-popup").triggerHandler("click");	},expir);});', 'inline');
+  return $output;
+}
+/*
+ * To bring the content in the popup
+ */
+function popupsurvey_contactus_popupredirect() {
+  $message = variable_get('contactus_redirect_custom_url_thankyou_message', '');
+  $continue = '<input type="button" name="continue" value="continue" onclick="popupsurvey_continue();"/>';
+  $thankumessage = t($message , array('!continue' => $continue));
+  //$thankumessage = "Subscription Title<br></br>" . $thankumessage . " <br> <br> Continue Button";
+  echo $thankumessage;
+}

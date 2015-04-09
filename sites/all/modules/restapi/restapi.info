@@ -1,0 +1,11 @@
+name = REST Web Services
+description = Module for making REST Web Service calls
+core = 6.x
+package = ITrInno Framework
+php = 5.x.x
+version = "6.x-0.x-dev"
+dependencies[] = pear
+core = "6.x"
+project = "restapi"
+datestamp = "1210119160"
+

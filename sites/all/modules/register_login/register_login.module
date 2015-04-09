@@ -1,0 +1,143 @@
+<?php
+// $Id: register_login.module,v 1.0 2010/12/06 14:00:10 Exp $
+/**
+ * @file
+ * Allows to manage Registration and Login functionality.
+ */
+
+/*
+ * Implementation of hook_menu()
+ */
+function register_login_menu(){
+	$items = array();
+
+	$items['register'] = array(
+		'page callback' => 'form_registration',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	return $items;
+}
+
+
+
+
+/*
+ * Header Navigation content block 
+ */
+function block_header_nav(){
+	$output = '';
+	$output .= '
+		<ul>
+		    <li class="selected"><a title="Register" href="/register">Register</a></li>
+		    <li><a title="Login" href = "javascript:void(0)" onclick = "document.getElementById(\'light_login\').style.display=\'block\';document.getElementById(\'fade_login\').style.display=\'block\'">Login</a></li>
+		</ul>';
+	return $output.form_login();
+	
+}
+/*
+ * Form Loin 
+ */
+function form_login(){
+	$images_path = url().path_to_theme().'/images/';
+		$output = '<div id="light_login" class="white_content_login">
+		<!-- Login -->
+		<div id="popup_container">
+		  <div id="popup_top"><a href = "javascript:void(0)" onclick = "document.getElementById(\'light_login\').style.display=\'none\';document.getElementById(\'fade_login\').style.display=\'none\'" title="Close"><img src="'.$images_path.'icon_close.gif" alt="Close" title="Close" class="close" /></a>
+		    <div class="popup_title"><img src="'.$images_path.'hd_login.gif" alt="Login" title="Login" /></div>
+		    <table width="60%" border="0" cellspacing="0" cellpadding="0">
+		      <tr>
+		        <td>User name</td>
+		        <td><input type="text" name="textfield" id="textfield1" /></td>
+		      </tr>
+		      <tr>
+		        <td>Password</td>
+		        <td><input type="password" name="textfield" id="textfield2" /></td>
+		      </tr>
+		    </table>
+		
+		    <p class="button"><a href="#" title="Submit"><img src="'.$images_path.'btn_submit.gif" alt="Submit" title="Submit" /></a></p>
+		  </div>
+		  <div id="popup_bot">Not registered? <a href="/register" title="Register now">Register now</a></div>
+		</div>
+		<!-- End of Login in -->
+		</div>
+		<div id="fade_login" class="black_overlay_login"></div>';
+		return $output;
+}
+
+/*
+ * Form Registration
+ */
+function form_registration(){
+	$images_path = url().path_to_theme().'/images/';
+	$output = '';
+	$output .= '<div id="twocol">
+        <h1>Register</h1>
+        <div id="reg_container">
+          <h2>Current survey question nec velit adipiscing volutpat. Vestibulum leo lorem, fauc ibus a laoreet venenatis.</h2>
+          <table cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tbody><tr>
+              <td colspan="5">Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy?</td>
+            </tr>
+            <tr>
+              <td colspan="5"><label>
+                <textarea rows="7" cols="74" id="textarea" name="textarea"></textarea>
+                </label></td>
+            </tr>
+            <tr>
+              <td colspan="5">Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy?</td>
+            </tr>
+            <tr>
+              <td width="13%"><label>
+                <input type="checkbox" id="checkbox1" name="checkbox">
+                Never</label></td>
+              <td width="19%"><label>
+                <input type="checkbox" id="checkbox2" name="checkbox">
+                Almost never</label></td>
+              <td width="19%"><label>
+                <input type="checkbox" id="checkbox3" name="checkbox">
+                Sometimes</label></td>
+              <td width="21%"><label>
+                <input type="checkbox" id="checkbox4" name="checkbox">
+                Almost always</label></td>
+              <td width="28%"><label>
+                <input type="checkbox" id="checkbox5" name="checkbox">
+                Always</label></td>
+            </tr>
+            <tr>
+              <td colspan="5">Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy?</td>
+            </tr>
+            <tr>
+              <td colspan="5"><label>
+                <select id="select" name="select">
+                  <option>Select One</option>
+                  <option>--------------------------------------------</option>
+                </select>
+                </label></td>
+            </tr>
+            <tr>
+              <td colspan="5">Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy?</td>
+            </tr>
+            <tr>
+              <td><label>
+                <input type="radio" value="radio" id="radio1" name="radio">
+                Yes</label></td>
+              <td><label>
+                <input type="radio" value="radio" id="radio2" name="radio">
+                No</label></td>
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+            </tr>
+            <tr>
+              <td colspan="5"><a title="Register" href="#"><img title="Register" alt="Register" src="'.$images_path.'btn_register.gif"></a></td>
+            </tr>
+            <tr>
+              <td class="privacy" colspan="5"><a title="Privacy statement" href="#">Privacy statement</a> aliquam erat volutpat. Vivamus sit amet tortor nisl. Suspendisse at libero vel eros venenatis.</td>
+            </tr>
+          </tbody></table>
+        </div>
+      </div>';
+	return $output;
+}

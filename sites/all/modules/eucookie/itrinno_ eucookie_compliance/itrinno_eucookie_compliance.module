@@ -1,0 +1,709 @@
+<?php
+/**
+ * @file
+ * This module intends to deal with the EU Directive on Privacy and Electronic
+ * Communications that comes into effect in the UK on 26th May 2012.
+ */
+ 
+/**
+ * Implements hook_init().
+ */
+// print '---'; exit;
+function itrinno_eucookie_compliance_init() { 
+ //global $base_url;
+ // Changed by Dibyendu to remove JS if site impact level is none on 17th May 2013 // 
+   global $language;
+   $siteCurrentLanguage = $language->language;
+   $siteImpactLevelArr = variable_get('eu_cookie_settings_'.$siteCurrentLanguage,'');
+   $siteImpactLevel = $siteImpactLevelArr['site_impact_level'];
+   if($siteImpactLevel != 0) { 
+	  $path = drupal_get_path('module', 'itrinno_eucookie_compliance');
+	  drupal_add_css($path . '/css/itrinno-eucookie-compliance-tweaks.css'); 
+	  drupal_add_css($path . '/css/itrinno-eucookie-font-styles.css');
+	  drupal_add_js($path . '/js/jquery.simplemodal1.4.2.js', 'module', 'header'); 
+	  //drupal_add_js($path . '/js/jquery.cookie.js', 'module', 'footer');
+	}
+	drupal_add_js($path . '/js/jquery.cookie.js', 'module', 'footer');
+	drupal_add_js('function changeLangForCookieConfigurationSettings(a) {
+	document.location.href = "/admin/settings/eu-cookie-compliance/"+a;
+	}
+	function changeLangForUiSettings(b) {
+	document.location.href = "/admin/settings/eu-cookie-compliance/ui-configuration/"+b;
+	}
+	function changeLangForThirdpartySettings(c) {
+	document.location.href = "/admin/settings/eu-cookie-compliance/third-party/"+c;
+	}
+	function changeLangForThirdpartyText(d) {
+	document.location.href = "/admin/settings/eu-cookie-compliance/third-party-text/"+d;
+	}','inline');	
+ // Changed by Dibyendu to remove JS if site impact level is none on 17th May 2013 End //	  
+  
+  // Delete this code when on production
+  if ( eu_cookie_tweaks_get_status () == 1 ) {
+    $_COOKIE['necessary'] = 1;
+  }
+  if ( eu_cookie_tweaks_get_status () == 2 ) {
+    $_COOKIE['necessary'] = 1;
+	$_COOKIE['enhancement'] = 1;
+  }
+  // Delete this code when on production
+  
+}
+
+ 
+/**
+ * Implements hook_menu().
+ */
+function itrinno_eucookie_compliance_menu() {
+  $items['clear_all_cookies'] = array(
+    'title' => '',
+    'description' => '',
+    'page callback' => 'clear_all_cookies',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['admin/settings/eu-cookie-compliance'] = array(
+    'title' => 'EU Cookie configuration settings',
+    'description' => 'Make your website compliant with the EU Directive on Privacy and Electronic Communications.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('eu_cookie_tweaks_form'),
+    'access arguments' => array('administer EU Cookie tune access'),
+    'file' => 'itrinno_eucookie_compliance.admin.inc',
+    //'type' => MENU_NORMAL_ITEM,
+  );
+  
+  $items['admin/settings/eu-cookie-compliance/extra-tune'] = array(
+    'title' => 'EU Cookie configuration settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 1,
+  );
+  
+  $items['admin/settings/eu-cookie-compliance/ui-configuration'] = array(
+    'title' => 'EU Cookie UI settings',
+    'description' => 'Alignment and UI settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('eu_cookie_tweaks_ui_settings'),
+    'access arguments' => array('administer EU Cookie ui configuration'),
+    'file' => 'itrinno_eucookie_compliance.admin.inc',
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['eu-cookie-compliance'] = array(
+    'title' => t('Third Party Cookies'),
+    'description' => t('Make your browser compliant with the EU Directive on Privacy and Electronic Communications'),
+    'page callback' => 'eu_cookie_compliance',    
+    'access callback' => TRUE,
+    'file' => 'itrinno_eucookie_compliance.pages.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  
+    $items['admin/settings/eu-cookie-compliance/third-party'] = array(
+    'title' => 'Third Party settings',
+    'description' => 'Third Party settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('eu_cookie_tweaks_thirdparty_settings'),
+    'access arguments' => array('administer EU Cookie ui configuration'),
+    'file' => 'itrinno_eucookie_compliance.admin.inc',
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['admin/settings/eu-cookie-compliance/third-party-text'] = array(
+    'title' => 'Third Party Text',
+    'description' => 'Third Party Text.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('eu_cookie_tweaks_thirdparty_text'),
+    'access arguments' => array('administer EU Cookie ui configuration'),
+    'file' => 'itrinno_eucookie_compliance.admin.inc',
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+// Added by Dibyendu on 21st May 2013 for language fix //
+ 
+  $items['admin/settings/eu-cookie-compliance/ui-configuration/%'] = array(
+    'title' => 'EU Cookie UI settings',
+    'description' => 'Alignment and UI settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('eu_cookie_tweaks_ui_settings'),
+    'access arguments' => array('administer EU Cookie ui configuration'),
+    'file' => 'itrinno_eucookie_compliance.admin.inc',
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+  );
+// Added by Dibyendu on 21st May 2013 for language fix End//
+  $items['cookie-settings-panel'] = array(
+    'title' => t('Cookie settings panel'),
+    'description' => '',
+    'page callback' => 'cookie_settings_panel',
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+  );/*
+ $items['admin/settings/eu-cookie-compliance/custom_cookie_settings'] = array(
+          'title' => t('Custom Cookie settings'),
+          'description' => t('Custom Cookie settings'),
+          'file' => 'itrinno_eucookie_compliance.admin.inc',
+          'page callback' => 'itrinno_eucookie_compliance_custom_cookie_setting',
+         // 'page arguments' => array('contactus_custom_emailsetting'),
+          'access arguments' => array('administer EU Cookie ui configuration'),
+          'type' => MENU_LOCAL_TASK,
+          'weight' => 3,
+  );
+  $items['custom-cookie-setting/js'] = array(
+    'page callback' => 'custom_cookie_form_setting',
+    'access arguments' => array('administer EU Cookie ui configuration'),
+    'type' => MENU_CALLBACK,
+    'file' => 'itrinno_eucookie_compliance.admin.inc',
+  	);
+	$items['custom-cookie-setting/js/validate/callback'] = array(
+    'page callback' => 'custom_cookie_form_validate_callback',
+    'access arguments' => array('administer EU Cookie ui configuration'),
+    'type' => MENU_CALLBACK,
+    'file' => 'itrinno_eucookie_compliance.admin.inc',
+  	);*/
+   return $items;
+}
+
+
+/**
+ * Implements hook_perm().
+ */
+function itrinno_eucookie_compliance_perm() {
+  return array( 'administer EU Cookie tune access', 'administer EU Cookie ui configuration' );
+}
+
+/**
+ * Implements hook_theme().
+ */
+function itrinno_eucookie_compliance_theme() {
+  $path = drupal_get_path('module', 'itrinno_eucookie_compliance') . '/theme';
+  return array(
+    'eu_cookie_tweaks_cookie_panel_settings' => array(
+      'template' => 'eu-cookie-cookie-panel-settings',
+      'arguments' => array('settings' => NULL),
+      'path' => $path,
+    ),
+    'eu_cookie_tweaks_page_explicit_consent' => array(
+      'template' => 'eu-cookie-cookie-page-explicit-consent',
+      'arguments' => array('message' => NULL),
+      'path' => $path,
+    ),
+    //implicit consent
+    'eu_cookie_tweaks_first_page_entry' => array(
+      'template' => 'eu-cookie-compliance-popup-info',
+      'arguments' => array('message' => NULL),
+      'path' => $path,
+    ),
+    //explicit page warning of functionality
+    'eu_cookie_tweaks_warning' => array(
+      'template' => 'eu-cookie-warning',
+      'arguments' => array('message' => NULL),
+      'path' => $path,
+    ),
+    //country explicit consent info theme
+    'eu_cookie_country_specific_consent' => array(
+      'template' => 'country-specific-explicit-consent',
+      'arguments' => array('message' => NULL),
+      'path' => $path,
+    ),
+  );
+}
+
+/**
+ * Implements hook_footer().
+ */
+function itrinno_eucookie_compliance_footer() {
+ 
+  global $language;
+  $ln = $language->language;
+  $get_settings_values = get_variable_value('eu_cookie_settings_' . $ln);  
+  if(empty($get_settings_values)) {
+    $get_settings_values = get_variable_value('eu_cookie_settings_en');
+  }
+  $get_ui_values = get_variable_value('eu_cookie_ui_settings_' . $ln);  
+  if(empty($get_ui_values)) {
+    $get_ui_values = get_variable_value('eu_cookie_ui_settings_en');
+  }
+  
+  //$replace = array('!cookie')
+  //$get_ui_values['explicit_consent'] = strtr(
+  $replace = ($get_ui_values['cookie_panel']['show_as_page']==1)?array('!cookie_link'=>'<a id="cookie-panel" href="/'.$get_ui_values['cookie_panel']['cookie_panel_link'].'">Cookie Settings Panel</a>'):array('!cookie_link'=>'<a href="javascript:void(0);"  class="cookie-panel-link">Cookie Settings Panel</a>');
+  
+  $get_ui_values['explicit_consent'] = strtr($get_ui_values['explicit_consent'],$replace);
+  $get_ui_values['implied_consent'] = strtr($get_ui_values['implied_consent'],$replace);
+  $get_ui_values['explicit_functional_warning'] = strtr($get_ui_values['explicit_functional_warning'],$replace);
+  $get_ui_values['country_explicit_consent_info'] = strtr($get_ui_values['country_explicit_consent_info'],$replace);
+  
+  $cookie_panel = theme('eu_cookie_tweaks_cookie_panel_settings', $get_ui_values['cookie_panel']);
+  $page_explicit_consent = theme('eu_cookie_tweaks_page_explicit_consent', $get_ui_values['explicit_consent']); 
+  $first_visitor_entry = theme('eu_cookie_tweaks_first_page_entry', $get_ui_values['implied_consent']);
+  $explicit_functional_warning = theme('eu_cookie_tweaks_warning', $get_ui_values['explicit_functional_warning']);  
+  $country_specific_explicit_consent = theme('eu_cookie_country_specific_consent', $get_ui_values['country_explicit_consent_info']);
+  
+  //country specific consent required
+ 
+  $ip_address = ip_address();    
+  //$json = file_get_contents("http://freegeoip.net/json/$ip_address?callback=show");
+  $json = @file_get_contents("http://freegeoip.net/json/202.60.62.100");//delete this line when live
+ 
+  //remove unknown strings
+  $json = str_replace(array('show(', ');'), array('', ''), $json);
+  //echo '<pre>';
+ // print_r($json);
+  $expression = json_decode($json);
+  //$expression->country_code = 'US';
+
+  $variables = array ( 
+    'popup_enabled' => $get_ui_values['cookie_banner']['popup'],
+    'cookie_accepted' => 1,
+	'site_impact_level' => $get_settings_values['site_impact_level'],
+    'bar_position' => $get_ui_values['cookie_banner']['position'],
+    'height' => $get_ui_values['cookie_banner']['height'],
+    'bgcolor' => '#'.$get_ui_values['cookie_banner']['bgcolor'],
+    'fontcolor' => '#'.$get_ui_values['cookie_banner']['fontcolor'],
+	'transparency' => $get_ui_values['cookie_banner']['transparency'],
+    'explicit_page' => explicit_impact_page(),
+    'country_specific_exist' => ( $get_settings_values['explicit_consent_country_codes'] != "" ) ? true : false,
+	'country_banner_exist' => ( $get_settings_values['country_banner'] != "" ) ? true : false,
+    'country_specific_match' => iso_country_code_match( $expression->country_code ),
+	'country_popup_match' => iso_country_popup_match( $expression->country_code ),
+    'cookie_panel' => empty( $cookie_panel ) ? FALSE : $cookie_panel,
+    'page_explicit_consent' => empty( $page_explicit_consent ) ? FALSE : $page_explicit_consent,
+    'first_visitor_entry' => empty( $first_visitor_entry ) ? FALSE : $first_visitor_entry,
+    'explicit_functional_warning' => empty( $explicit_functional_warning ) ? FALSE : $explicit_functional_warning,
+    'country_specific_explicit_consent' => empty( $country_specific_explicit_consent ) ? FALSE : $country_specific_explicit_consent,
+	'module_path' => base_path() .''.drupal_get_path('module', 'itrinno_eucookie_compliance'),
+	'cookie_panel_region'=>$get_ui_values['cookie_panel']['cookie_panel_region'],
+	'cookie_panel_bgcolor'=>'#'.$get_ui_values['cookie_panel']['cookie_panel_bgcolor'],
+	'cookie_panel_fontcolor'=>'#'.$get_ui_values['cookie_panel']['cookie_panel_fontcolor'],
+	'cookie_popup_bgcolor'=>'#'.$get_ui_values['cookie_popup']['cookie_popup_bgcolor'],
+	'cookie_popup_fontcolor'=>'#'.$get_ui_values['cookie_popup']['cookie_popup_fontcolor'],
+	'third_party_bgcolor'=>'#'.$get_ui_values['third_party_cookies']['third_party_bgcolor'],
+	'third_party_fontcolor'=>'#'.$get_ui_values['third_party_cookies']['third_party_fontcolor'],
+	'cookie_banner_fontstyles'=>$get_ui_values['cookie_banner']['cookie_banner_fontstyles'],
+	'cookie_banner_fontsize'=>$get_ui_values['cookie_banner']['cookie_banner_fontsize'],
+	'cookie_banner_fontweight'=>$get_ui_values['cookie_banner']['cookie_banner_fontweight'],
+	'cookie_panel_fontstyles'=>$get_ui_values['cookie_panel']['cookie_panel_fontstyles'],
+	'cookie_panel_fontsize'=>$get_ui_values['cookie_panel']['cookie_panel_fontsize'],
+	'cookie_panel_fontweight'=>$get_ui_values['cookie_panel']['cookie_panel_fontweight'],
+	'cookie_popup_fontstyles'=>$get_ui_values['cookie_popup']['cookie_popup_fontstyles'],
+	'cookie_popup_fontsize'=>$get_ui_values['cookie_popup']['cookie_popup_fontsize'],
+	'cookie_popup_fontweight'=>$get_ui_values['cookie_popup']['cookie_popup_fontweight'],
+	'third_party_fontstyles'=>$get_ui_values['third_party_cookies']['third_party_fontstyles'],
+	'third_party_fontsize'=>$get_ui_values['third_party_cookies']['third_party_fontsize'],
+	'third_party_fontweight'=>$get_ui_values['third_party_cookies']['third_party_fontweight'],
+	'show_as_page'=>$get_ui_values['cookie_panel']['show_as_page'],
+	'cookie_panel_popup_bgcolor'=>'#'.$get_ui_values['cookie_panel_popup']['cookie_panel_popup_bgcolor'],
+	'cookie_panel_popup_fontcolor'=>'#'.$get_ui_values['cookie_panel_popup']['cookie_panel_popup_fontcolor'],
+	'cookie_panel_popup_fontstyles'=>$get_ui_values['cookie_panel_popup']['cookie_panel_popup_fontstyles'],
+	'cookie_panel_popup_fontsize'=>$get_ui_values['cookie_panel_popup']['cookie_panel_popup_fontsize'],
+	'cookie_panel_popup_fontweight'=>$get_ui_values['cookie_panel_popup']['cookie_panel_popup_fontweight'],
+	
+	'cookie_banner_overlay'=>$get_ui_values['cookie_banner']['overlay'],
+	'cookie_panel_link'=>$get_ui_values['cookie_panel']['cookie_panel_link'],
+	'cookie_panel_show_in_footer'=>$get_ui_values['cookie_panel']['show_in_footer'],
+	'cookie_panel_menu'=>$get_ui_values['cookie_panel']['cookie_panel_menu']	
+  );
+  // Changed by Dibyendu to remove JS if site impact level is none on 17th May 2013 // 
+   $siteImpactLevelArr = variable_get('eu_cookie_settings_'.$ln,'');
+   $siteImpactLevel = $siteImpactLevelArr['site_impact_level'];
+   
+   if($siteImpactLevel != 0) {  
+		drupal_add_js( array( 'eu_cookie_extra_tune' => $variables ), 'setting', 'footer' );
+		$path = drupal_get_path('module', 'itrinno_eucookie_compliance');
+		drupal_add_js($path . '/js/itrinno_eucookie_compliance_tune.js', 'module', 'footer');
+	}
+  // Changed by Dibyendu to remove JS if site impact level is none on 17th May 2013 END //		
+  $output ='';
+  $output .= '<div id="cp_container" style="display:none;" >'.  $cookie_panel .'</div>'; 
+  $output .= '<div class="change-cookie-settings '.$get_ui_values['cookie_panel']['cookie_panel_region'].'" style ="display:none;">'.$replace['!cookie_link'].'</div>';
+  //$output .= '<div id="lb_container" style ="display:none;"><a  href="javascript:void(0);" onclick="displaymodal();"  id="cookie-panel">Cookie Policy (link)</a></div>';
+  $output .= '<div id="modal-container" style ="display:none;"></div>';
+  $output .= '<div id="country-code-test" style ="display:none;">' . $expression->country_code . '</div>';
+  return $output;
+}
+
+/*
+ * Get all variables values saved using this module
+ */
+function get_variable_value($param) {
+  $values = variable_get($param, array());
+  return $values;
+}
+
+/**
+ * Get pages where impact level is high or explicit
+ * @return- if current page is explicit return true else false
+ */
+function explicit_impact_page() {
+  global $language;
+  $ln = $language->language;
+  $get_settings_values = get_variable_value('eu_cookie_settings_' . $ln); 
+  if(empty($get_values)) {
+    $get_settings_values = get_variable_value('eu_cookie_settings_en'); 
+  }
+  //if ( !empty( $get_settings_values['set_page_impact_level'] ) ) {
+    $pages = explode("\n", $get_settings_values['set_page_impact_level']['explicit_pages']);
+	  foreach ($pages as $page) {
+      $page = trim( strip_tags($page, "<front>") );
+      //if <front> or blank
+      if ( ($page == "<front>") && drupal_is_front_page() == TRUE ) {
+        return TRUE; // page explicit
+      }
+      // check where uri string are same till "*" character
+      if ( substr($page, -1) == '*' ) {
+        $find = substr($page, 0, -1);
+        $pos = stripos( $_GET['q'], $find );
+        if ( $pos !== FALSE && $pos == 0 ) {
+          return TRUE; //page explicit
+        }
+        // check where both uri string are same throughout
+      } else {
+        if ( strcmp($_GET['q'], $page ) == 0 ) {
+          return TRUE; //page explicit
+        }
+      }
+    }
+  return FALSE; //page NOT explicit
+}
+
+/**
+ * Check ISO country codes for explicit sites match visitor's country
+ * @return- true if match and vice versa
+ */
+function iso_country_code_match($iso_code) {  
+ //return true;
+  global $language;
+  $ln = $language->language;
+  $get_settings_values = get_variable_value('eu_cookie_settings_' . $ln);
+  if(empty($get_values)) {
+    $get_settings_values = get_variable_value('eu_cookie_settings_en'); 
+  }
+ // echo '<pre>';echo $get_settings_values['explicit_consent_country_codes'];
+  $country_codes = array_filter(explode("\n", $get_settings_values['explicit_consent_country_codes']));
+ // echo '<pre>';
+  //print_r($country_codes);
+  foreach ( $country_codes as $country_code ) {    	
+    // ISO country codes for explicit sites match visitor's country	
+	//echo "iso".$iso_code;
+	//echo "countrycode".$country_code;
+    if ( $iso_code == strtoupper( trim($country_code) ) ) {
+	// echo "i wil die";
+	   return TRUE;
+    }
+  }
+  //ISO country codes for explicit sites doesn't match visitor's country
+  return FALSE;
+}
+
+/**
+ * Function to check the contry codes for explicit countries to show bannner as popup
+ * @return- true if match and vice versa
+ */
+function iso_country_popup_match($iso_code) {  
+// return true;
+
+  if(iso_country_code_match($iso_code)){
+      global $language;
+	  $ln = $language->language;
+	  $get_settings_values = get_variable_value('eu_cookie_settings_' . $ln);
+	  if(empty($get_values)) {
+		$get_settings_values = get_variable_value('eu_cookie_settings_en'); 
+	  }
+	  $country_codes = array_filter(explode("\n", $get_settings_values['country_banner']));
+	  foreach ( $country_codes as $country_code ) {    	
+		// ISO country codes for explicit sites match visitor's country	
+		if ( $iso_code == strtoupper( trim($country_code) ) ) {
+		  return TRUE;
+		}
+	  }
+	  //ISO country codes for explicit sites doesn't match visitor's country
+	  return FALSE;
+  } else{
+    return FALSE;
+  }  
+}
+
+/**
+ * Call this function to know visitor's cookie consent level
+ * @returns  0 => no consent, 1 => implied consent, 2 => explicit consent
+ */
+function eu_cookie_tweaks_get_status() {
+  $status = $_COOKIE['cookie-compliance-accepted-level'];
+  return ( $status == '' ) ? 0 : $status;
+}
+/*
+*  Implementation of eu_cookie_tweaks_form_alter().
+
+function eu_cookie_tweaks_form_alter(&$form, $form_state, $form_id) {
+$cookie_status = $_COOKIE['cookie-compliance-accepted-level'];
+  if($cookie_status == 2) {
+   	  if ($form_id == 'user_login_block' || $form_id == 'user_login') {
+		if ($form_state['post']) {
+		  // Someone's attempting to log in.  Let's allow session cookies.
+		  ini_set('session.use_cookies', 1);
+		}
+	  }
+  }
+  else {
+    ini_set('session.use_cookies', 0);
+  }
+}*/
+function clear_all_cookies(){
+		//return 0;
+		global $user;
+		$status = isset($_GET['status']) ?  $_GET['status'] : 0;
+		if ($status == 0){
+		    if ($user->uid==0) {
+		    	$cookies = explode(';', $_SERVER['HTTP_COOKIE']);
+				foreach($cookies as $cookie) {
+					$parts = explode('=', $cookie);
+					$name = trim($parts[0]);
+					if(!empty($necessary_cookies)) {
+						if(!in_array($name, $necessary_cookies )) {
+						setcookie($name, '', time()-1000);
+						setcookie($name, '', time()-1000, '/');
+						setcookie($name, '', time()-1000, '/','.'.$_SERVER['HTTP_HOST']);
+						}
+						else {
+						setcookie($name, $parts[1], 0, '/','.'.$_SERVER['HTTP_HOST']);
+						}
+					}
+					
+				}
+				//echo "success";
+			}
+			else if ($user->uid > 0) {
+				$cookies = explode(';', $_SERVER['HTTP_COOKIE']);
+				foreach($cookies as $cookie) {
+					if(substr_count($cookie,'SESS')==0){
+						$parts = explode('=', $cookie);
+						$name = trim($parts[0]);
+						setcookie($name, '', time()-1000);
+						setcookie($name, '', time()-1000, '/');
+						setcookie($name, '', time()-1000, '/','.'.$_SERVER['HTTP_HOST']);
+					}
+				}
+				//echo "success";
+			}
+		}
+        elseif ($status == 1){
+		 clear_ehancement_cookies();
+		}
+		
+}
+function clear_ehancement_cookies(){
+		global $user;
+		//echo'enhance'; 
+		$necessary_cookies =array('has_js','cookie-compliance-accepted-level','cookie-compliance-user-response');
+		if ($user->uid==0) {
+			$cookies = explode(';', $_SERVER['HTTP_COOKIE']);
+			foreach($cookies as $cookie) {
+				$parts = explode('=', $cookie);
+				$name = trim($parts[0]);
+				//echo '<pre>';print_r($name);echo '</pre>';
+				if(!in_array($name, $necessary_cookies )) {	
+				
+                    /*setcookie($name, '', time()-1000);
+					setcookie($name, '', time()-1000, '/');				
+					setcookie($name, '', time()-100, '/','.'.$_SERVER['HTTP_HOST']);*/
+					setcookie($name, $parts[1], 0, '/','.'.$_SERVER['HTTP_HOST']);
+				}
+				else {
+				  foreach($necessary_cookies as $n_cookies) {
+				  $parts = explode('=', $cookie);
+				  $nes_name = trim($parts[0]);
+				  //echo '<pre>';print_r($nes_name);echo '</pre>';
+				  $expiretime = time()+60*60*24*30;
+				  setcookie($nes_name, "", $expiretime);
+				  }
+				}
+				
+			}
+			echo "success";
+		}
+		else if ($user->uid > 0) {
+			$cookies = explode(';', $_SERVER['HTTP_COOKIE']);
+			foreach($cookies as $cookie) {
+				if(substr_count($cookie,'SESS')==0){
+					$parts = explode('=', $cookie);
+					$name = trim($parts[0]);
+					if(!in_array($name, $necessary_cookies )) {
+					
+						setcookie($name, '', time()-1000);
+						setcookie($name, '', time()-1000, '/');
+						setcookie($name, '', time()-1000, '/','.'.$_SERVER['HTTP_HOST']);
+					}
+				}
+			}
+			echo "success";
+		}
+}
+
+function itrinno_eucookie_compliance_form_alter(&$form, &$form_state,$form_id) {
+		
+        $reqUrl = $_SERVER['REQUEST_URI'];
+         $reqUrlExp = explode('/',$reqUrl);
+         $reqUrlExpCount = count($reqUrlExp);
+         $selectedVal = $reqUrlExp[$reqUrlExpCount-1];
+         if($selectedVal=='eu-cookie-compliance') {
+                $lang = 'en';
+         } else {
+                $lang = $selectedVal;
+         }
+        $form['eu_cookie_settings_'.$lang]['set_page_impact_level']['explicit_pages']['#wysiwyg'] = FALSE;
+    $form['eu_cookie_settings_'.$lang]['explicit_consent_country_codes']['#wysiwyg'] = FALSE;
+    $form['eu_cookie_settings_'.$lang]['country_banner']['#wysiwyg'] = FALSE;
+	if($form_id == 'eu_cookie_tweaks_ui_settings'){
+		//$form['#submit'][] = 'itrinno_eucookie_compliance_save_cookie_link_in_footer';
+	}
+}
+
+function cookie_settings_panel(){
+		return theme('eu_cookie_tweaks_cookie_panel_settings');
+}
+
+function itrinno_eucookie_compliance_theme_registry_alter(&$theme_registry) {
+	$path = drupal_get_path('module', 'itrinno_eucookie_compliance');
+	$theme_registry['page']['theme paths'][] = $path.'/page';
+	$theme_registry['page']['preprocess functions'][] = 'itrinno_eucookie_compliance_pre_page';
+}
+
+function itrinno_eucookie_compliance_pre_page(&$vars){
+	global $language;
+    $ln = $language->language;
+	
+	//$menu = menu_link_load('10617');
+	
+	//$menu['menu_name']='menu-footer-links';
+	//echo "<pre>";print_r($menu['menu_name']);exit;
+	//$mlid = menu_link_save($menu);
+	//echo $mlid;exit;
+    $get_ui_values = get_variable_value('eu_cookie_ui_settings_' . $ln);  
+    if(empty($get_ui_values)) {
+ 	  $get_ui_values = get_variable_value('eu_cookie_ui_settings_en');
+    }
+	if($get_ui_values['cookie_panel']['show_in_footer']==1){
+		$vars['footer_links'] = menu_navigation_links($get_ui_values['cookie_panel']['cookie_panel_menu']);
+	}
+	if($get_ui_values['cookie_panel']['show_in_footer']==1){
+		if($get_ui_values['cookie_panel']['show_as_page']==1){
+			$vars['footer_links']['cookie_panel_link'] = array('attributes'=>array('title'=>t('Cookie settings panel'),'target'=>'_blank'), 'href'=>'cookie-settings-panel','title'=>t('Cookie settings panel'));
+		}else{
+			$vars['footer_links']['cookie_panel_link'] = array('attributes'=>array('title'=>t('Cookie settings panel'),'class'=>'cookie-panel-link'), 'href'=>'cookie-settings-panel','title'=>t('Cookie settings panel'));
+		}
+	}
+	if(arg(0)=='cookie-settings-panel'){
+		$css = drupal_add_css();
+		$styles['all']['module'] = $css['all']['module'];
+		$vars['styles'] = drupal_get_css($styles);
+	}
+}
+
+function itrinno_eucookie_compliance_get_font_styles(){
+	$options[''] = '';
+	
+	$options['eu-cookie-font-arial'] = 'Arial';
+	$options['eu-cookie-font-arial-black'] = 'Arial Black';
+	$options['eu-cookie-font-arial-narrow'] = 'Arial Narrow';
+	$options['eu-cookie-font-arial-rounded'] = 'Arial Rounded MT Bold';
+	$options['eu-cookie-font-avant-garde'] = ' Avant Garde';
+	$options['eu-cookie-font-calibri'] = ' Calibri';
+	$options['eu-cookie-font-candara'] = 'Candara';
+	$options['eu-cookie-font-century-gothic'] = 'Century Gothic';
+	$options['eu-cookie-font-franklin-gothic'] = 'Franklin Gothic Medium';
+	$options['eu-cookie-font-futura'] = 'Futura';
+	$options['eu-cookie-font-geneva'] = 'Geneva';
+	$options['eu-cookie-font-gill-sans'] = 'Gill Sans';
+	$options['eu-cookie-font-helvetica'] = 'Helvetica';
+	$options['eu-cookie-font-impact'] = 'Impact';
+	$options['eu-cookie-font-lucida'] = 'Lucida Grande';
+	$options['eu-cookie-font-optima'] = 'Optima';
+	$options['eu-cookie-font-segoiui'] = 'Segoe UI';
+	$options['eu-cookie-font-tahoma'] = 'Tahoma';
+	$options['eu-cookie-font-trebuchet'] = 'Trebuchet MS';
+	$options['eu-cookie-font-verdana'] = 'Verdana';
+	
+	$options['eu-cookie-font-baskerville'] = 'Baskerville';
+	$options['eu-cookie-font-big-caslon'] = 'Big Caslon';
+	$options['eu-cookie-font-bodoni-mt'] = 'Bodoni MT';
+	$options['eu-cookie-font-book-antiqua'] = 'Book Antiqua';
+	$options['eu-cookie-font-calisto-mt'] = 'Calisto MT';
+	$options['eu-cookie-font-cambria'] = 'Cambria';
+	$options['eu-cookie-font-didot'] = 'Didot';
+	$options['eu-cookie-font-garamond'] = 'Garamond';
+	$options['eu-cookie-font-georgia'] = 'Georgia';
+	$options['eu-cookie-font-goudy'] = 'Goudy Old Style';
+	$options['eu-cookie-font-hoefler'] = 'Hoefler Text';
+	$options['eu-cookie-font-lucida'] = 'Lucida Bright';
+	$options['eu-cookie-font-palatino'] = 'Palatino';
+	$options['eu-cookie-font-perpetua'] = 'Perpetua';
+	$options['eu-cookie-font-rockwell'] = 'Rockwell';
+	$options['eu-cookie-font-rockwell-extra-bold'] = 'Rockwell Extra Bold';
+	$options['eu-cookie-font-times-new-roman'] = 'Times New Roman';
+	
+	$options['eu-cookie-font-andale-mono'] = 'Andale Mono';
+	$options['eu-cookie-font-consolas'] = 'Consolas';
+	$options['eu-cookie-font-courier-new'] = 'Courier New';
+	$options['eu-cookie-font-lucida-console'] = 'Lucida Console';
+	$options['eu-cookie-font-lucida-sans-typewriter'] = 'Lucida Sans Typewriter';
+	$options['eu-cookie-font-monaco'] = 'Monaco';
+	
+	$options['eu-cookie-font-copperplate'] = 'Copperplate';
+	$options['eu-cookie-font-papyrus'] = 'Papyrus';
+	
+	$options['eu-cookie-font-brush'] = 'Brush Script MT';
+	
+	return $options;
+}
+
+function itrinno_eucookie_compliance_get_font_size(){
+	$options[''] = '';
+	
+	$options['eu-cookie-font-size-5'] = '5px';	
+	$options['eu-cookie-font-size-6'] = '6px';
+	$options['eu-cookie-font-size-7'] = '7px';
+	$options['eu-cookie-font-size-8'] = '8px';
+	$options['eu-cookie-font-size-9'] = '9px';
+	$options['eu-cookie-font-size-10'] = '10px';	
+	$options['eu-cookie-font-size-11'] = '11px';
+	$options['eu-cookie-font-size-12'] = '12px';
+	$options['eu-cookie-font-size-13'] = '13px';
+	$options['eu-cookie-font-size-14'] = '14px';
+	$options['eu-cookie-font-size-15'] = '15px';
+	$options['eu-cookie-font-size-16'] = '16px';
+	$options['eu-cookie-font-size-17'] = '17px';
+	$options['eu-cookie-font-size-18'] = '18px';
+	$options['eu-cookie-font-size-19'] = '19px';
+	$options['eu-cookie-font-size-20'] = '20px';
+	$options['eu-cookie-font-size-21'] = '21px';
+	$options['eu-cookie-font-size-22'] = '22px';
+	$options['eu-cookie-font-size-23'] = '23px';
+	$options['eu-cookie-font-size-24'] = '24px';
+	$options['eu-cookie-font-size-25'] = '25px';
+	$options['eu-cookie-font-size-25'] = '25px';
+		
+	return $options;
+}
+
+function itrinno_eucookie_compliance_get_font_weight(){
+	$options[''] = '';
+	$options['eu-cookie-font-weight-100'] = '100';
+	$options['eu-cookie-font-weight-200'] = '200';
+	$options['eu-cookie-font-weight-300'] = '300';
+	$options['eu-cookie-font-weight-400'] = '400';
+	$options['eu-cookie-font-weight-500'] = '500';
+	$options['eu-cookie-font-weight-600'] = '600';
+	$options['eu-cookie-font-weight-700'] = '700';
+	$options['eu-cookie-font-weight-800'] = '800';
+	$options['eu-cookie-font-weight-900'] = '900';
+	$options['eu-cookie-font-weight-inherit'] = 'inherit';
+	$options['eu-cookie-font-weight-normal'] = 'normal';
+	$options['eu-cookie-font-weight-bold'] = 'bold';
+	$options['eu-cookie-font-weight-bolder'] = 'bolder';
+	$options['eu-cookie-font-weight-lighter'] = 'lighter';
+		
+	return $options;
+}

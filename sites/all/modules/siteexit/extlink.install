@@ -1,0 +1,19 @@
+<?php
+// $Id: extlink.install,v 1.1 2008/09/01 08:39:40 Exp $
+
+function extlink_uninstall() {
+  variable_del('extlink_prompt_type');
+  variable_del('extlink_prompt_type_dhtml');
+  variable_del('extlink_prompt_type_web');
+  variable_del('extlink_dhtml_image_ok');
+  variable_del('extlink_dhtml_image_cancel');
+  variable_del('extlink_web_image_ok');
+  variable_del('extlink_web_image_cancel');
+  variable_del('extlink_window');
+  variable_del('extlink_white_list');
+
+  variable_del('extlink_dhtml_width');
+  variable_del('extlink_dhtml_height');
+
+  db_query("UPDATE {blocks} SET pages='%s' WHERE pages='%s'", '', 'extlink');
+}

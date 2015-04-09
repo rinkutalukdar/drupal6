@@ -1,0 +1,45 @@
+<?php
+// $Id: custom_aggregator.module,v 1.250.2.2 2008/04/09 21:11:49 goba Exp $
+
+/**
+ * Implementation of hook_menu_alter
+ */
+
+ function custom_aggregator_menu_alter(&$items) {
+  $items['aggregator/sources/%aggregator_feed'] = array(
+    'page callback' => 'custom_aggregator_page_source',
+    'page arguments' => array(2),
+    'access arguments' => array('access news feeds'),
+    'type' => MENU_CALLBACK,
+    //'file' => 'aggregator.pages.inc',
+  );
+  $items['runbackup'] = array(
+    'page callback' => 'custom_aggregator_import_data',
+    'access callback' => true,
+    'type' => MENU_CALLBACK,
+    //'file' => 'aggregator.pages.inc',
+  );
+ } 
+
+function custom_aggregator_page_source($arg1, $arg2 = NULL) {
+  // If there are two arguments then this function is the categorize form, and
+  // $arg1 is $form_state and $arg2 is $feed. Otherwise, $arg1 is $feed.
+  $feed = is_array($arg2) ? $arg2 : $arg1;
+  $feed = (object)$feed;
+  drupal_set_title(check_plain($feed->title));
+  $feed_source = theme('aggregator_feed_source', $feed);
+
+  // It is safe to include the fid in the query because it's loaded from the
+  // database by aggregator_feed_load.
+  	$items = aggregator_feed_items_load('SELECT * FROM {aggregator_item} WHERE fid = '. $feed->fid .' ORDER BY timestamp DESC, iid DESC');
+	if (empty($items)){
+		$items = aggregator_feed_items_load('SELECT * FROM {custom_aggregator_item} WHERE fid = '. $feed->fid .' ORDER BY timestamp DESC, iid DESC');
+	}
+
+  return _aggregator_page_list($items, arg(3), $feed_source);
+}
+
+function custom_aggregator_import_data(){
+	$query = "INSERT INTO custom_aggregator_item (iid, fid, title, link, author, description, timestamp, guid) SELECT iid, fid, title, link, author, description, timestamp, guid FROM aggregator_item";
+	db_query($query);
+}

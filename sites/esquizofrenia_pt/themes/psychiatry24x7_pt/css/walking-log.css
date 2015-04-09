@@ -1,0 +1,1035 @@
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, font, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td {
+	margin:0;
+	padding:0;
+	/*border:0;*/
+}
+.login-content, .my-progress-content, .login-block-content {
+	background:url(/sites/all/themes/psychiatry24x7/images/login-bg.png) no-repeat;
+	height:739px;
+	width:512px;
+	position:relative;
+}
+.login-block-content{
+	background:url(/sites/all/themes/psychiatry24x7/images/login-bg.png) no-repeat;
+}
+.login-content {
+	background:url(/sites/all/themes/psychiatry24x7/images/login-bg-monthly-plan.png) no-repeat;
+}
+.my-progress-content {
+	background:url(/sites/all/themes/psychiatry24x7/images/my-progress-bg.png) no-repeat;
+}
+.my-progress-content-medium{
+	background:url(/sites/all/themes/psychiatry24x7/images/my-progress-bg-med.png) no-repeat;
+	height:1195px;
+}
+.nav-buttons {
+	float:left;
+	margin-right:5px;
+}
+.walking-log-nav {
+	left:15px;
+	position: absolute;
+	top: 163px;
+	width: 460px;
+	height: 480px;
+}
+.login-buttons {
+	background-color:#aa9663;
+	color:#fff;
+	font-size:15px;
+	font-weight:bold;
+	font-family:Arial, Helvetica, sans-serif;
+	border:0;
+	cursor:pointer;
+	/*height:31px;*/
+	display:inline-block;
+	padding:6px;
+}
+.login-container p, .login-monthly-container p, .login-walk-container p {
+	color:#000;
+	font-weight:bold;
+	font-size:12px;
+	font-family:Arial, Helvetica, sans-serif;
+	padding-bottom: 100px;
+}
+.login-walk-container p {
+	margin-top: 20px;
+	padding: 0;
+}
+.login-monthly-container p {
+	padding-bottom:20px;
+}
+.login-container, .login-monthly-container, .login-walk-container {
+	float:left;
+	margin-top:30px;
+	width:450px;
+}
+.login-walk-container {
+	margin-top: 20px;
+	padding: 0;
+	height: 400px;
+}
+.login-content label, .my-progress-content label {
+	font-size:15px;
+	font-family:Arial;
+	font-weight:800;
+	display: block;
+	margin: 15px 0 7px;
+}
+.login-walk-container label {
+	margin:20px 0 7px;
+}
+.login-content span, .my-progress-content span {
+	font-size:15px;
+	font-family:Arial;
+	font-weight:800;
+}
+.login-monthly-container img {
+	margin-bottom: 14px;
+}
+.add-monthly-plan {
+	display: block;
+	margin-bottom: -15px;
+	margin-top: 29px;
+}
+.feel-content span {
+	float: left;
+    margin: 25px 0 0;
+    padding-bottom: 5px;
+    width: 318px;
+}
+.feel-content img {
+	margin: 19px 0 0;
+	padding-right:10px;
+}
+div img.weather-smily {
+	margin-bottom:5px;
+}
+.add-log-walk {
+	display: block;
+	margin-top: -13px;
+}
+.my-progress-print {
+	float:right;
+	width:103px;
+}
+.miles-left a, .minutes-left {
+	bottom: 31px;
+    color: #FFFFFF;
+    font-family: Arial;
+    font-size: 15px;
+    position: absolute;
+    right: 20px;
+    width: 75px
+}
+.minutes-left {
+	bottom: 0;
+    height: 65px;
+    left: 57px;
+    width: 113px;
+}
+.minutes-left img {
+	padding-left: 2px;
+}
+.month-navigation {
+    left: 164px;
+    position: absolute;
+}
+.progress-title {
+	float:left;
+	width:149px;
+}
+.month-prev, .month-next {
+	float: left;
+    height: 12px;
+    margin: 6px 0 0;
+    padding:0px 20px;
+    width: 11px;
+
+}
+.month-slctd {
+	float: left;
+    height: 25px;
+    width: auto;
+}
+
+.progress-container {
+    float: left;
+    height: 410px;
+    width: 500px;
+}
+.plot-container{
+float:left;
+height:350px;
+margin-top:80px;
+}
+#body_container #body_middle {
+    width: 513px !important;
+    margin-right: 0px !important
+}
+.my-progress-content-expanded{
+	height: 1600px;
+	background:url(/sites/all/themes/psychiatry24x7/images/my-progress-bg-expanded.png) no-repeat;
+}
+.month-display{
+	bottom: 19px;
+    left: 280px;
+    position: absolute;
+}
+.miles-min-display{
+	bottom: 46px;
+    left: 155px;
+    position: absolute;
+}
+.login-monthly-container a{
+	padding: 0px 0 0 1px;
+    text-decoration: underline;
+    vertical-align: middle;
+}
+.login-monthly-container a img{
+margin:0px;
+}
+.log-status {
+    float: left;
+    font-weight: normal;
+    margin-top: 8px;
+    /*width: 335px;*/
+	/*new change*/
+	width: 280px;
+	margin-left: 43px;
+}
+.login-walk-container #login{
+	padding-right:15px;
+	text-decoration: none;
+}
+.login-walk-container #register{
+	padding-right:15px;
+	text-decoration: none;
+}
+.login-container-submit {
+	padding:10px 0px;
+}
+.login-container-submit  a{
+	padding:0px 0px 0px 0px;
+}
+.viewlog-expanded{
+	height: 365px;
+	width:490px;
+}
+#pagination {
+	padding-top:15px;
+}
+div.error {
+    margin-left: 0;
+}
+.error {
+	margin-left: 0 !important;
+}
+#body_container #body_left ul li.expanded {
+    background-color: #AA9663 !important;
+}
+
+.field_readonly {
+	display: block;
+    font-family: Arial;
+    font-size: 15px;
+    font-weight: 800;
+}
+/*.miles-timer-left{
+	bottom: 5px;
+    height: 65px;
+    left: 11px;
+    position: absolute;
+    width: 52px;
+}*/
+.miles-timer-left img {
+	bottom: 33px;
+    left: 10px;
+    position: absolute;
+}
+.miles-timer-right{
+	 bottom: 20px;
+    left: 367px;
+    position: absolute;
+}
+.miles-down{
+	bottom: 4px;
+}
+.miles-right{
+    left: 172px;
+}
+#pagination{
+	width: 467px !important;
+}
+#pagination_mcontainer {
+    width: 329px !important;
+}
+.form-item input.error, .form-item textarea.error, #edit-field-month-start-value-wrapper .form-item select.error{
+	border:1px solid red !important;
+	
+}
+select.error{
+    *filter: progid:DXImageTransform.Microsoft.dropshadow(OffX=-1, OffY=-1,color=#FF0000) progid:DXImageTransform.Microsoft.dropshadow(OffX=1, OffY=1,color=#FF0000) !important;
+}
+
+#pagination #pagination_middle ul li {
+	float:left !important;
+	margin:0px 8px 0px 0px;
+	padding:0px 6px 0px 0px;
+	_padding:0px 0px 0px 0px;
+	_margin:0px 6px 0px 0px;
+}
+#pagination #pagination_middle ul {
+	list-style:none;
+	padding:0px;
+	margin:0px auto !important;
+	display:table-row;
+	white-space:nowrap;
+}
+
+#pagination #pagination_middle ul li.selected {
+    height: 32px !important;
+    line-height: 27px;
+	*line-height:11px;
+}
+
+.form-item select.error{
+	border-bottom: red 1px solid !important;
+	border-left: red 1px solid !important;
+	border-top: red 1px solid !important;
+	border-right: red 1px solid !important;
+}
+#pagination #pagination_middle{
+	margin: 0 !important;
+}
+.walking-log-nav .nav-disable{
+	display:none;
+}
+
+/* CSS from RAM - 16-aug-2012 */
+
+#user-login .user-login-container{
+	background-color: #F3F2F2;
+    float: left;
+    height: auto;
+    margin-left: 26px;
+    padding-left: 30px;
+    width: 100%;
+}
+#user-login .login-walk-container label {
+	float: left;
+    margin-left: -20px;
+    margin-right: 0;
+    width: 40%;
+}
+#user-login .user-login-name{
+	float: left;
+    padding-top: 16px;
+    width: 55%;
+}
+#user-login .user-login-pass{
+	float: left;
+    padding-top: 16px;
+    width: 60%;
+}
+#edit-name-wrapper, #edit-pass-wrapper{
+	width:90%;
+	float:left;
+}
+#user-login .user-login-container-top{
+	float:left;
+	width:86%;
+}
+
+#user-login .user-login-coverup{
+	width:100%;
+	height:87px;
+}
+#user-login .user-login-coverup img{
+	padding-top:21px;
+	/*padding-left:26px;*/
+}
+#user-login .login-walk-container{
+	height:auto;
+	width:370px;
+	float:left;
+}
+#user-login #edit-submit{
+	margin-left:25px;
+	background-color: #AA9663;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px;
+}
+#user-login .additional-links{
+	margin-left: 30px;
+    margin-top: 35px;
+}
+#user-login  .forgot-password-link{
+	height:50px;
+}
+#user-pass .login-walk-container label {
+	float: left;
+    margin-left: -20px;
+    margin-right: 0;
+    width: 40%;
+}
+#user-pass .login-walk-container{
+	height:150px;
+	width:370px;
+	float:left;
+}
+#user-pass .user-login-name{
+	float: left;
+    padding-top: 16px;
+    width: 55%;
+}
+#user-pass .user-login-container{
+	height:60px;
+	width:86%;
+}
+#user-pass #edit-submit{
+	margin-left:25px;
+	background-color: #AA9663;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px;
+}
+#change-pass-form .login-walk-container label {
+	float: left;
+    margin-left: -20px;
+    margin-right: 0;
+    width: 45%;
+}
+#change-pass-form .user-login-name, #change-pass-form .user-login-pass,#change-pass-form .user-login-new_pass,#change-pass-form .user-login-confirm_pass{
+	float: left;
+    padding-top: 16px;
+    width: 55%;
+}
+#edit-new-pass-wrapper, #edit-confirm-pass-wrapper{
+	float:left;
+	width:90%;
+}
+#change-pass-form .user-login-container{
+	height:auto;
+	width:86%;
+}
+#change-pass-form .login-walk-container{
+	height:auto;
+	width:370px;
+	float:left;
+}
+#change-pass-form #edit-submit{
+	margin-left:25px;
+	background-color: #AA9663;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px;
+}
+#user-profile-form .login-walk-container,#user-register .login-walk-container{
+	height:370px;
+	width: 100%;
+}
+#user-profile-form .user-login-container, #user-register .user-login-container{
+	height:285px;
+}
+#user-profile-form #edit-next, #user-profile-form #edit-delete,#user-profile-form #edit-submit{
+	/*margin-left:25px;*/
+	background-color: #AA9663;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px;
+}
+#user-register #edit-next, #user-register #edit-delete,#user-register #edit-submit{
+	margin-left:25px;
+	background-color: #AA9663;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px;
+}
+#user-profile-form #edit-delete,#user-register #edit-delete{
+	display:none;
+}
+/*
+#user-profile-form  .login-walk-container label {
+	float: left;
+    margin-left: -20px;
+    margin-right: 0;
+    width: 40%;
+}
+#user-profile-form .user-login-mail{
+	float: left;
+    padding-top: 16px;
+    width: 55%;
+}
+#user-profile-form .user-login-pass-pass1{
+	float: left;
+    padding-top: 16px;
+    width: 60%;
+}
+#user-profile-form .user-login-pass-pass2{
+	float: left;
+    padding-top: 16px;
+    width: 60%;
+}*/
+#user-login .walking-log-nav{
+	width:480px;
+}
+#user-login #error_msg{
+	float: left;
+    height: 80px;
+    margin-left: -20px;
+    padding-top: 116px;
+    position: relative;
+    width: 150px;
+}/*
+#user-login #error_msg span{
+	height: 74px;
+    margin-left: 21px;
+    margin-top: 3px;
+    position: absolute;
+    width: 107px;
+	word-wrap:break-word;
+	font-weight:bold;
+	color:#F2F1F1;
+}*/
+#user-login .login-walk-container-parent{
+	height:auto;
+	width:530px;
+	float:left;
+	padding-bottom: 20px;
+}
+#user-pass .walking-log-nav{
+	width:480px;
+}
+#user-pass #error_msg{
+	float: left;
+    height: 80px;
+    margin-left: -12px;
+    padding-top: 80px;
+    position: relative;
+    width: 150px;
+}
+/*
+#user-pass #error_msg span{
+	height: 74px;
+    margin-left: 21px;
+    margin-top: 3px;
+    position: absolute;
+    width: 107px;
+	word-wrap:break-word;
+	font-weight:bold;
+	color:#F2F1F1;
+}*/
+#user-pass .login-walk-container-parent{
+	height:170px;
+	width:530px;
+	float:left;
+}
+/**/
+#change-pass-form .walking-log-nav{
+	width:480px;
+}
+#change-pass-form #error_msg{
+	float: left;
+    height: 80px;
+    margin-left: -20px;
+    padding-top: 116px;
+    position: relative;
+    width: 150px;
+}
+/*
+#change-pass-form #error_msg span{
+	height: 74px;
+    margin-left: 21px;
+    margin-top: 3px;
+    position: absolute;
+    width: 107px;
+	word-wrap:break-word;
+	font-weight:bold;
+	color:#F2F1F1;
+}*/
+#change-pass-form .login-walk-container-parent{
+	height:auto;
+	width:530px;
+	float:left;
+	padding-bottom: 20px;
+}
+#body_container #body_middle .user-confirmed p{
+	padding:0;
+	font-weight:normal;
+}
+.user-confirmed {
+    background: none !important;
+    padding-left: 3px !important;
+}
+#edit-account{
+	margin-left:25px;
+	background-color: #AA9663;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px;
+	float:right;
+}
+.my-account-wrapper{
+	float: left;
+    height: 20px;
+    width: 460px;
+}
+#user-register  .login-walk-container label {
+	float: left;
+    margin-left: -20px;
+    margin-right: 0;
+    width: 40%;
+}
+#user-register .user-login-mail{
+	float: left;
+    padding-top: 16px;
+    width: 55%;
+}
+#user-register #edit-pass-pass1{
+	float: left;
+    margin-top: 15px;
+}
+#user-register #edit-pass-pass2{
+	float: left;
+    margin-top: 15px;
+}
+#user-register .walking-log-nav{
+	width:100%;
+	left:0px;
+}
+#user-register #error_msg{
+	float: left;
+    height: 80px;
+    margin-left: -20px;
+    padding-top: 212px;
+    position: relative;
+    width: 150px;
+}/*
+#user-register #error_msg span{
+	height: 74px;
+    margin-left: 21px;
+    margin-top: 3px;
+    position: absolute;
+    width: 107px;
+	word-wrap:break-word;
+	font-weight:bold;
+	color:#F2F1F1;
+}*/
+#user-register .login-walk-container-parent{
+	height:355px;
+	width:100%;
+	float:left;
+	padding-bottom: 20px;
+}
+#user-register #edit-mail-wrapper .description{
+	float:left;
+	margin-left:-20px;
+	width:90%;
+}
+#user-register #edit-pass-pass1-wrapper label, #user-register #edit-pass-pass2-wrapper label{
+	width:45%;
+}
+#user-register span.password-confirm{
+	width:93%;
+}
+#user-register span.password-confirm .error{
+	display:inline;
+}
+#user-register .user-login-container{
+	height:auto;
+	width:83%;
+	padding-bottom:20px;
+}
+#user-register #edit-timezone-name{
+	float: left;
+    margin-top: 15px;
+    width: 60%;
+}
+#user-register #edit-timezone-name-wrapper .description{
+	float: left;
+    width: 95%;
+}
+#user-register #edit-aboutme{
+	float: left;
+    margin-top: 15px;
+    width: 60%;
+}
+#user-register .user-login-container-blank{
+	float: left;
+    height: 20px;
+    margin-left: 28px;
+    width: 99%;
+}
+#user-register .user-login-container-1{
+	background-color: #F3F2F2;
+    float: left;
+    height: 49px;
+    margin-left: 26px;
+    padding-left: 30px;
+    width: 83%;
+	padding-bottom:20px;
+}
+#user-register .login-cnt-small{
+	height: auto;
+    width: 83% !important;
+}
+#user-register .user-login-container-1 label{
+	width:98%;
+}
+
+
+
+#user-profile-form  .login-walk-container label {
+	float: left;
+    margin-left: -20px;
+    margin-right: 0;
+    width: 40%;
+}
+#user-profile-form .user-login-mail{
+	float: left;
+    padding-top: 16px;
+    width: 55%;
+}
+#user-profile-form #edit-pass-pass1{
+	float: left;
+    margin-top: 15px;
+}
+#user-profile-form #edit-pass-pass2{
+	float: left;
+    margin-top: 15px;
+}
+#user-profile-form .walking-log-nav{
+	width:480px;
+}
+#user-profile-form #error_msg{
+	float: left;
+    height: 80px;
+    margin-left: -20px;
+    padding-top: 116px;
+    position: relative;
+    width: 150px;
+}/*
+#user-profile-form #error_msg span{
+	height: 74px;
+    margin-left: 21px;
+    margin-top: 3px;
+    position: absolute;
+    width: 107px;
+	word-wrap:break-word;
+	font-weight:bold;
+	color:#F2F1F1;
+}*/
+#user-profile-form .login-walk-container-parent{
+	height:355px;
+/*	width:630px;*/
+	float:left;
+}
+#user-profile-form #edit-mail-wrapper .description{
+	float:left;
+	margin-left:-20px;
+	width:90%;
+}
+#user-profile-form #edit-pass-pass1-wrapper label, #user-profile-form #edit-pass-pass2-wrapper label{
+	width:45%;
+}
+#user-profile-form span.password-confirm{
+	width:93%;
+}
+#user-profile-form span.password-confirm .error{
+	display:inline;
+}
+#user-profile-form .user-login-container{
+	/*height:227px;*/
+	height:auto;
+	width:93%;
+}
+#user-profile-form #edit-timezone-name{
+	float: left;
+    margin-top: 15px;
+    width: 55%;
+}
+#user-profile-form #edit-timezone-name-wrapper .description{
+	float: left;
+    margin-left: 0px;
+    width: 95%;
+}
+#user-profile-form #edit-aboutme{
+	float: left;
+    margin-top: 15px;
+    width: 55%;
+}
+#user-profile-form .user-login-container-blank{
+	float: left;
+    height: 20px;
+    margin-left: 28px;
+    width: 99%;
+}
+#user-profile-form .user-login-container-1{
+	background-color: #F3F2F2;
+    float: left;
+    height: 49px;
+    /*margin-left: 26px;*/
+    padding-left: 30px;
+    width: 93%;
+}
+#user-profile-form .login-cnt-small{
+	height: 145px !important;
+    width: 93% !important;
+}
+#user-profile-form .user-login-container-1 label{
+	width:99%;
+}
+#user-register div.warning, #user-profile-form div.warning{
+	border:none
+}
+#user-profile-form span {
+    font-size: 12px;
+}
+#user-register #edit-pass-wrapper .description,#user-profile-form #edit-pass-wrapper .description{
+    margin-left: -20px;
+}
+#user-profile-form #edit-timezone-name-wrapper label,#user-profile-form #edit-aboutme-wrapper label,#user-register #edit-timezone-name-wrapper label,#user-register #edit-aboutme-wrapper label{
+	margin-left:0px;
+}
+#user-profile-form fieldset legend{
+	display:none;
+}
+.additional-links a{
+	color: #AA9663;
+    font-size: 14px;
+}
+.user-login-coverup span{
+*FILTER: WIDTH: 253px; HEIGHT: 29px !important;
+ }
+ .user-login-coverup{
+	*padding-left:25px;
+ }
+ .p-normal-text{
+	margin-top:0px !important;
+	font-weight:normal !important;
+ }
+ div.login-links{
+	padding-top:40px;
+ }
+.register-bg{
+	background: url("../images/register-bg.png") no-repeat scroll 0 0 transparent !important;
+}
+.blank-bg{
+	background: url("../images/blank-bg.png") no-repeat scroll 0 0 transparent !important;
+}
+.remove-bg{
+	background: none !important;
+}
+#walking-log-user-pass-reset #edit-submit{
+	margin-left:58px;
+	background-color: #AA9663;
+    border: 0 none;
+    color: #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Arial,Helvetica,sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px;
+}
+#walking-log-user-pass-reset .login-walk-container{
+	height:165px;
+}
+.next-submit-btn{
+	float:left;
+	width:100%;
+}
+.my-account-pos{
+	margin-top: 12px !important;
+	*margin-top: 0px !important;
+}
+.my-account-wrapper a{
+	text-decoration:none;
+}
+div.password-description{
+	border:none;
+}
+span.password-result {
+	display:inline;
+}
+.hr-min-display{
+	height:110px !important;
+}
+#log-walk-form  p{
+	padding:0 !important;
+}
+.viewlog-expanded p{
+	padding:0 !important;
+}
+.my-progress-content-hm{
+	background:url(../images/my-progress-bg-hm.png) no-repeat !important;	
+}
+.my-progress-content-med-hm{
+	background:url(../images/my-progress-bg-med-hm.png) no-repeat !important;	
+	height:1200px;
+}
+.my-progress-content-expanded-hm{
+	background:url(../images/my-progress-bg-expanded-hm.png) no-repeat !important;	
+	height:1600px;
+}
+.login-walk-container-expanded{
+	width:550px !important;
+}
+.add-btn-box{
+	height:20px !important;
+}
+div .footnote{
+	margin-left: 200px;
+    padding-top: 10px;
+}
+div .footnote span{
+	width: 15px;
+}
+div .footnote label{
+	display: inline;
+}
+div .footnote1{
+	margin-top: -10px !important;
+	padding:0 !important;
+}
+/****/
+#edit-field-miles-planned-value{
+	float:left;
+	margin-right:20px;
+}
+div.distance-unit{
+	font-size: 15px;
+    font-weight: bold;
+    padding-top: 5px;
+}
+#edit-wl-miles-walked{
+	float: left;
+    margin-right: 10px;
+}
+
+#edit-privacy-policy-wrapper label{
+	font-size:11px;
+	overflow:hidden;
+	padding-left: 20px;
+}
+#edit-privacy-policy-wrapper label input{
+	float:left;
+	margin-right:10px;
+}
+.err-msg-ctr{
+	display:block;
+	width:130px;
+	background:url(../images/pop-btm.png) no-repeat left bottom;	
+	height:auto !important;
+	padding-bottom:5px;
+	margin-left:0px !important;
+	position:inherit !important;
+	width: 130px !important;
+	word-wrap:break-word;
+	font-weight:bold;
+	color:#F2F1F1;
+	
+}
+.err-msg-ctr .msg-spans{
+	display:block;
+	background:url(../images/pop-t.png) no-repeat left top;	
+	height:auto !important;
+	padding:10px 10px 5px 25px;
+	width:auto !important;
+	min-height: 23px;
+
+}
+#img_weather_thunder{
+	padding-bottom:8px;
+}
+.job-code{
+ padding-bottom:10px;
+ font-weight:bold;
+ color:#808080;
+}
+.job-number{
+ font-size: 14px; 
+ float: right; 
+ margin-bottom: 30px; 
+ margin-right: 30px;
+}
+.last-updated{
+ font-weight:bold;
+ color:#808080;
+}
+.progress-container #placeholder{
+	min-height:300px;
+}
+.my-progress-fb, .my-progress-key{
+	float:right;
+	margin-right:5px;
+}
+.print-progress-ctr, .share-fb-ctr, .progress-key-ctr{
+	float:right;
+}
+.mood-weather-ctr{
+	display:none;
+}
+.progress-key-ctr{
+	position:relative;
+}
+.mood-weather-ctr ul li{
+	line-height:35px;
+	display:block;
+	width:auto;
+	height:auto;
+	overflow:hidden;
+}
+.mood-weather-ctr ul li img{
+	float:left;
+	margin-right: 10px;
+    margin-top: 7px;
+}
+.progress-key-ctr .mood-weather-ctr{
+	position:absolute;
+	top:35px;
+	left:0;
+	width:140px;
+	padding:20px;
+    cursor: pointer;
+	color:#596FA8;
+    font-family: custFont;
+    font-size: 24px;
+	background:#fff;
+	z-index: 100;
+	-webkit-box-shadow: 0px 2px 7px rgba(50, 50, 50, 0.75);
+	-moz-box-shadow: 0px 2px 7px rgba(50, 50, 50, 0.75);
+	box-shadow: 0px 2px 7px rgba(50, 50, 50, 0.75);
+}

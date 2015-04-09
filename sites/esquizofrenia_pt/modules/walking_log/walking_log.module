@@ -1,0 +1,2266 @@
+<?php
+// $Id: walking_log.module,v 1.0 2010/11/02 14:00:10 Exp $
+/**
+ * @file
+ * Allows to create, edit print walking logs.
+ */
+
+/*
+ * CONSTANTS
+ */
+define('MAX_TIMES_EACH_WEEK', 15);
+define('MAX_DURATION_EACH_WEEK', 10);
+define('MAX_TOTAL_WEEKS', 52);
+
+require_once("dompdf/dompdf_config.inc.php");
+
+define('MULTIPLE', 10); //multiple used for duration of walk.
+ 
+/*
+ * Implemenation of hook_menu(). 
+ */
+function walking_log_menu(){
+	$items = array();
+
+	$items['walkinglog/create'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('walking_log_form'),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	
+  	$items['walkinglog/edit'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('walking_log_edit_form'),
+  		/* 'page callback' => 'walking_log_edit_form', */
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	
+  	$items['walkinglog/print'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('walking_log_print_form'),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	
+  	$items['walkinglog/notes'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('walking_log_notes_form'),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	
+  	$items['myprogress_walking_log'] = array(
+		'page callback' => 'myprogress_walking_log',
+		//'page arguments' => array('walking_log_notes_form'),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	$items['walking_log'] = array(
+  		'title'	=> t('Walking log'),
+		'page callback' => 'create_monthly_plan',
+		'access callback' => TRUE,
+		'type' => MENU_NORMAL_ITEM,
+  	);
+  	$items['walking_log/%'] = array(
+  		'title'	=> t('Edit Walking log'),
+		'page callback' => 'edit_monthly_plan',
+		'page arguments' => array(1),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	$items['walking_log/log'] = array(
+  		'title'	=> t('Log a Walk'),
+		'page callback' => 'log_a_walk',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	$items['walking_log/progress'] = array(
+  		'title'	=> t('My Progress'),
+		'page callback' => 'walking_log_progress',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+  	$items['walking_progress'] = array(
+  		'title'	=> t('Print Progress'),
+		'page callback' => 'walking_log_print_progress',
+		'access callback' => TRUE,
+		'type' => MENU_NORMAL_ITEM,
+  	);
+  	$items['walking_log_progress'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'walking_log_get_progress',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);  	
+	$items['walking_log_print/%/%'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'walking_log_print',
+		'page arguments' => array(1,2),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	
+	$items['walking_log/viewlogs'] = array(
+  		'title'	=> t('View logs created'),
+		'page callback' => 'walking_view_logs',
+		'access callback' => 'has_logged_walk',
+		'type' => MENU_NORMAL_ITEM,
+  	);
+	$items['walking_log/delete/%'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'delete_walking_log',
+		'page arguments' => array(2),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	$items['walking_log/delete-plan/%'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'delete_walking_plan',
+		'page arguments' => array(2),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	
+	$items['walking_log_toggle_data'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'walking_log_toggle_data',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	$items['download_walking_log'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'download_walking_log',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	$items['walking_log_pdf_data'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'walking_log_pdf_data',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	$items['walking_log_get_image'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'walking_log_get_image',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	
+	$items['walking_log_download'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'walking_log_download',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	$items['converttoimage'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'converttoimage',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	
+	$items['walking_log_file_contente'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'walking_log_file_contente',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	$items['user/changepassword'] = array(
+  		'title'	=> t('Change password'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' =>array('change_pass_form'),
+		'access callback' => user_is_anonymous,
+		'type' => MENU_CALLBACK,
+  	);
+	$items['user/edit_profile'] = array(
+		'title' => 'Edit',
+		'page callback' => 'user_edit_profile',
+		//'page arguments' => array(1),
+		//'access callback' => 'user_edit_access',
+		//'access arguments' => array(1),
+		'type' => MENU_NORMAL_ITEM,
+		'access callback' => TRUE,
+		'load arguments' => array('%map', '%index')
+	);
+	$items['user/editprofile'] = array(
+		'title' => '',
+		'page callback' => 'user_profile_redirect',
+		'type' => MENU_CALLBACK,
+		'access callback' => TRUE,
+	);
+	$items['user-confirmed'] = array(
+		'title' => t('Registration confirmed'),
+		'page callback' => 'user_registration_confirmed',
+		'type' => MENU_NORMAL_ITEM,
+		'access callback' => TRUE,
+	);
+  $items['user/pass-reset'] = array(
+    'title' => 'Reset password',
+    'page callback' => drupal_get_form,
+	'page arguments' => array('walking_log_user_pass_reset'),
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+  );
+	$items['validateredirect'] = array(
+  		'title'	=> t(''),
+		'page callback' => 'validateredirect',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+	
+	return $items;	
+}
+/*
+ * Implementation of hook_theme()
+ */
+function walking_log_theme(){
+	return array(
+      'walking_logs_edit' => array(
+        'arguments' => array('form' => NULL),
+      ),
+      'walking_logs_print' => array(
+        'arguments' => array('form' => NULL),
+      ),
+      'walking_logs_notes' => array(
+        'arguments' => array('form' => NULL),
+      ),
+      'walking_log_notes_listing' => array(
+        'arguments' => array('form' => NULL),
+      ),
+      'log_walk_form' => array(
+      	'template' => 'log-walk-form',
+        'arguments' => array('form' => NULL),
+      ),
+      'walkingplan_node_form' => array(
+      	'template' => 'walkingplan-node-form',
+        'arguments' => array('form' => NULL),
+      ),
+	  'walkinglog_login' => array(
+        'template' => 'walkinglog-login',
+        'arguments' => array('text' => NULL),
+      ),
+      'walking_log_progress' => array(
+        'template' => 'walkinglog-progress',
+        'arguments' => array('response' => NULL),
+      ),
+	  'walkinglog_month_form' => array(
+      	'template' => 'walkinglog-month-form',
+        'arguments' => array('form' => NULL),
+      ),
+      'walking_log_print' => array(
+        'template' => 'walking-log-print',
+        'arguments' => array('response' => NULL),
+      ),
+	  'walkinglog_view_logs' => array(
+        'template' => 'walkinglog-view-logs',
+        'arguments' => array('arr_log' => NULL),
+      ),
+      'user_login' => array(
+        'template' => 'walkinglog-user-login',
+        'arguments' => array('form' => NULL),
+      ),
+	  'user_pass' => array(
+        'template' => 'walkinglog-user-pass',
+        'arguments' => array('form' => NULL),
+      ),
+	  'change_pass_form' => array(
+        'template' => 'walkinglog-change-pass',
+        'arguments' => array('form' => NULL),
+      ),
+	  'user_register' => array(
+        'template' => 'walkinglog-user-register',
+        'arguments' => array('form' => NULL),
+      ),
+	  'user_profile_form' => array(
+        'template' => 'walkinglog-user-profile',
+        'arguments' => array('form' => NULL),
+      ),
+	  'registration_confirmed' => array(
+        'template' => 'walkinglog-registration-confirmed',
+        'arguments' => array('text' => NULL),
+      ),
+	  'walking_log_user_pass_reset'=>array(
+        'template' => 'walkinglog-password-reset',
+        'arguments' => array('form' => NULL),
+      ),
+	  'delete_plan_confirm'=>array(
+        'template' => 'delete-plan-confirm',
+        'arguments' => array('form' => NULL),
+      ),
+    );
+    
+}
+
+function walking_log_init(){
+	
+	drupal_add_js(drupal_get_path('module','walking_log').'/walking_log.js');
+	drupal_add_css(drupal_get_path('theme','psychiatry24x7').'/css/walking-log.css');
+	
+	
+}
+function walking_log_form_alter(&$form, &$form_state, $form_id){
+	
+	switch($form_id){
+		case 'walkingplan_node_form':
+			//echo "<pre>";print_r($form['field_year_planned']);exit;
+			$form['title']['#required']=0;
+			$form['title']['#type']='hidden';
+			
+			$form['body']['#type']='hidden';
+			$form['body']['#value']='Walkinglog';
+			$form['body_field']['#type']='hidden';
+			$form['body_field']['teaser_include'] = array(
+				'#type' => 'value',
+				'#value' => TRUE,
+			);
+			$form['menu']['#type']='hidden';
+			$form['path']['#type']='hidden';
+			$form['print']['#type']='hidden';
+			$form['nodewords']['#type']='hidden';
+			$form['print']['#type']='hidden';
+			$form['author']['#type']='hidden';
+			$form['options']['#access']=0;
+			$form['options']['status']['#default_value']=1;
+			$form['revision_information']['#type']='hidden';
+			
+			
+			$form['#submit']=array();
+			$form['submit'] = array (
+				'#type' => 'image_button',
+	    			'#src' => drupal_get_path('module','walking_log').'/images/add.png',
+				'#submit'=>array('node_form_submit'),
+			);
+			$form['buttons']['submit']['#access']=0;
+			$form['buttons']['preview']['#access']=0;
+			$form['buttons']['delete']['#access']=0;
+			$form['field_user']['#default_value'][0]['uid'] = $GLOBALS['user']->uid;
+			$form['field_user']['#access'] = 0;
+			$form['#redirect'] = 'walking_log/plans';
+			
+			$allowed_values = explode("\r\n",$form['#field_info']['field_month_start']['allowed_values']);
+			if($form['nid']['#value']==""){
+				$new_allowed_values = walking_log_render_months($allowed_values);
+			}
+			else{
+				
+				$new_allowed_values = walking_log_render_months($allowed_values,$form['nid']['#value']);
+			}
+			
+			$form['#field_info']['field_month_start']['allowed_values'] = $new_allowed_values;
+			
+			$form['field_minutes_planned']['#access']=FALSE;
+			$form['#validate'][] = 'walking_plan_validate';
+			
+			//$form['#submit'] = array('walking_plan_submit','node_form_submit');
+			//echo "<pre>";print_r($form);exit;
+			break;
+		case 'log_walk_form':
+			$form['#redirect'] = (is_numeric(arg(2)))?'walking_log/viewlogs':'walking_log/progress';
+			$form['submit'] = array (
+				'#type' => 'image_button',
+	    		'#src' => drupal_get_path('theme','psychiatry24x7').'/images/add.png',
+				
+			);
+			/*$form[] = array(
+				'#type'=>'markup',
+				'#value'=>'<a href="'.url('walking_log/plans').'" <input type="image" class="add-monthly-plan" src="<?php echo url($path.'/images/view-plan.png'); ?>"></a>'
+			);*/
+			//echo "<pre>";print_r($form);exit;
+			break;
+      
+      case 'user_login':
+			 $form['name']['#title'] = t('Email address');
+			 $form['name']['#size']=30;
+			 $form['name']['#description'] = '';
+			 $form['pass']['#size']=30;
+			 $form['pass']['#description'] = '';
+			 $form['destination'] = array('#type' => 'hidden', '#value' => "walking_log");
+			 $form['submit']["#attributes"] = array (
+				'onclick' => 'return user_login_validate();',
+			);
+			break;
+		case 'user_pass':
+			//echo "<pre>";print_r($form);exit;
+			$form['name']['#title'] = t('Email address');
+			$form['name']['#size']=30;
+			$form['submit']['#value']=t('Send me my password');
+			 $form['submit']["#attributes"] = array (
+				'onclick' => 'return user_pass_validate();',
+			);
+			break;
+		case 'user_register':
+		//_user_password_dynamic_validation();
+		$form['user_profile']['consent']['#required'] = 0;
+		$form['user_profile']['consent']['#value']=1;
+		$form['user_profile']['consent']['#access']=FALSE;
+		$form['account']['#title']='';
+		$form['user_profile']['#title']='';
+		$form['account']['name']['#required']=0;
+		$form['account']['name']['#access'] = FALSE;
+		/**/$form['account']['mail']['#size'] = 30;
+		$form['account']['mail']['#description'] = t('Please provide a valid e-mail address. All e-mails from the website will be sent to this address including new password requests. Your e-mail address will not be made public.');
+		$form['account']['pass'] = array(
+				'#type' => 'password_confirm',
+				'#description' => t('To change the current user password, enter the new password in both fields.'),
+				'#size' => 30,
+		);
+		//_user_password_dynamic_validation();
+		$form['destination'] = array('#type' => 'hidden', '#value' => "user-confirmed");
+		if(variable_get('configurable_timezones', 1) && isset($form['timezone'])) {
+			
+			date_timezone_user_form($form);
+			if (!isset($form['#after_build'])) {
+				$form['#after_build'] = array();
+			}
+			$form['#after_build'][] = 'date_timezone_user_form_after_build'; 
+			unset($form['timezone']['#type']);
+			unset($form['timezone']['#title']);
+		}
+		if (empty($form_state['storage']['step'])) {
+			$form['timezone']['#type']='fieldset';
+			$fields = array('mail','pass');
+			$form['#validate'] = array();
+			user_registration_multistep($form, $fields,$form_state, 'user_registration_form_1_handler');
+		}
+		else if($form_state['storage']['step']==1){
+			
+			$fields = array('timezone','aboutme','privacy_policy');
+			$form['#validate'] = array();
+			//$form['#submit'] = array(/*'user_registration_submit'*//*'user_register_submit'); 
+			
+			user_registration_multistep($form, $fields,$form_state, '');
+		}
+		
+		break;
+		case 'user_profile_form':
+			
+			global $user;
+			$edit = get_object_vars($user);
+			user_profile_load_user_profile($user);
+			$user_profile_form = user_profile_form_profile($edit,$user,'user_profile');
+			$form = array_merge($form, $user_profile_form);
+			$arr_values = user_registration_load_user_profile($user);
+			$form['account']['#title']='';
+			$form['user_profile']['#title']='';
+			$form['theme_select']['themes']['#type'] = 'hidden';
+			$form['block']['#type']='hidden';
+			$form['account']['mail']['#size']=25;
+			$form['account']['mail']['#description'] = t('Please provide a valid e-mail address. All e-mails from the system will be sent to this address. The e-mail address is not made public and will only be used if you wish to receive a new password or wish to receive certain news or notifications by e-mail.');
+			if (empty($form_state['storage']['step'])) {
+				$form['timezone']['#type']='fieldset';
+				$fields = array('mail','pass');
+				$form['#validate'] = array();
+				user_registration_multistep($form, $fields,$form_state, 'user_registration_form_1_handler','profile');
+				
+			}
+			else if($form_state['storage']['step']==1){
+				
+				$fields = array('timezone','aboutme','privacy_policy');
+				$form['#validate'] = array();
+				user_registration_multistep($form, $fields,$form_state, '','profile');
+			}
+			break;
+		case 'user_pass_reset':
+			$form['destination'] = array('#type' => 'hidden', '#value' => "user/edit_profile");
+			break;
+		case 'walking_log_user_pass_reset':
+			$form['message']['#value'] = strip_tags($form['message']['#value']);
+			$form['help']['#value'] = strip_tags($form['help']['#value']);
+			break;
+			
+	}
+}
+function walking_plan_validate($form, &$form_state){
+	if($form_state['values']['field_miles_planned'][0]['value']=='' && $form_state['values']['field_week_hours'][0]['value']=='' && $form_state['values']['field_week_minutes'][0]['value']==''){
+		form_set_error('walking_plan', t('Please enter either kilometers, miles or minutes'));
+	}
+	if($form_state['values']['field_miles_planned'][0]['value']!='' && ($form_state['values']['field_week_hours'][0]['value']!='' || $form_state['values']['field_week_minutes'][0]['value']!='')){
+		form_set_error('walking_plan', t('Please enter either kilometers, miles or minutes'));
+	}
+	if($form_state['values']['field_miles_planned'][0]['value']!='' && $form_state['values']['field_distance_unit'][0]['value']==""){
+		form_set_error('walking_plan', t('Please enter the distance in kilometers or miles'));
+	}
+	if($form_state['values']['field_week_hours'][0]['value']=='' && $form_state['values']['field_week_minutes'][0]['value']==''){
+		$form_state['values']['field_minutes_planned'][0]['value']='';
+	}
+	else{
+		
+		$week_hours = (isset($form_state['values']['field_week_hours'][0]['value']))?$form_state['values']['field_week_hours'][0]['value']:0;
+		$week_minutes = (isset($form_state['values']['field_week_minutes'][0]['value']))?$form_state['values']['field_week_minutes'][0]['value']:0;
+		$form_state['values']['field_minutes_planned'][0]['value'] = 4 * (($week_hours * 60) + $week_minutes);
+		
+	}
+}
+function walking_plan_submit($form, &$form_state){
+	$week_hours = (isset($form_state['values']['week_hours'][0]['value']))?$form_state['values']['week_hours'][0]['value']:0;
+	$week_minutes = (isset($form_state['values']['week_minutes'][0]['value']))?$form_state['values']['week_minutes'][0]['value']:0;
+	$form_state['values']['field_minutes_planned'][0]['value'] = 4 * (($week_hours * 60) + $week_minutes);
+	
+}
+function create_monthly_plan(){
+	$path = drupal_get_path('theme','psychiatry24x7');
+	if(user_is_anonymous()){
+		$current_path = $_GET['q'];
+		$text = "<img alt='login' src='".url($path.'/images/login.png')."' /><p>&nbsp;</p><p class='p-normal-text'>".t('Login or register to create your account. Creating an account will allow you to record your progress and set yourself goals.')."</p><div class='login-links'> <a id='login' href='".url('user/login')."' title=''><em class='login-buttons'>". t('Iniciar sessão')."</em></a>
+      <a id='register' href='".url('user/register')."' title=''><em class='login-buttons'>".t('Register')."</em></a></div>";
+		return theme('walkinglog_login',$text);
+	}else{
+		$node = new stdClass();
+		$node->type = 'walkingplan';
+		module_load_include('inc', 'node', 'node.pages');
+
+		return drupal_get_form('walkingplan_node_form', $node);
+		
+	}
+}
+function edit_monthly_plan($node_id){
+	
+	$path = drupal_get_path('theme','psychiatry24x7');
+	if(!empty($node_id)){
+		if(user_is_anonymous()){
+			$current_path = $_GET['q'];
+			$text = "<img alt='login' src='".url($path.'/images/login.png')."' /><p>".t('Login or register to create your account. Creating an account will allow you to record your progress and set yourself goals.')."</p>
+      <a id='login' href='".url('user/login')."?destination=$current_path"."' title=''><em class='login-buttons'>". t('Login')."</em></a>
+      <a id='register' href='".url('user/register')."?destination=$current_path"."' title=''><em class='login-buttons'>".t('Register')."</em></a>";
+			return theme('walkinglog_login',$text);
+		}else{
+			module_load_include('inc', 'node', 'node.pages');
+			$node = node_load($node_id);
+			node_object_prepare($node);
+			return node_page_edit($node);    
+		}
+	}
+
+}
+
+function log_a_walk(){
+	$path = drupal_get_path('theme','psychiatry24x7');
+	if(user_is_anonymous()){
+		$current_path = $_GET['q'];
+		$text = "<img alt='login' src='".url($path.'/images/login.png')."' /><p>".t('Login or register to create your account. Creating an account will allow you to record your progress and set yourself goals.')."</p>
+      <a id='login' href='".url('user/login')."?destination=$current_path"."' title=''><em class='login-buttons'>". t('Login')."</em></a>
+      <a id='register' href='".url('user/register')."?destination=$current_path"."' title=''><em class='login-buttons'>".t('Register')."</em></a>";
+		return theme('walkinglog_login',$text);
+	}else{
+		$id=arg(2);
+		if(empty($id)){
+			$arr_response = validate_walk();
+			
+			if($arr_response['valid']){
+				return drupal_get_form('log_walk_form');
+			}
+			else{
+				$text = "<img alt='login' src='".url($path.'/images/log-a.png')."' /><p>".t('You cannot log a walk before creating a plan for this month. <a href="/walking_log" title="Create your plan">Create your plan</a> now.')."</p>";
+				return theme('walkinglog_login',$text);
+			}
+		}
+		else{
+		
+			return drupal_get_form('log_walk_form');
+		}
+		
+	}
+}
+/**
+ * Function to diaplay Walking Log form
+ */
+	
+function log_walk_form(){
+	global $user;
+	
+	setcookie ("logdata", date('F').'_'.date('Y').'_'.$user->uid.'_miles',time() + 420000, '/');
+	
+	$id=arg(2);
+	if(!empty($id)){
+		$sql_log = "SELECT wl_miles_walked,wl_walk_hours,wl_walk_minutes,wl_walk_duration,wl_walk_month,wl_how_user_felt,wl_how_user_felt_later,wl_weather,wl_created FROM walking_log 
+		WHERE wl_last_modified_by = ".$user->uid." AND wl_id=$id";
+		$res_log = db_query($sql_log);
+		$row_log = db_fetch_array($res_log);
+		//echo "<pre>";print_r($row_log);exit;
+	}
+	$distance_unit = (empty($row_log['wl_walk_month']))?get_distance_unit_for_month():get_distance_unit_for_month($row_log['wl_walk_month']);
+	$opt_minutes = drupal_map_assoc(range(0,60,15));
+	$opt_minutes[0]=t('Select from List');
+	$opt_hours = array_merge(array(0=>t('Select from List')),drupal_map_assoc(range(1,5)));
+	$opt_miles = array(''=>'Select from List');
+	for($miles=1;$miles<=20;$miles++){
+		$opt_miles[$miles] = $miles;
+	}
+	
+
+	$form['wl_miles_walked'] = array(
+	  	'#type' => 'select',
+		'#title' => t('How far did you walk?'),
+  		'#default_value' => (empty($row_log['wl_miles_walked']))?'':$row_log['wl_miles_walked'],
+		'#options' => $opt_miles
+	);
+	$form['wl_distance_unit'] = array(
+		'#value' => "<div class='distance-unit'>$distance_unit</div>",
+	);
+	$form['wl_walk_hours'] = array(
+	  	'#type' => 'select',
+		'#title' => t('Or how long did you walk for?'),
+  		'#default_value' => (empty($row_log['wl_walk_hours']))?'':$row_log['wl_walk_hours'],
+		'#options' => $opt_hours,
+	);
+	
+	$form['wl_walk_minutes'] = array(
+	  	'#type' => 'select',
+		'#title' => t('Minutes'),
+  		'#default_value' => (empty($row_log['wl_walk_minutes']))?'':$row_log['wl_walk_minutes'],
+		'#required' => true,
+		'#options' => $opt_minutes,
+	);
+	$form['wl_how_user_felt'] = array(
+	  	'#type' => 'select',
+		'#title' => t('How did you feel during the walk?'),
+		'#attributes'=>array('style'=>'visibility:hidden'),
+		'#default_value' => (empty($row_log['wl_how_user_felt']))?'':$row_log['wl_how_user_felt'],
+		'#options' => array(''=>'',t('sad')=>t('sad'),t('normal')=>t('normal'),t('happy')=>t('happy')),
+	);
+	$form['wl_how_user_felt_later'] = array(
+	  	'#type' => 'select',
+		'#title' => t('How did you feel after the walk?'),
+		'#attributes'=>array('style'=>'visibility:hidden'),
+		'#default_value' => (empty($row_log['wl_how_user_felt_later']))?'':$row_log['wl_how_user_felt_later'],
+		'#options' => array(''=>'',t('sad')=>t('sad'),t('normal')=>t('normal'),t('happy')=>t('happy')),
+	);
+	$form['wl_weather'] = array(
+	  	'#type' => 'select',
+		'#title' => t('What was the weather like during the walk?'),
+		'#attributes'=>array('style'=>'visibility:hidden'),
+		'#default_value' => (empty($row_log['wl_weather']))?'':$row_log['wl_weather'],
+		'#options' => array(''=>'',t('rainy')=>t('rainy'),t('thunder')=>t('thunder'),t('sunny')=>t('sunny')),
+	);
+	
+	$form['submit'] = array(
+	  	'#type' => 'submit',
+		'#title' => t('Submit'),
+		'#value' => t('Submit'),
+		
+	);
+	return $form;
+}
+function log_walk_form_validate($form, &$form_state){
+$wl_id = arg(2);
+$row=array();
+global $user;
+if(!empty($wl_id)){
+	$sql = "SELECT wl_walk_month from walking_log WHERE wl_id=$wl_id";
+	$row=db_fetch_array(db_query($sql));
+}
+
+$month = (count($row)==1)?$row['wl_walk_month']:date("F");
+$arr_progress_view = get_progress_view_for_month();
+
+$arr_planned = get_walking_plan($month)	;
+
+$sum_sql = "SELECT SUM(wl_miles_walked) as sum_miles,SUM(wl_walk_duration) as sum_minutes FROM walking_log WHERE wl_walk_month='$month' AND wl_last_modified_by = ".$user->uid;
+ $sum_row=db_fetch_array(db_query($sum_sql));
+
+if($arr_progress_view['singleview']==1 && $arr_progress_view['view']=='miles'){
+	$totalmiles = $sum_row['sum_miles'] + $form_state['values']['wl_miles_walked'];
+	/*if($totalmiles > $arr_planned['miles_planned']){
+		$distance_unit = get_distance_unit_for_month();
+		form_set_error($form_state['values']['wl_walk_hours'],t('You cannot exceed the planned number of '.$distance_unit));
+	}*/
+	if($form_state['values']['wl_miles_walked']==""){
+		form_set_error($form_state['values']['wl_miles_walked'],t('Please specify the distance walked'));
+	}
+}else if($arr_progress_view['singleview']==1 && $arr_progress_view['view']=='minutes'){
+	$totalminutes = ($form_state['values']['wl_walk_hours'] * 60) + $form_state['values']['wl_walk_minutes'] + $sum_row['sum_minutes'];
+	
+	/*if($totalminutes > $arr_planned['minutes_planned']){
+		form_set_error($form_state['values']['wl_walk_hours'],t('You cannot exceed the planned number of minutes'));
+	}*/
+	if($form_state['values']['wl_walk_hours']==0 && $form_state['values']['wl_walk_minutes']==0){
+		form_set_error($form_state['values']['wl_walk_hours'],t('Please specify the hours / minutes you have walked'));
+	}
+}
+
+ if($form_state['values']['wl_how_user_felt']==""){
+	form_set_error($form_state['values']['wl_how_user_felt'],t('Please specify how you felt during the walk'));
+ }
+ if($form_state['values']['wl_how_user_felt_later']==""){
+	form_set_error($form_state['values']['wl_how_user_felt_later'],t('Please specify how you felt after the walk'));
+ }
+ if($form_state['values']['wl_weather']==""){
+	form_set_error($form_state['values']['wl_weather'],t('Please specify how the weather was when you walked'));
+ }
+}
+function log_walk_form_submit($form, &$form_state){
+ 
+  global $user;
+  $wlog = new stdClass();
+  $update=array();
+  if(is_numeric(arg(2))){
+	$wlog->wl_id = arg(2);
+	$update[]="wl_id";
+	$text = 'updated';
+  }else{
+	$text = 'created';
+  }
+  
+  $wlog->wl_miles_walked = $form_state['values']['wl_miles_walked'];
+  $wlog->wl_walk_hours = $form_state['values']['wl_walk_hours'];
+  $wlog->wl_walk_minutes = $form_state['values']['wl_walk_minutes'];
+  $wlog->wl_walk_duration = ($form_state['values']['wl_walk_hours'] * 60) + $form_state['values']['wl_walk_minutes'];
+  $wlog->wl_how_user_felt = $form_state['values']['wl_how_user_felt'];
+  $wlog->wl_how_user_felt_later = $form_state['values']['wl_how_user_felt_later'];
+  $wlog->wl_weather = $form_state['values']['wl_weather'];
+  $wlog->wl_walk_month = date("F");
+  $wlog->wl_walk_year = date("Y");
+  $wlog->wl_created = time();
+  $wlog->wl_last_modified_by = $user->uid;
+  //echo "<pre>";print_r($wlog);exit;
+  drupal_write_record('walking_log', $wlog,$update);  
+  
+  $_SESSION['dont_show_fb']=1;
+  
+  drupal_set_message(t("Your walking log has been $text").'<a style="text-decoration:none" href="#" id="canvaspng" onclick="converttoimage(\'miles-placeholder\');">.</a>', 'status');
+  
+}
+function walking_log_render_months($allowed_values=array(),$nid=""){
+	global $user;
+	$db_values = array();
+	$query = "SELECT field_month_start_value FROM {content_type_walkingplan} WHERE field_user_uid = ".$user->uid.' AND field_year_planned_value='.date("Y");
+	if(!empty($nid)){
+		$query .= " AND nid !=$nid";
+	}
+	
+	$result = db_query($query);
+	while($row = db_fetch_array($result)){
+		if(!empty($row['field_month_start_value'])){
+			$db_values[] = $row['field_month_start_value'].'|'.$row['field_month_start_value'];
+		} 
+	}
+	$db_values = array_unique($db_values);
+	
+	$new_allowed_values = array_diff($allowed_values, $db_values);
+	$new_allowed_values = implode("\r\n",$new_allowed_values);
+	return $new_allowed_values;
+}
+/**
+ * Function to show the Walking progress 
+ */
+function walking_log_progress($month=""){
+	global $user;
+	//setcookie('logdata', '', time() - 1209600, '/');
+	setcookie ("progressdata", date('F').'_'.date('Y').'_'.$user->uid.'_minutes',time() + 420000, '/');
+	
+	if($_SESSION['m']==1){
+		unset($_SESSION['dont_show_fb']);
+		unset($_SESSION['m']);
+		drupal_set_message(t('<b>Now that you have logged a walk, you may wish to share this on facebook.</b>'), 'status');
+	}
+	$path = drupal_get_path('theme','psychiatry24x7');
+	if(user_is_anonymous()){
+		$current_path = $_GET['q'];
+		$text = "<img alt='login' src='".url($path.'/images/login.png')."' /><p>".t('Login or register to create your account. Creating an account will allow you to record your progress and set yourself goals.')."</p>
+      <a id='login' href='".url('user/login')."?destination=$current_path"."' title=''><em class='login-buttons'>". t('Login')."</em></a>
+      <a id='register' href='".url('user/register')."?destination=$current_path"."' title=''><em class='login-buttons'>".t('Register')."</em></a>";
+		return theme('walkinglog_login',$text);
+	}else{
+		$arr_response = validate_walk();
+		if($arr_response['valid']){
+			$month = date("F");
+			$arr_view = get_progress_view_for_month();
+			$toggle_view_tobe_disabled="";
+			if($arr_view['singleview']==true){
+				$view = $arr_view['view'];
+				$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+			}
+			$arr_response = get_monthly_graph_data(date("F"),$view,'',$toggle_view_tobe_disabled);
+			//echo "<pre>";print_r($arr_response);exit;
+			
+			return theme('walking_log_progress',$arr_response);
+		}
+		else{
+			$text = "<img alt='My-Progress' src='".url($path.'/images/my-progress-title.png')."' /><p>".t('You cannot view your progress before creating a plan for this month. <a href="/walking_log" title="Create your plan">Create your plan</a> now.')."</p>";
+			return theme('walkinglog_login',$text);
+		}
+		
+	}
+}
+function create_month_data_range($month="",$arr_log=array(),$field="",$planned_data=""){
+	$arr_month_data_range = array();
+	$arr_month_miles_data = array();
+	$arr_plot = array();
+	if(!empty($month)){
+		$start_time = strtotime("$month 01");
+		$enddate = date("F t",$start_time);
+		$end_time = strtotime($enddate);
+		for($i=$start_time;$i<=$end_time;$i+=86400){
+			$arr_month_data_range[] = $i;
+			$arr_month_miles_data[$i] = null;
+		} 
+		
+		$time_completed = $arr_log[count($arr_log)-1]['wl_created'];
+		//echo "<pre>";print_r($arr_log);exit;
+		$total_miles_walked = 0;
+		for($x = 0;$x<count($arr_log);$x++){
+			$total_miles_walked = $total_miles_walked + $arr_log[$x][$field];
+			$a[] = $total_miles_walked;
+			$arr_month_miles_data[$arr_log[$x]['wl_created']] = $total_miles_walked;
+		}
+		
+		for($y = 0;$y<count($arr_log);$y++){
+			if(($y+1)<count($arr_log)){
+				for($z=$arr_log[$y]['wl_created'];$z<$arr_log[$y+1]['wl_created'];$z+=86400){
+					$arr_month_miles_data[$z] = $arr_month_miles_data[$arr_log[$y]['wl_created']];
+				}
+			}
+		}
+		//Adding to prefill 0s from 1st till first log
+		for($i=$start_time;$i<$arr_log[0]['wl_created'];$i+=86400){
+			$arr_month_miles_data[$i] = 0;
+		}
+
+		$arr_month_miles_data[$end_time] = $planned_data;
+
+		
+	}
+	return $arr_month_miles_data;
+}
+function get_plot_points_of_data($arr_month_miles_data=array()){
+	$str_plot = "[";
+		foreach($arr_month_miles_data as $time => $data){
+			$time = $time*1000;
+			if(is_numeric($data) && empty($data)){
+				$data=0;
+			}
+			else if($data==null){
+				$data='null';
+			}
+			else{
+				$data = $data;
+			}
+			//$data = ($data) && $data!=0)?'null':$data;
+			$arr_plot[] = "[$time,$data]";
+		}
+		
+		$str_plot.=(!empty($arr_plot))?implode(",",$arr_plot):"";
+		$str_plot.="]";
+		return $str_plot;
+}
+function get_number_image($number){
+	$path = drupal_get_path('theme','psychiatry24x7');
+	if(!empty($number)){
+		
+		switch(strlen($number)){
+			case 1:
+				$first = 0;
+				$last = (int)($number/1);
+				$number_image = "<img src='".url($path.'/images/num-'.$first.'.png')."' /><img src='".url($path.'/images/num-'.$last.'.png')."' />";
+				break;
+			case 2:
+				$first = (int)($number/10);
+				$last = $number%10;
+				$number_image = "<img src='".url($path.'/images/num-'.$first.'.png')."' /><img src='".url($path.'/images/num-'.$last.'.png')."' />";
+				break;
+			case 3:
+				//echo "here";exit;
+				$first = (int)($number/100);
+				$middlenum = $number%100;
+				$middle = (int)($middlenum/10);
+				$last = ($middlenum%10);
+				
+				$number_image = "<img src='".url($path.'/images/num-'.$first.'.png')."' /><img src='".url($path.'/images/num-'.$middle.'.png')."' /><img src='".url($path.'/images/num-'.$last.'.png')."' />";
+				break;
+			case 4:
+				//echo "here";exit;
+				$number = (string) $number;
+				$first = $number[0];
+				$second = $number[1];
+				$middle = $number[2];
+				$last = $number[3];
+				
+				$number_image = "<img src='".url($path.'/images/num-'.$first.'.png')."' /><img src='".url($path.'/images/num-'.$second.'.png')."' /><img src='".url($path.'/images/num-'.$middle.'.png')."' /><img src='".url($path.'/images/num-'.$last.'.png')."' />";
+				break;
+		}
+	}
+	else if($number==0){
+		$number_image = "<img src='".url($path.'/images/num-0.png')."' /><img src='".url($path.'/images/num-0.png')."' />";
+	}
+	return $number_image;
+}
+function get_monthly_graph_data($month="",$type="miles",$toggle="",$toggle_view_to_be_disabled=""){
+	$month = (empty($_REQUEST['month']))?$month:$_REQUEST['month'];
+	$path = drupal_get_path('theme','psychiatry24x7');
+	$field = ($type=="miles")?"wl_miles_walked":"wl_walk_duration";
+	$arr_response = array();
+	$arr_log=array();
+	
+	global $user;
+	$sql_plan = "SELECT field_month_start_value, field_minutes_planned_value, field_miles_planned_value FROM content_type_walkingplan WHERE
+      field_user_uid = ".$user->uid." AND field_month_start_value='$month' AND field_year_planned_value=".date("Y");
+	
+	$res_plan = db_query("SELECT field_month_start_value, field_minutes_planned_value, field_miles_planned_value,field_distance_unit_value FROM {content_type_walkingplan} WHERE
+      field_user_uid = '%s' AND field_month_start_value='%s' AND field_year_planned_value=%d",$user->uid,$month,date("Y")) ;
+	while($row_plan = db_fetch_array($res_plan)){
+		$arr_response['miles_planned'] = $row_plan['field_miles_planned_value'];
+		$arr_response['minutes_planned'] = $row_plan['field_minutes_planned_value'];
+		$arr_response['distance_unit'] = $row_plan['field_distance_unit_value'];
+	}
+	
+	$arr_response['miles_planned'] = (empty($arr_response['miles_planned']))?0:$arr_response['miles_planned'];
+	$arr_response['minutes_planned'] = (empty($arr_response['minutes_planned']))?0:$arr_response['minutes_planned'];
+	
+	
+	$sql_log = "SELECT wl_miles_walked,wl_walk_duration,wl_walk_month,wl_how_user_felt,wl_how_user_felt_later,wl_weather,wl_created FROM walking_log 
+	WHERE wl_last_modified_by = ".$user->uid." AND wl_walk_month='$month' AND wl_walk_year='".date("Y")."' ORDER BY wl_created ";
+	
+	$res_log = db_query($sql_log);
+	$i=0;
+	while($row_log = db_fetch_array($res_log)){
+		$arr_log[$i] = $row_log;
+		$arr_log[$i]['wl_created'] = strtotime(date("F d",$row_log['wl_created']));
+
+		$i++;
+	}
+	
+
+	$planned_value = ($type=="miles")?$arr_response['miles_planned']+50:$arr_response['minutes_planned']+600;
+	$arr_response['month']=$month;
+	$arr_response['type']=$type;
+	
+	$arr_month_miles_data = create_month_data_range($arr_log[0]['wl_walk_month'],$arr_log,$field,$planned_value);
+	
+	$arr_response['month_miles_data'] = get_plot_points_of_data($arr_month_miles_data);
+	
+	$previous_month = date("F",strtotime("-1 Months",strtotime("$month 01")));
+	$next_month = date("F",strtotime("+1 Months",strtotime("$month 01")));
+	$arr_response['print_image'] = "show_print(\"$month\",\"$type\")";
+	$arr_response['month_prev'] = "<img onclick='show_data(\"$previous_month\",\"miles\");' src='".url($path.'/images/prev-arrow.png')."' />";
+	$arr_response['month_next'] = "<img onclick='show_data(\"$next_month\",\"miles\");' src='".url($path.'/images/next-arrow.png')."' />";
+	$arr_response['xaxis_month_image'] = url($path.'/images/'.strtolower(date("F",strtotime("$month 01"))).'.png');
+	
+	if($type=="miles" && strtolower($arr_response['distance_unit'])=='miles'){
+		$arr_response['yaxis_miles_image'] = url($path.'/images/miles-walked.png');
+	}
+	else if($type=="miles" && strtolower($arr_response['distance_unit'])=='kilometers'){
+		$arr_response['yaxis_miles_image'] = url($path.'/images/Kms-walked.png');
+	}
+	else if($type=="minutes"){
+		$arr_response['yaxis_miles_image'] = url($path.'/images/miles-walked-deactive.png');
+	}
+	else if($type=="miles"){
+		$arr_response['yaxis_miles_image'] = url($path.'/images/miles-walked.png');
+	}
+	$arr_response['yaxis_minutes_image'] = ($type=="minutes")?url($path.'/images/min-walked.png'):url($path.'/images/min-walked-deactive.png');
+	
+	$arr_response['weather_image'] = (!empty($arr_log[count($arr_log)-1]['wl_weather']))?url($path.'/images/walking_log_chart/weather-'.$arr_log[count($arr_log)-1]['wl_weather'].'.png'):"";
+	$arr_response['weather'] = (!empty($arr_log[count($arr_log)-1]['wl_weather']))?$arr_log[count($arr_log)-1]['wl_weather']:"";
+	$arr_response['mood_image'] = (!empty($arr_log[count($arr_log)-1]['wl_how_user_felt_later']))?url($path.'/images/walking_log_chart/mood-'.$arr_log[count($arr_log)-1]['wl_how_user_felt_later'].'.png'):"";
+	$arr_response['mood'] = (!empty($arr_log[count($arr_log)-1]['wl_how_user_felt_later']))?$arr_log[count($arr_log)-1]['wl_how_user_felt_later']:"";
+	$arr_response['time_last_walked'] = (!empty($arr_log[count($arr_log)-1]['wl_created']))?$arr_log[count($arr_log)-1]['wl_created'] * 1000:0;
+	$arr_response['miles_last_walked'] = (!empty($arr_month_miles_data[$arr_log[count($arr_log)-1]['wl_created']]))?$arr_month_miles_data[$arr_log[count($arr_log)-1]['wl_created']]:0;
+	
+	if($type=='miles' && strtolower($arr_response['distance_unit'])=='miles'){
+		$arr_response['miles_min_display'] = "<img src='".url($path.'/images/miles-display.png')."' />";
+	}
+	else if($type=='miles' && strtolower($arr_response['distance_unit'])=='kilometers'){
+		$arr_response['miles_min_display'] = "<img src='".url($path.'/images/kilometers-display.png')."' />";
+	}
+	else if($type=='minutes'){
+		$arr_response['miles_min_display'] = "<img src='".url($path.'/images/minutes-display.png')."' />";
+	}
+	else{
+		$arr_response['miles_min_display'] = "<img src='".url($path.'/images/miles-display.png')."' />";
+	}
+	//$arr_response['miles_min_display'] = ($type=='miles')?"<img src='".url($path.'/images/miles-display.png')."' />":"<img src='".url($path.'/images/minutes-display.png')."' />";
+	$arr_response['miles_timer_left'] = ($type=='miles')?"<img src='".url($path.'/images/miles-left.png')."' />":"<img src='".url($path.'/images/min-left.png')."' />";
+	if($toggle_view_to_be_disabled==""){
+		$arr_response['miles_timer_right'] = ($type=='miles')?"<img src='".url($path.'/images/min-left-slctd.png')."' />":"<img src='".url($path.'/images/miles-left-selected.png')."' />";
+	}
+	else{
+		$arr_response['miles_timer_right'] = "";
+	}
+	$arr_response['month_display'] = "<img src='".url($path.'/images/'.strtolower($month).'-display.png')."' />";
+	
+	$sum_log_miles = 0;
+	$sum_log_minutes = 0;
+	
+	foreach($arr_log as $log){
+		$sum_log_miles = $sum_log_miles + $log['wl_miles_walked'];
+		$sum_log_minutes = $sum_log_minutes + $log['wl_walk_duration'];
+	}
+	$miles_completed = 0; $minutes_completed = 0;
+	if($type=='miles'){
+		
+		$miles_walked = (!$arr_response['miles_last_walked'])?0:$arr_response['miles_last_walked'];
+		$miles_left_to_walk = $arr_response['miles_planned'] - $miles_walked;
+		$miles_left_to_walk = ($miles_left_to_walk<=0)?0:$miles_left_to_walk;
+		$arr_response['minutes_left_image'] = "<div class='minutes-left'>".get_number_image($miles_left_to_walk)."</div>";
+		
+	}
+	else{
+		$minutes_walked = (!$arr_response['miles_last_walked'])?0:$arr_response['miles_last_walked'];
+		$min_left_to_walk = $arr_response['minutes_planned'] - $minutes_walked;
+		$min_left_to_walk = ($min_left_to_walk<=0)?0:$min_left_to_walk;
+		if($min_left_to_walk > 60){
+			$hours_left_to_walk = (int) ($min_left_to_walk / 60);
+			$new_min_left_to_walk = (int) ($min_left_to_walk % 60);
+			
+			$arr_response['minutes_left_image'] = "<div class='minutes-left hr-min-display'><div class='hrs-placeholder'>".get_number_image($hours_left_to_walk)."<img src='".url($path.'/images/hrs-bg.png')."' /></div><div class='min-placeholder'>".get_number_image($new_min_left_to_walk)."<img src='".url($path.'/images/min-bg.png')."' /></div></div>";
+			$arr_response['change_bg'] = 1;
+		}
+		else{
+			$arr_response['change_bg'] = 0;
+			$arr_response['minutes_left_image'] = "<div class='minutes-left'>".get_number_image($min_left_to_walk)."</div>";
+		}
+		
+	}
+	if($sum_log_minutes >= $arr_response['minutes_planned']){
+		$minutes_completed = 1;
+	}
+	if($sum_log_miles >= $arr_response['miles_planned']){
+		$miles_completed = 1;
+	}
+	
+	
+	//echo "{$arr_response['minutes_left_image']}<pre>";print_r($miles_left_image);exit;
+	if(($type=='miles' && $miles_completed==1) || ($type=='minutes' && $minutes_completed==1)){
+		$arr_response['graph_status_image'] = url($path.'/images/good-work.png');
+		$arr_response['grid_background_color'] = "#9E7BFF";
+	}
+	elseif(($type=='miles' && $miles_completed==0) || ($type=='minutes' && $minutes_completed==0)){
+		$arr_response['graph_status_image'] = url($path.'/images/not-to-far.png');
+		$arr_response['grid_background_color'] = "#A0C544";
+	}
+	if(empty($arr_log)){
+		$arr_response['msg']='No data found';
+		//$arr_response['minutes_left_image']='';
+		
+	}
+	if($toggle=="" && $toggle_view_to_be_disabled==""){
+		$arr_response['toggle_link']= ($type=="miles")?'<a href="javascript:void(0);" onclick="show_data('."'$month'".',\'minutes\');">minutes left</a>':'<a href="javascript:void(0);" onclick="show_data('."'$month'".',\'miles\');">miles left</a>';
+	}
+	else if($toggle!="" && $toggle_view_to_be_disabled==""){
+		$arr_response['toggle_link']= ($type=="miles")?'<a href="javascript:void(0);" onclick="toggle_data('."'$month'".',\'minutes\');">minutes left</a>':'<a href="javascript:void(0);" onclick="toggle_data('."'$month'".',\'miles\');">miles left</a>';
+	}
+	else{
+		$arr_response['toggle_link']="";
+	}
+	$arr_response['share_fb'] = walking_log_share_progress($month);
+	//echo "<pre>";print_r($arr_response);exit;
+	return $arr_response;
+}
+function walking_log_get_progress(){
+	$month = $_REQUEST['month'];
+	$type = $_REQUEST['type'];
+	$arr_view = get_progress_view_for_month($month);
+	$toggle_view_tobe_disabled="";
+	if($arr_view['singleview']==true){
+		$view = $arr_view['view'];
+		$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+	}
+	else{
+		$view=$type;
+	}
+	$response = get_monthly_graph_data($month,$view,'',$toggle_view_tobe_disabled);
+	//echo "<pre>";print_r($response);exit;
+	$path = drupal_get_path('theme','psychiatry24x7');
+	
+	
+$content = '<div class="walking-log-nav">
+	    <div class="nav-buttons"><a href="'.url('walking_log').'" ><img alt="Create-Plan" src="'.url($path.'/images/create-plan.png').'"/></a></div>
+	    <div class="nav-buttons"><a href="'.url('walking_log/log').'" ><img alt="Log-a-Walk" src="'.url($path.'/images/log-a-walk.png').'" /></a></div>
+	    <div class="nav-buttons"><a href="'.url('walking_log/progress').'"><img alt="My-Progress" src="'.url($path.'/images/my-progress.png').'"></a></div>
+		<div class="nav-buttons"><a href="'.url('user/edit_profile').'"><img alt="My Account" src="'.url($path.'/images/my-account-edit.png').'"></a></div>
+	    <div class="progress-container"> 
+    			<div class="plot-container">
+					<div><img src="'.$response['yaxis_minutes_image'].'" /></div>
+					<div><img src="'.$response['yaxis_miles_image'].'"/></div>
+				</div>
+		    	<div class="login-walk-container">
+				<img alt="login" src="'.url($path.'/images/my-progress-title.png').'" />
+				<div class="print-progress-ctr">
+					<a id="print_progress" target="_blank" href="'.url("print/walking_progress")."?month=$month&type=$view".'" > <img src="'.url($path.'/images/print.png').'" alt="print" class="my-progress-print" /></a>
+				</div>';
+				if(!empty($response['share_fb'])){
+					$content .= '<div class="share-fb-ctr">'.$response['share_fb'].'</div>';
+				}
+				$content .='<div class="progress-key-ctr"><a id="progress_key" href="javascript:void(0);" ><img src="'.url($path.'/images/key.png').'" alt="'.t('Key').'" class="my-progress-key"/></a>
+					<div class="mood-weather-ctr">
+						<ul>
+							<li>'.t('Key:').'</li>
+							<li>'.t('Mood').'</li>
+							<li><img src="'.$response['mood_image'].'" />'.$response['mood'].'</li>
+							<li>'.t('Weather').'</li>
+							<li><img src="'.$response['weather_image'].'" />'.$response['weather'].'</li>
+						 </ul>
+					</div>
+				</div>
+		          <div id="placeholder" style="width:450px;height:300px;"></div>
+	
+					
+				<div class="month-navigation">
+						<div class="month-prev">'.$response['month_prev'].'</div>
+						<div class="month-slctd"><img src="'.$response['xaxis_month_image'].'" /></div>
+						<div class="month-next">'.$response['month_next'].'</div>
+				</div>
+				</div>
+			
+	    </div>
+      
+    	</div>
+
+  <div class="miles-timer-left">'.$response['miles_timer_left'].'</div>'.$response['minutes_left_image'].'
+  <div class="miles-left">'.$response['toggle_link'].'</div>
+  <div class="month-display">'.$response['month_display'].'</div>
+  <div class="miles-timer-right">'.$response['miles_timer_right'].'</div>
+  <div class="miles-min-display">'.$response['miles_min_display'].'</div>';
+	if($response['msg']!=''){
+		$data = array('data'=>$response,'content'=>$content);
+		
+	}else{
+		$data = array('data'=>$response,'content'=>$content);
+	}
+	
+	echo json_encode($data);
+}
+
+function walking_log_block($op = 'list', $delta = 0){
+  $block = array();
+  global $user;
+  switch ($op) {
+    case 'list':
+      $block[0]['info'] = t('Share WalkingLog on Facebook');
+	  $block[1]['info'] = t('Download WalkingLog');
+      return $block;
+    case 'view':
+      switch ($delta) {
+        case 0:
+          $block['subject'] = t('');
+		  $path = drupal_get_path_alias($_GET['q']);
+
+          $block['content'] = walking_log_share_progress();
+          break;
+		case 1:
+          $block['subject'] = t('');
+		  $path = drupal_get_path('theme','psychiatry24x7');
+		  $month = date('F');
+		  $sql_log = "SELECT wl_miles_walked,wl_walk_duration,wl_walk_month,wl_how_user_felt,wl_how_user_felt_later,wl_weather,wl_created FROM walking_log 
+	WHERE wl_last_modified_by = ".$user->uid." AND wl_walk_month='$month' ORDER BY wl_created ";
+		  $res_log = db_query($sql_log);
+		  $arr_log=array();
+		  while($row_log = db_fetch_array($res_log)){
+			$arr_log[] = $row_log;
+		  }
+		  if(count($arr_log) > 0){
+			$block['content'] = '<a style="cursor: pointer;" title="'.t('Download walking Log').'" onclick="dwalkinglog();" ><img src="'.url(file_directory_path().'/walking-log-download.png').'" /></a>';
+		  }
+		  else{
+			$block['content'] = ' ';
+		  }
+		  
+          break;
+      }
+      return $block;
+  }
+}
+
+
+function walking_log_share_progress($wl_month=""){
+	global $user;
+	$path = drupal_get_path_alias($_GET['q']);
+	$month = (!empty($wl_month))?$wl_month:date("F");
+	$sql_log = "SELECT wl_miles_walked,wl_walk_duration,wl_walk_month,wl_how_user_felt,wl_how_user_felt_later,wl_weather,wl_created FROM walking_log 
+	WHERE wl_last_modified_by = ".$user->uid." AND wl_walk_month='$month' AND DATE(FROM_UNIXTIME( wl_created )) = CURDATE() ";
+	
+	$res_log = db_query($sql_log);
+
+	$i=0;$miles_walked=0;$wl_walk_duration=0;
+	while($row_log = db_fetch_array($res_log)){
+		$miles_walked += $row_log['wl_miles_walked'];
+		$wl_walk_duration += $row_log['wl_walk_duration'];
+		
+	}
+	$content = "";
+	$distance_unit = get_distance_unit_for_month();
+	$arr_view = get_progress_view_for_month();
+	if($arr_view['view']=='minutes'){
+		$walked_today = "$wl_walk_duration minutes";
+	}else if($arr_view['view']=='miles'){
+		$walked_today = "$miles_walked $distance_unit";
+	}
+	
+	$msg = "I completed $walked_today of my walking plan today";
+	
+	if($miles_walked>0 || $wl_walk_duration>0){//$src = url(drupal_get_path('theme','psychiatry24x7').'/images/share-facebook.png');
+		$src = url(drupal_get_path('theme','psychiatry24x7').'/images/fb.png');
+		$content.="<a href='javascript:void(0);' onclick = 'postToFeed(\"Walking log\", \"$msg\", \"http://stage-schizophrenia24x7-com.emea.cl.datapipe.net/walking_log/progress\");'><img class='my-progress-fb' src='$src' /></a>";
+	}
+	return $content;
+}
+function walking_log_print($month,$type){
+
+
+$response = get_monthly_graph_data($month,$type);
+
+return theme('walking_log_print',$response);
+
+}
+
+function walkinglog_month_form(){
+	$opt_month = array('January'=>'January','February'=>'February','March'=>'March','April'=>'April',
+	'May'=>'May','June'=>'June','July'=>'July','August'=>'August','September'=>'September','October'=>'October',
+	'November'=>'November','December'=>'December');
+	$form['wl_search_month'] = array(
+	  	'#type' => 'select',
+		'#title' => t('Month'),
+  		'#default_value' => '',
+		'#required' => true,
+		'#options' => $opt_month,
+	);	
+	$form['submit'] = array(
+	  	'#type' => 'submit',
+		'#title' => t('Submit'),
+		'#value' => t('Submit'),
+		
+	);
+	return $form;
+}
+function walkinglog_month_form_submit($form, &$form_state){
+	if($form_state['values']['wl_search_month']!=""){
+		drupal_goto('walking_log/viewlogs/'.$form_state['values']['wl_search_month']);
+	}
+}
+function walking_view_logs($month=""){
+	global $user;
+	$year = date("Y");
+	$sql_log = "SELECT wl_id,wl_miles_walked,wl_walk_duration,wl_walk_month,wl_how_user_felt,wl_how_user_felt_later,wl_weather,wl_created FROM walking_log 
+	WHERE wl_last_modified_by = ".$user->uid." AND wl_walk_year=$year ORDER BY wl_created desc";
+
+	$count_log = "SELECT count(*) FROM walking_log 
+	WHERE wl_last_modified_by = ".$user->uid." AND wl_walk_year=$year ORDER BY wl_created ";
+
+	$res_log = pager_query($sql_log,3,0,$count_log);
+	$i=0;
+	$path = drupal_get_path('theme','psychiatry24x7');
+	$arr_log=array();
+	while($row_log = db_fetch_array($res_log)){
+		$arr_log[$i]['label'] = date('F d',$row_log['wl_created']);
+		$distance_unit = get_distance_unit_for_month();
+		$log_month = date('F',$row_log['wl_created']);
+		$arr_view = get_progress_view_for_month($log_month);
+		if(!$arr_view['singleview']){
+			$arr_log[$i]['text'] = t('I walked ').$row_log['wl_miles_walked'].' '.t($distance_unit.' in ').$row_log['wl_walk_duration'].t(' minutes of my walking plan');
+		}else{
+			$arr_log[$i]['text'] = ($arr_view['view']=='miles')?t('I walked').' '.$row_log['wl_miles_walked'].' '.t($distance_unit).' '.t('of my walking plan'):
+			t('I walked').' '.$row_log['wl_walk_duration'].' '.t('minutes of my walking plan');
+		}
+		$arr_log[$i]['buttons'] = "<a href='".url("walking_log/delete/{$row_log['wl_id']}")."'><img src = '".url($path.'/images/delete-button.png')."'/></a>";
+		$i++;
+	}
+	  return theme('walkinglog_view_logs', $arr_log);
+	
+
+
+}
+
+function validate_walk($month=""){
+	global $user;
+	$month = (!empty($month))?$month:date("F");
+	$year = date("Y");
+	$sql_plan = "SELECT field_month_start_value, field_minutes_planned_value, field_miles_planned_value FROM content_type_walkingplan WHERE
+      field_user_uid = ".$user->uid." AND field_month_start_value='$month' AND field_year_planned_value=$year ";
+	 $res_plan = db_query($sql_plan) ;
+	while($row_plan = db_fetch_array($res_plan)){
+		$arr_response['miles_planned'] = $row_plan['field_miles_planned_value'];
+		$arr_response['minutes_planned'] = $row_plan['field_minutes_planned_value'];
+	}
+	if($arr_response['miles_planned'] > 0 || $arr_response['minutes_planned']>0){
+		return array('valid'=>true);
+	}
+	else{
+		return array('msg'=>t('You have not planned to walk for this month'),'valid'=>false);
+	}
+}
+function edit_walking_log($logid=""){
+	return drupal_get_form('log_walk_form',$log_id);
+}
+
+function delete_walking_log($id){
+	global $user;
+	$sql_log = "DELETE FROM walking_log	WHERE wl_last_modified_by = ".$user->uid." AND wl_id=$id";
+
+	db_query($sql_log);
+	drupal_set_message(t('The walking log has been deleted'),'status');
+	drupal_goto('walking_log/viewlogs');
+}
+
+function get_walking_plan($month=""){
+	$arr_response=array();
+	global $user;
+	$sql_plan = "SELECT field_month_start_value, field_minutes_planned_value, field_miles_planned_value FROM content_type_walkingplan WHERE
+      field_user_uid = ".$user->uid." AND field_month_start_value='$month' AND field_year_planned_value=".date("Y");
+	//echo $sql_plan;exit;
+	$res_plan = db_query($sql_plan) ;
+	while($row_plan = db_fetch_array($res_plan)){
+		$arr_response['miles_planned'] = $row_plan['field_miles_planned_value'];
+		$arr_response['minutes_planned'] = $row_plan['field_minutes_planned_value'];
+	}
+	return $arr_response;
+}
+function walking_log_preprocess_walkingplan_node_form(&$vars){
+	global $user;
+	
+	$arr_view = get_progress_view_for_month();
+	$toggle_view_tobe_disabled="";
+	if($arr_view['singleview']==true){
+		$view = $arr_view['view'];
+		$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+	}
+	else{
+		$view = 'miles';
+		$toggle_view_tobe_disabled = 'minutes';
+	}
+	$arr_response = get_monthly_graph_data(date("F"),$view,'toggle',$toggle_view_tobe_disabled);
+	$vars['type']=$arr_response['type'];
+	$vars['miles_timer_left']=$arr_response['miles_timer_left'];
+	$vars['minutes_left_image'] = $arr_response['minutes_left_image'];
+	$vars['toggle_link']=$arr_response['toggle_link'];
+	$vars['month_display']=$arr_response['month_display'];
+	$vars['miles_timer_right']=$arr_response['miles_timer_right'];
+	$vars['miles_min_display']=$arr_response['miles_min_display'];
+	$vars['change_bg']=$arr_response['change_bg'];
+	$res = db_query("SELECT COUNT(*) as count FROM content_type_walkingplan WHERE field_user_uid=".$user->uid);
+	$row = db_fetch_array($res);
+	$vars['display_plans'] = ($row['count'] > 0)?true:false;
+}
+function walking_log_preprocess_log_walk_form(&$vars){
+	
+	$arr_view = get_progress_view_for_month();
+	$toggle_view_tobe_disabled="";
+	if($arr_view['singleview']==true){
+		$view = $arr_view['view'];
+		$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+	}
+	else{
+		$view = 'miles';
+		$toggle_view_tobe_disabled = 'minutes';
+	}
+	$arr_response = get_monthly_graph_data(date("F"),$view,'toggle',$toggle_view_tobe_disabled);
+	$vars['type']=$arr_response['type'];
+	$vars['miles_timer_left']=$arr_response['miles_timer_left'];
+	$vars['minutes_left_image'] = $arr_response['minutes_left_image'];
+	$vars['toggle_link']=$arr_response['toggle_link'];
+	$vars['month_display']=$arr_response['month_display'];
+	$vars['miles_timer_right']=$arr_response['miles_timer_right'];
+	$vars['miles_min_display']=$arr_response['miles_min_display'];
+	$vars['change_bg']=$arr_response['change_bg'];
+}
+function walking_log_preprocess_walkinglog_view_logs(&$vars){
+	
+	$arr_view = get_progress_view_for_month();
+	$toggle_view_tobe_disabled="";
+	if($arr_view['singleview']==true){
+		$view = $arr_view['view'];
+		$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+	}
+	else{
+		$view = 'miles';
+		$toggle_view_tobe_disabled = 'minutes';
+	}
+	$arr_response = get_monthly_graph_data(date("F"),$view,'toggle',$toggle_view_tobe_disabled);
+	$vars['type']=$arr_response['type'];
+	$vars['miles_timer_left']=$arr_response['miles_timer_left'];
+	$vars['minutes_left_image'] = $arr_response['minutes_left_image'];
+	$vars['toggle_link']=$arr_response['toggle_link'];
+	$vars['month_display']=$arr_response['month_display'];
+	$vars['miles_timer_right']=$arr_response['miles_timer_right'];
+	$vars['miles_min_display']=$arr_response['miles_min_display'];
+	$vars['change_bg']=$arr_response['change_bg'];
+}
+function walking_log_preprocess_delete_plan_confirm(&$vars){
+	global $user;
+	
+	$arr_view = get_progress_view_for_month();
+	$toggle_view_tobe_disabled="";
+	if($arr_view['singleview']==true){
+		$view = $arr_view['view'];
+		$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+	}
+	else{
+		$view = 'miles';
+		$toggle_view_tobe_disabled = 'minutes';
+	}
+	$arr_response = get_monthly_graph_data(date("F"),$view,'toggle',$toggle_view_tobe_disabled);
+	$vars['type']=$arr_response['type'];
+	$vars['miles_timer_left']=$arr_response['miles_timer_left'];
+	$vars['minutes_left_image'] = $arr_response['minutes_left_image'];
+	$vars['toggle_link']=$arr_response['toggle_link'];
+	$vars['month_display']=$arr_response['month_display'];
+	$vars['miles_timer_right']=$arr_response['miles_timer_right'];
+	$vars['miles_min_display']=$arr_response['miles_min_display'];
+	$vars['change_bg']=$arr_response['change_bg'];
+	$res = db_query("SELECT COUNT(*) as count FROM content_type_walkingplan WHERE field_user_uid=".$user->uid);
+	$row = db_fetch_array($res);
+	$vars['display_plans'] = ($row['count'] > 0)?true:false;
+}
+
+function walking_log_toggle_data(){
+	$month = $_REQUEST['month'];
+	$type = $_REQUEST['type'];
+	$arr_response = get_monthly_graph_data($month,$type,'toggle');
+	$arr_data['miles_timer_left']=$arr_response['miles_timer_left'];
+	$arr_data['minutes_left_image']=$arr_response['minutes_left_image'];
+	$arr_data['toggle_link']=$arr_response['toggle_link'];
+	$arr_data['month_display']=$arr_response['month_display'];
+	$arr_data['miles_timer_right']=$arr_response['miles_timer_right'];
+	$arr_data['miles_min_display']=$arr_response['miles_min_display'];
+	$arr_data['change_bg']=$arr_response['change_bg'];
+	echo json_encode($arr_data);
+}
+
+function phptemplate_preprocess_views_view(&$vars) {
+  //echo "<pre>";print_r($vars);exit;
+  if($vars['view']->name=='walking_plan_view'){
+		if(empty($vars['view']->result)){
+			$vars['template_files'][] = 'views-walking-plans-empty';
+		}
+  }
+}
+
+function download_walking_log(){
+	global $user;
+	if (isset($_POST['dataurl'])) {
+        // Decode the base64-encoded data
+		//header('Content-Type: application/pdf');
+		//header("Content-Disposition: attachment; filename='canvas-{$user->uid}'");
+        $data = $_POST['dataurl'];
+        $data = substr($data, strpos($data, ',') + 1);
+		$data = base64_decode($data);
+        file_put_contents("canvas-1.png",base64_decode($data));
+		//return $data;
+		//$dest = file_directory_path();
+		//file_save_data($data,$dest.'canvas-1.png',FILE_EXISTS_REPLACE);
+		$html = "<html><head></head><body><p>Hello</p><p><img src='$data' /></p></body></html>";
+		return $html;
+		require_once("dompdf/dompdf_config.inc.php");
+    
+		$dompdf = new DOMPDF();
+		$dompdf->load_html($html);
+		$dompdf->render();
+		
+			$dompdf->stream("1.pdf");
+		/*} else {
+			return $dompdf->output();
+		}*/
+    } else {
+        // Output the raw data
+        readfile('php://input');
+    }
+}
+
+function walking_log_pdf_data(){
+
+	$month = (empty($_REQUEST['month']))?date("F"):$_REQUEST['month'];	
+	$type = (empty($_REQUEST['type']))?'miles':$_REQUEST['type'];
+	
+	$arr_view = get_progress_view_for_month($month);
+	$toggle_view_tobe_disabled="";
+	if($arr_view['singleview']==true){
+		$view = $arr_view['view'];
+		$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+	}
+	else{
+		$view = $type;
+	}
+	if($toggle_view_tobe_disabled != $type){
+		$miles_response = get_monthly_graph_data($month,$view,'',$toggle_view_tobe_disabled);
+		$response = array('data'=>$miles_response,'empty'=>'false');
+	}else{
+		$response = array('data'=>array(),'empty'=>'true');		
+	}
+	echo json_encode($response);
+}
+
+function walking_log_print_progress($month="",$type=""){
+	$month = $_REQUEST['month'];
+	$type = $_REQUEST['type'];
+	
+	$arr_view = get_progress_view_for_month($month);
+	$toggle_view_tobe_disabled="";
+	if($arr_view['singleview']==true){
+		$view = $arr_view['view'];
+		$toggle_view_tobe_disabled = ($view=='miles')?'minutes':'miles';
+	}
+	else{
+		$view = $type;
+	}
+	$path = drupal_get_path('theme','psychiatry24x7');
+	if(!empty($month) && !empty($type)){
+		
+			drupal_add_js(drupal_get_path('module', 'walking_log') . '/flashcanvas.js');
+			drupal_add_js(drupal_get_path('module', 'walking_log') . '/canvaspng.js');
+			drupal_add_js(drupal_get_path('module', 'walking_log') . '/jquery.flot.js');
+			$month = date("F");
+			
+			$arr_response = get_monthly_graph_data($month,$view,'',$toggle_view_tobe_disabled);
+			return theme('walking_log_progress',$arr_response);
+			
+	}
+}
+
+function walking_log_download(){
+global $user;
+$userid = $user->uid;
+//$path = file_directory_path();
+$path = 'sites/default/files';
+$month = date("F");
+$year = date("Y");
+$arr_planned = get_walking_plan($month);
+setcookie('logdata', '', time() - 1209600, '/');
+setcookie ("progressdata", '',time() + 420000, '/');	
+
+$path = realpath('.'.base_path()).'/';
+
+$html = "<html><head>
+</head>
+<body>
+<h1>Walking Log for ".$month."</h1>
+
+<h4>Plan created for this month</h4>
+<table>";
+if($arr_planned['miles_planned']!=""){
+	$html .="<tr>
+	<td nowrap>".t('Miles Planned')."</td><td nowrap>".$arr_planned['miles_planned']." miles </td>
+	</tr>";
+}
+if($arr_planned['minutes_planned']!=""){
+	$html .="<tr>
+	<td nowrap>".t('Minutes Planned')."</td><td nowrap>".$arr_planned['minutes_planned']." minutes </td>
+	</tr>";
+}
+$html .="</table>";
+if($arr_planned['miles_planned']!=""){
+	$html .="<h4>
+	Progress made in miles:
+	</h4>
+	<p>";
+	$mfile = $month."_".$year.'_'.$userid."_miles.txt";
+	$miles_content = file_get_contents("$path/sites/default/files/walking_log/$mfile");
+	$html.=$miles_content;
+	$html.="</p>";
+}
+if($arr_planned['minutes_planned']!=""){
+	$html.="<h4>
+	Progress made in minutes:
+	</h4>
+	<p>";
+	$mfile = $month."_".$year.'_'.$userid."_minutes.txt";
+	$minutes_content = file_get_contents("$path/sites/default/files/walking_log/$mfile");
+	$html.=$minutes_content;
+	$html.="</p>";
+}
+$html.="</body>
+</html>";
+				
+			
+				$dompdf = new DOMPDF();
+				$dompdf->load_html($html);
+				$dompdf->render();
+		
+				$dompdf->stream("WalkingLog.pdf");
+}
+
+function walking_log_menu_alter(&$items){
+   unset($items['print']['access arguments']);
+   $items['print']['access callback'] = true;
+   $items['user']['page callback'] = 'custom_user_page';
+   $items['user']['type'] = MENU_NORMAL_ITEM;
+   //$items['user/password']['page callback'] ='drupal_get_form';
+   //$items['user/password']['page arguments'] = array('custom_user_pass');
+   $items['user/password']['type'] = MENU_NORMAL_ITEM;//
+   $items['user/register']['type'] = MENU_NORMAL_ITEM;
+   $items['user/%user_category/edit']['#type'] = MENU_NORMAL_ITEM;
+   //echo "<pre>";print_r($items['user']);exit;
+   unset($items['user']['file']);
+   //unset($items['user/password']['file']);
+   
+   
+}
+
+function converttoimage(){
+	if (isset($_POST['dataurl'])) {
+		
+        // Decode the base64-encoded data
+        $data = $_POST['dataurl'];
+		//echo $_POST['dataurl'];exit;
+        $data = substr($data, strpos($data, ',') + 1);
+		$data = base64_decode($data);
+		
+			
+		if($_COOKIE['logdata']){
+			$path = realpath('.'.base_path()).'/';
+			file_put_contents("$path/sites/default/files/walking_log/".$_COOKIE['logdata'].'.png',$data);
+			setcookie('logdata', '', time() - 1209600, '/');
+			$_SESSION['m']=1;
+			header("Location: http://".$_SERVER['HTTP_HOST']."/walking_log/progress");
+		}
+		else {
+			$path = realpath('.'.base_path()).'/';
+			file_put_contents("$path/sites/default/files/walking_log/".$_COOKIE['progressdata'].'.png',$data);
+			header("Location: http://".$_SERVER['HTTP_HOST']."/walking_log_download");
+			
+		}
+    }else {
+        // Output the raw data
+        //readfile('php://input');
+		//exit;
+
+		/* Open a file for writing */
+		if($_COOKIE['logdata']){
+			
+			$putdata = file_get_contents("php://input");
+			$path = realpath('.'.base_path()).'/';
+			file_put_contents("$path/sites/default/files/walking_log/".$_COOKIE['logdata'].'.png',$putdata);
+			setcookie('logdata', '', time() - 1209600, '/');
+			$_SESSION['m']=1;
+			header("Location: http://".$_SERVER['HTTP_HOST']."/walking_log/progress");
+		}
+		else{
+			$putdata = file_get_contents("php://input");
+			$path = realpath('.'.base_path()).'/';
+			file_put_contents("$path/sites/default/files/walking_log/".$_COOKIE['progressdata'].'.png',$putdata);
+			header("Location: http://".$_SERVER['HTTP_HOST']."/walking_log_download");
+		}
+		
+    }
+}
+
+function walking_log_file_contente(){
+	$path = realpath('.'.base_path()).'/';
+	$html = '
+	<div style="height: 300px; width: 450px; position: relative;">
+	
+	<div style="height: 300px; width: 450px; position: absolute; padding: 0px;" id="miles-placeholder">';
+	if($_COOKIE['logdata']){
+		$data = $_COOKIE['logdata'];
+		$html .= "<img style='margin-left: 7px;' src='$path/sites/default/files/walking_log/$data.png'></img>";
+	}
+	else{
+		$data = $_COOKIE['progressdata'];
+		$html .= "<img style='margin-left: 2px;' src='$path/sites/default/files/walking_log/$data.png'></img>";
+	}
+	$html.='<div style="font-size: smaller;" class="tickLabels">
+		<div style="color: rgb(84, 84, 84);" class="xAxis x1Axis">';
+		$xcount = $_REQUEST['xcount'];
+		$ycount = $_REQUEST['ycount'];
+		
+		for($i=0;$i<$xcount;$i++){
+			if(isset($_REQUEST["x$i"])){
+				$xarr = array();
+				$xarr = explode('|',$_REQUEST["x$i"]);
+				$html.='<div style="position: absolute; text-align: center; left: '.$xarr[2].'; top: '.$xarr[1].'; width: 40px;" class="tickLabel">'.$xarr[0].'</div>';
+			}else{
+				break;
+			}
+		}
+		$html.='</div>
+		<div style="color: rgb(84, 84, 84);" class="yAxis y1Axis">';
+		for($i=0;$i<$ycount;$i++){
+			if(isset($_REQUEST["y$i"])){
+				$yarr = array();
+				$yarr = explode('|',$_REQUEST["y$i"]);
+				$html.='<div style="position: absolute; text-align: right; top:'.$yarr[1].'; left:'.$yarr[2].'; right: 426px; width: 24px;" class="tickLabel">'.$yarr[0].'</div>';
+			}else{
+				break;
+			}
+		}
+		$html .= '</div>
+	</div>
+		
+	</div>
+</div>';
+	
+	if(file_put_contents("$path/sites/default/files/walking_log/$data.txt",$html)){
+		echo "success";
+	}
+	else{
+		echo "failure";
+	}
+	
+	
+}
+
+function has_logged_walk(){
+	global $user;
+	$count=0;
+	$arr_count = array();
+	$log_count_res = db_query("SELECT count(*) as count FROM walking_log 
+	WHERE wl_last_modified_by = ".$user->uid." ORDER BY wl_created ");
+	$arr_count = db_fetch_array($log_count_res);
+	if(!empty($arr_count)){
+		$count = $arr_count['count'];
+	}
+	return ($count > 0)?true:false;
+		
+}
+function custom_user_page(){
+	  global $user;
+	  if ($user->uid) {
+		menu_set_active_item('user/'. $user->uid);
+		return menu_execute_active_handler();
+	  }
+	  else {
+		return drupal_get_form('user_login');
+	  }
+}
+
+function change_pass_form(){
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email address'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['pass'] = array(
+    '#type' => 'password',
+    '#title' => t('Current Password'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['new_pass'] = array(
+    '#type' => 'password',
+    '#title' => t('New password'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['confirm_pass'] = array(
+    '#type' => 'password',
+    '#title' => t('Confirm password'),
+    '#size' => 25,
+    '#maxlength' => max(USERNAME_MAX_LENGTH, EMAIL_MAX_LENGTH),
+    '#required' => TRUE,
+  );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Change password'),'#attributes'=>array('onclick'=>'return user_change_pass_validate();'));
+
+  return $form;
+}
+
+function change_pass_form_submit($form, &$form_state){
+	
+	
+	$res = db_query("SELECT uid,COUNT(*) as COUNT FROM users WHERE (name='%s' OR mail='%s') AND pass='%s'",$form_state['values']['name'],$form_state['values']['name'],md5($form_state['values']['pass']));
+	$rows = db_fetch_array($res);
+	//echo "<pre>";print_r($rows);exit;
+	if($rows['COUNT'] > 0){	
+		if($form_state['values']['new_pass'] == $form_state['values']['confirm_pass']){
+			db_query("UPDATE users set pass='%s' WHERE uid=%d",md5($form_state['values']['new_pass']),$rows['uid']);	
+			drupal_set_message(t('Password changed successfully'),'changepassword');
+		}
+	}
+}
+function user_registration_multistep(&$form, $fields,&$form_state, $submit_handler,$formname='register') {
+  
+  // Hide all the elements we don't want.
+  foreach (element_children($form['account']) as $child) {
+    if ($child != 'buttons' && !in_array($child, $fields) ) {
+      $form['account'][$child]['#access'] = FALSE;
+    }
+  }
+  foreach (element_children($form['user_profile']) as $child) {
+    if ($child != 'buttons' && !in_array($child, $fields) ) {
+      $form['user_profile'][$child]['#access'] = FALSE;
+    }
+  }
+
+  // Hide the submit button.
+  if(!empty($submit_handler)){
+  	$form['submit']['#access'] = FALSE;
+	$form['timezone']['#access'] = FALSE;
+  	
+  	$form['user_profile']['next'] = array(
+	    '#type' => 'submit',
+	    '#value' => t('Seguinte'),
+	    '#weight' => 999,
+	    '#submit' => array($submit_handler),
+		'#attributes' => array('onclick' => 'return user_register_validate();')
+	);
+	
+  }
+  else{
+	$form['timezone']['#access'] = TRUE;
+	$form['submit']['#access'] = TRUE;
+	if($formname=='register'){
+		$form['submit']['#validate'] = array('test_validate','user_register_validate'/*,'userAuthvalidate'*/);
+		$form['submit']['#submit'] = array('custom_user_register_submit'/*,'userAuthsubmit'*/);
+		$form['submit']['#attributes'] = array('onclick' => 'return user_register_validate();');
+	}
+	else if($formname=='profile'){
+		
+		$form['submit']['#validate'] = array('profile_validate','user_profile_form_validate');
+		$form['submit']['#submit'] = array('UserProfile_form_submit','user_profile_form_submit');
+		$form['submit']['#attributes'] = array('onclick' => 'return user_register_validate();');
+	}
+  }
+  
+}
+function user_registration_form_1_handler($form, &$form_state) {
+  	$form_state['storage']['step'] = 1;
+	$form_state['values']['name'] = $form_state['values']['mail'];
+  	if($form_state['clicked_button']['#value']=='Step3'){
+		$form_state['storage']['step'] = 2;
+	}
+	user_registration_step_completed($form, $form_state);
+	store_multistep_form_values($form,$form_state);
+	$form_state['values'] = &$form_state['storage']['values'];	
+  	$form_state['rebuild'] = true;
+}
+function user_registration_step_completed($form, &$form_state){
+	if($form_state['values']['mail']!=""){
+		$form_state['storage']['values']['stepcomplete'] = 1;
+	}
+	if($form_state['values']['timezone']!=""){
+		$form_state['storage']['values']['stepcomplete'] = 2;
+	}
+}
+function store_multistep_form_values($form,&$form_state){
+	$arrval = array();
+
+	foreach($form_state['values'] as $key=>$val){
+	  	if(!is_array($form_state['values'][$key])){
+	  		$form_state['storage']['values'][$key] = $val;
+	  	}
+	}
+}
+function test_validate($form, &$form_state) {
+	foreach($form_state['storage']['values'] as $key=>$val){
+	  	if(!empty($form_state['storage']['values'][$key])){
+	  		$form_state['values'][$key] = $form_state['storage']['values'][$key];
+	  	}
+	}
+	//echo "<pre>".print_r($form_state);exit;
+}
+function profile_validate($form, &$form_state) {
+	store_multistep_form_values($form,$form_state);
+	foreach($form_state['storage']['values'] as $key=>$val){
+	  	if(!empty($form_state['storage']['values'][$key])){
+	  		$form_state['values'][$key] = $form_state['storage']['values'][$key];
+	  	}
+	}
+	//echo "<pre>".print_r($form_state);exit;
+}
+function user_registration_load_user_profile(&$user) {
+  static $userProfile = null;
+  static $userFlag = TRUE;
+  /********** To avoid profile loading multiple times with in the a single request - For performance optimization ***********/
+  if ($user->uid && $userFlag && (!$userProfile || $userProfile->userId != $user->name)) {
+  	$data = db_result(db_query("SELECT data FROM {users} WHERE name = '%s'", $user->name));
+  	$auth_arr = unserialize($data);
+    if (isset($auth_arr['AuthId']) && isset($auth_arr['AuthUserId'])) {
+  	  $authid=$auth_arr['AuthId'];
+  	  $authUserId=$auth_arr['AuthUserId'];
+  	  if ($authUserId) {
+  	  	$username = $authuserid;
+  	  }
+  	}
+  	else {
+  	  $authid = get_authid_by_sitename();
+  	  $username = $user->name;
+  	}
+  	// Get the user profile data
+  	
+  	$userProfile = fetch_user_profile($user->mail, $username, $authid, $authUserId);
+  	if ($userProfile && (($userProfile->userId) || ($userProfile->userId == 'null' && $authUserId == $userProfile->authUserId))) {
+  	  $user->{userProfileId} = $userProfile->userProfileId;
+  	  $user->siteId = $userProfile->siteId;
+  	  $user->mail = $userProfile->emailId;
+  	  $user->authId = $userProfile->authId;
+  	  $user->authUserId = $userProfile->authUserId;
+  	  $user->UserIdentityId = $userProfile->userIdentityId;
+  	  
+  	  foreach ($userProfile->userProfileInfo as $value) {
+  	  	if ($value->fieldName != '' && $value->fieldName != null) {
+   	  	  	$arr_values[$value->fieldName] = $value->fieldValue;
+   	
+  	  	}
+  	  }
+  	  return $arr_values;
+  	}
+  }
+}
+function user_edit_profile(){
+	global $user;
+	module_load_include('inc','user','user.pages');
+	if(user_edit_access($user)){
+		return user_edit($user);
+	}
+	else{
+		drupal_access_denied();
+	}
+
+}
+function user_registration_confirmed(){
+	global $user;
+	if($user->uid!=0){
+		$text = '<p><b>'.t('You have registered your account. To edit your settings click on "My Account"').'</b></p><p>'.t('You can now continue to build your walking log by
+		creating a plan,logging a walk and tracking your progress.').'</p>';
+		return theme('registration_confirmed',$text);
+	}
+	else{
+		drupal_access_denied();
+	}
+}
+function custom_user_register_submit($form, &$form_state) {
+  global $base_url;
+  
+  $admin = user_access('administer users');
+
+  $mail = $form_state['values']['mail'];
+  $name = $form_state['values']['name'];
+  if (!variable_get('user_email_verification', TRUE) || $admin) {
+    $pass = $form_state['values']['pass'];
+  }
+  else {
+    $pass = user_password();
+  };
+  $notify = isset($form_state['values']['notify']) ? $form_state['values']['notify'] : NULL;
+  $from = variable_get('site_mail', ini_get('sendmail_from'));
+  if (isset($form_state['values']['roles'])) {
+    // Remove unset roles.
+    $roles = array_filter($form_state['values']['roles']);
+  }
+  else {
+    $roles = array();
+  }
+
+  if (!$admin && array_intersect(array_keys($form_state['values']), array('uid', 'roles', 'init', 'session', 'status'))) {
+    watchdog('security', 'Detected malicious attempt to alter protected user fields.', array(), WATCHDOG_WARNING);
+    $form_state['redirect'] = 'user/register';
+    return;
+  }
+  // The unset below is needed to prevent these form values from being saved as
+  // user data.
+  unset($form_state['values']['form_token'], $form_state['values']['submit'], $form_state['values']['op'], $form_state['values']['notify'], $form_state['values']['form_id'], $form_state['values']['affiliates'], $form_state['values']['destination']);
+
+  $merge_data = array('pass' => $pass, 'init' => $mail, 'roles' => $roles);
+  if (!$admin) {
+    // Set the user's status because it was not displayed in the form.
+    $merge_data['status'] = variable_get('user_register', 1) == 1;
+  }
+  $account = user_save('', array_merge($form_state['values'], $merge_data));
+  // Terminate if an error occured during user_save().
+  if (!$account) {
+    drupal_set_message(t("Error saving user account."), 'error');
+    $form_state['redirect'] = '';
+    return;
+  }
+  $form_state['user'] = $account;
+
+  watchdog('user', 'New user: %name (%email).', array('%name' => $name, '%email' => $mail), WATCHDOG_NOTICE, l(t('edit'), 'user/'. $account->uid .'/edit'));
+
+  // The first user may login immediately, and receives a customized welcome e-mail.
+  if ($account->uid == 1) {
+    drupal_set_message(t('Welcome to Drupal. You are now logged in as user #1, which gives you full control over your website.'));
+    if (variable_get('user_email_verification', TRUE)) {
+      drupal_set_message(t('</p><p> Your password is <strong>%pass</strong>. You may change your password below.</p>', array('%pass' => $pass)));
+    }
+
+    user_authenticate(array_merge($form_state['values'], $merge_data));
+
+    $form_state['redirect'] = 'user/1/edit';
+    return;
+  }
+  else {
+    // Add plain text password into user account to generate mail tokens.
+    $account->password = $pass;
+    if ($admin && !$notify) {
+      drupal_set_message(t('Created a new user account for <a href="@url">%name</a>. No e-mail has been sent.', array('@url' => url("user/$account->uid"), '%name' => $account->name)));
+    }
+    else if (!variable_get('user_email_verification', TRUE) && $account->status && !$admin) {
+      // No e-mail verification is required, create new user account, and login
+      // user immediately.
+      _user_mail_notify('register_no_approval_required', $account);
+      if (user_authenticate(array_merge($form_state['values'], $merge_data))) {
+        drupal_set_message(t('Registration successful. You are now logged in.'));
+      }
+      $form_state['redirect'] = 'user-confirmed';
+      return;
+    }
+    else if ($account->status || $notify) {
+      // Create new user account, no administrator approval required.
+      $op = $notify ? 'register_admin_created' : 'register_no_approval_required';
+      _user_mail_notify($op, $account);
+      if ($notify) {
+        drupal_set_message(t('Password and further instructions have been e-mailed to the new user <a href="@url">%name</a>.', array('@url' => url("user/$account->uid"), '%name' => $account->name)));
+      }
+      else {
+        drupal_set_message(t('Your password and further instructions have been sent to your e-mail address.'));
+        $form_state['redirect'] = '';
+        return;
+      }
+    }
+    else {
+      // Create new user account, administrator approval required.
+      _user_mail_notify('register_pending_approval', $account);
+      drupal_set_message(t('Thank you for applying for an account. Your account is currently pending approval by the site administrator.<br />In the meantime, a welcome message with further instructions has been sent to your e-mail address.'));
+      $form_state['redirect'] = '';
+      return;
+
+    }
+  }
+}
+/**
+ * Implementation of hook_theme_registry_alter().
+ *
+ * Make my page preprocess function run *after* everything else's.
+ */
+function walking_log_theme_registry_alter(&$theme_registry) {
+  if (isset($theme_registry['page'])) {
+    // Now tack it on at the end so it runs after everything else.
+    $theme_registry['page']['preprocess functions'][] = 'walking_log_preprocess_page';
+  } 
+}
+
+
+/**
+ * Implementation of moduleName_preprocess_hook().
+ *
+ * Replace Drupal core's jquery.js with the new one from my module.
+ */
+function walking_log_preprocess_page(&$variables) {
+  // Only do this for a specific page.
+	$alias_array = explode('/', drupal_get_path_alias($_GET['q']));
+	if($alias_array[0] == 'user' && ($alias_array[1]='register' || $alias_array[1]='edit_profile')) {
+		// get the scripts from head.
+		$scripts = drupal_add_js();
+
+		$myreplacement = drupal_get_path('theme', 'psychiatry24x7').'/js/user.js';
+
+		$new_jquery = array($myreplacement => $scripts['module']['modules/user/user.js']);
+		$scripts['module'] = array_merge($new_jquery, $scripts['module']);
+		unset($scripts['module']['modules/user/user.js']);
+		//echo "<pre>";print_r($scripts);exit;
+		$variables['scripts'] = drupal_get_js('header', $scripts);
+    }
+
+}
+function user_password_reset(){
+return drupal_get_form(user_pass_reset($form_state,$_REQUEST['uid'], $_REQUEST['timestamp'], $_REQUEST['hashed_pass']));
+	//return drupal_get_form('user_pass_reset',$_REQUEST['uid'], $_REQUEST['timestamp'], $_REQUEST['hashed_pass']); 
+}
+
+function walking_log_mail_alter(&$message){
+  
+  if($message['id']=='user_password_reset'){
+  	$variables = walking_log_mail_tokens($message['params']['account'], $language);
+  	$message['subject'] = _user_mail_text('password_reset_subject', $language, $variables);
+  	$message['body'] = array();
+  	$message['body'][] = _user_mail_text('password_reset_body', $language, $variables);
+  }
+}
+function walking_log_reset_url($account){
+	$timestamp = time();
+	return url("user/pass-reset", array('absolute' => TRUE))."?u=".$account->uid.'&t='.$timestamp."&p=". user_pass_rehash($account->pass, $timestamp, $account->login);
+}
+function walking_log_mail_tokens($account, $language) {
+
+  global $base_url;
+  $tokens = array(
+    '!username' => $account->name,
+    '!site' => variable_get('site_name', 'Drupal'),
+    '!login_url' => walking_log_reset_url($account),
+    '!uri' => $base_url,
+    '!uri_brief' => preg_replace('!^https?://!', '', $base_url),
+    '!mailto' => $account->mail,
+    '!date' => format_date(time(), 'medium', '', NULL, $language->language),
+    '!login_uri' => url('user', array('absolute' => TRUE, 'language' => $language)),
+    '!edit_uri' => url('user/'. $account->uid .'/edit', array('absolute' => TRUE, 'language' => $language))
+  );
+  if (!empty($account->password)) {
+    $tokens['!password'] = $account->password;
+  }
+  return $tokens;
+}
+
+/**
+ * Menu callback; process one time login link and redirects to the user page on success.
+ */
+function walking_log_user_pass_reset(&$form_state) {
+  global $user;
+ $uid = $_REQUEST['u'];
+ $timestamp = $_REQUEST['t'];
+ $hashed_pass = $_REQUEST['p'];
+ $action = $_REQUEST['action'];
+  // Check if the user is already logged in. The back button is often the culprit here.
+  if ($user->uid) {
+    drupal_set_message(t('You have already used this one-time login link. It is not necessary to use this link to login anymore. You are already logged in.'));
+    drupal_goto();
+  }
+  else {
+    // Time out, in seconds, until login URL expires. 24 hours = 86400 seconds.
+    $timeout = 86400;
+    $current = time();
+    // Some redundant checks for extra security ?
+    if ($timestamp < $current && $account = user_load(array('uid' => $uid, 'status' => 1)) ) {
+      // Deny one-time login to blocked accounts.
+      if (drupal_is_denied('user', $account->name) || drupal_is_denied('mail', $account->mail)) {
+        drupal_set_message(t('You have tried to use a one-time login for an account which has been blocked.'), 'error');
+        drupal_goto();
+      }
+
+      // No time out for first time login.
+      if ($account->login && $current - $timestamp > $timeout) {
+        drupal_set_message(t('You have tried to use a one-time login link that has expired. Please request a new one using the form below.'));
+        drupal_goto('user/password');
+      }
+      else if ($account->uid && $timestamp > $account->login && $timestamp < $current && $hashed_pass == user_pass_rehash($account->pass, $timestamp, $account->login)) {
+        // First stage is a confirmation form, then login
+        if ($action == 'login') {
+          watchdog('user', 'User %name used one-time login link at time %timestamp.', array('%name' => $account->name, '%timestamp' => $timestamp));
+          // Set the new user.
+          $user = $account;
+          // user_authenticate_finalize() also updates the login timestamp of the
+          // user, which invalidates further use of the one-time login link.
+          user_authenticate_finalize($form_state['values']);
+          drupal_set_message(t('You have just used your one-time login link. It is no longer necessary to use this link to login. Please change your password.'));
+          drupal_goto('user/edit_profile');
+        }
+        else {
+          $form['message'] = array('#value' => t('<p>This is a one-time login for %user_name and will expire on %expiration_date.</p><p>Click on this button to login to the site and change your password.</p>', array('%user_name' => $account->name, '%expiration_date' => format_date($timestamp + $timeout))));
+          $form['help'] = array('#value' => '<p>'. t('This login can be used only once.') .'</p>');
+          $form['submit'] = array('#type' => 'submit', '#value' => t('Log in'));
+          $form['#action'] = url("user/pass-reset")."?u=$uid&t=$timestamp&p=$hashed_pass&action=login";
+          return $form;
+        }
+      }
+      else {
+        drupal_set_message(t('You have tried to use a one-time login link which has either been used or is no longer valid. Please request a new one using the form below.'));
+        drupal_goto('user/password');
+      }
+    }
+    else {
+      // Deny access, no more clues.
+      // Everything will be in the watchdog's URL for the administrator to check.
+      drupal_access_denied();
+    }
+  }
+}
+function UserProfile_form_submit($form, &$form_state) {
+		$form_state['redirect']='walking_log';
+		global $user;		
+		walking_log_load_user($user,$form_state);
+		$edit = get_object_vars($user);
+		user_profile_save_profile($edit,$user,'user_profile');
+}
+function walking_log_load_user(&$user,$form_state) {
+
+	$user->privacy_policy = $form_state['values']['privacy_policy'];
+	$user->aboutme = $form_state['values']['aboutme'];
+}
+function user_profile_redirect(){
+	drupal_goto('user/edit_profile');
+}
+function get_progress_view_for_month($month=""){
+	global $user;
+	if($month==""){
+		$month = date("F");
+	}
+	$year = date("Y");
+	$return = array();
+	$query = "SELECT field_miles_planned_value, field_minutes_planned_value FROM {content_type_walkingplan} WHERE field_month_start_value='$month' AND field_year_planned_value=$year AND field_user_uid=".$user->uid;
+	$res = db_query($query);
+	while($row = db_fetch_array($res)){
+		if($row['field_miles_planned_value']!='' && $row['field_minutes_planned_value']!=''){
+			$return['view']='miles';
+			$return['singleview']=false;
+		}
+		else if($row['field_miles_planned_value']=='' && $row['field_minutes_planned_value']!=''){
+			$return['view']='minutes';
+			$return['singleview']=true;
+		}
+		else if($row['field_miles_planned_value']!='' && $row['field_minutes_planned_value']==''){
+			$return['view']='miles';
+			$return['singleview']=true;
+		}
+	}
+	
+	return $return;
+}
+function validateredirect(){
+	
+		if($_COOKIE['logdata']){
+			setcookie('logdata', '', time() - 1209600, '/');
+			$_SESSION['m']=1;
+			header("Location: http://".$_SERVER['HTTP_HOST']."/walking_log/progress");
+		}
+		else {
+			header("Location: http://".$_SERVER['HTTP_HOST']."/walking_log_download");
+		}
+}
+
+function get_distance_unit_for_month($month=""){
+	global $user;
+	$value="";
+	$month = (empty($month))?date("F"):$month;
+	$query = "SELECT field_distance_unit_value FROM {content_type_walkingplan} WHERE field_month_start_value='$month' AND field_year_planned_value=".date("Y")." AND field_user_uid=".$user->uid;
+	
+	$res = db_query($query);
+	while($row = db_fetch_array($res)){
+		$value = $row['field_distance_unit_value'];
+	}
+	return $value;
+}
+
+function delete_walking_plan($id){
+	
+	return drupal_get_form('delete_plan_confirm');
+	
+}
+
+function delete_plan_confirm(){
+	$id = (is_numeric(arg(2)))?arg(2):"";
+	$form['confirm_delete'] = array(
+		'#type'=>'markup',
+		'#value' => t('Are you sure you want to delete the Walking plan?')
+	);
+	$form['node_id'] = array(
+		'#type'=>'hidden',
+		'#value' => $id,
+		'#default_value' => $id
+	);
+	$image_path = drupal_get_path('theme','psychiatry24x7').'/images/delete-button.png';
+	 $form['submit']['#theme'] = 'button';
+	 $form['submit']['#type'] = 'submit';
+	  $form['submit']['#button_type'] = 'image';
+	  $form['submit']['#attributes'] = array(
+		'src' => url($image_path),
+		'alt' => t('Delete')
+	  );
+	return $form;
+}
+
+function delete_plan_confirm_submit($form, &$form_state){
+	if(!empty($form_state['values']['node_id'])){
+		node_delete($form_state['values']['node_id']);
+		drupal_goto('walking_log/plans');
+	}
+}
+
+function walking_log_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+    switch($op) {
+		case 'delete':
+			if($node->type=='walkingplan'){
+				delete_walking_logs_for_month($node->field_month_start[0]['value'],$node->field_year_planned[0]['value']);
+			}
+			break;
+		default:
+			break;
+	}
+}
+
+function delete_walking_logs_for_month($month="",$year=""){
+	global $user;
+	db_query("DELETE FROM walking_log WHERE wl_last_modified_by = %d AND wl_walk_month='%s' AND wl_walk_year=%d ",
+	$user->uid,$month,$year);
+}

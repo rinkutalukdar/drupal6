@@ -1,0 +1,58 @@
+<?php
+// $Id$
+
+/**
+ * Implementation of hook_form_[form_id]_alter() for locale_languages_overview_form.
+ */
+function tweak_locale_js_form_locale_languages_overview_form_alter(&$form, $form_state) {
+  $form['js-translations'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('JavaScript translations'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE, // important, don't let the use get confused with submit buttons
+    '#prefix' => '<a name="js-translations"></a>',
+    //'#weight' => -1, // better bellow
+  );
+  $form['js-translations']['invalidate'] = array(
+    '#type' => 'fieldset',
+    '#description' => t('Invalidates all js translations which will force each language\'s translation to be rebuilt next time it gets requested.'),
+    '#collapsible' => FALSE,
+    //'#prefix' => '<a name="invalidate-js"></a>',
+  );
+  $form['js-translations']['invalidate']['invalidate-js'] = array(
+    '#type' => 'submit',
+    '#value' => t('Invalidate js translations'),
+    '#submit' => array('tweak_locale_js_invalidate_js_translations'),
+  );
+  $form['js-translations']['rebuild'] = array(
+    '#type' => 'fieldset',
+    '#description' => t('Invalidates and rebuilds all js translations at once.'),
+    '#collapsible' => false,
+    //'#prefix' => '<a name="rebuild-js"></a>',
+  );
+  $form['js-translations']['rebuild']['rebuild-js'] = array(
+    '#type' => 'submit',
+    '#value' => t('Rebuild js translations'),
+    '#submit' => array('tweak_locale_js_rebuild_js_translations'),
+  );
+  
+  return $form;
+}
+
+function tweak_locale_js_invalidate_js_translations() {
+  $query = "UPDATE {languages} SET javascript=''";
+  db_query($query);
+  locale_inc_callback('_locale_invalidate_js');
+  language_list('language', TRUE); // update cached languages
+  watchdog('tweak_locale_js', 'All js translations were invalidated.', array(), WATCHDOG_INFO);
+}
+
+function tweak_locale_js_rebuild_js_translations() {
+  tweak_locale_js_invalidate_js_translations();
+  $languages = language_list();
+  foreach($languages as $langcode => $language) {
+    locale_inc_callback('_locale_rebuild_js', $langcode);
+  }
+  watchdog('tweak_locale_js', 'All js translations were rebuilt.', array(), WATCHDOG_INFO);
+}
+

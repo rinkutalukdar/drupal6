@@ -1,0 +1,855 @@
+<?php
+// $Id: $
+
+/**
+ * @file
+ * Client-side UI for building and editing Drupal $form arrays.
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+function formbuilder_help($section) {
+  switch ($section) {
+    case 'admin/help#formbuilder':
+      $output = '<div id="formbuilder_introduction"><hr>Formbuilder is a web-based GUI form'.
+      ' <span class="formbuilder_bold">creator</span> and <span class="formbuilder_bold">editor</span>. The forms created/edited using formbuilder are listed below.'.
+      '<ul><li> To Create a new form, click on the button below.</li>' .
+      '<li>To edit/rename/delete a form listed below, use the links for the particular'.
+      ' form.</li>'.
+      ' <li> To edit a form existing somewhere else on the site, go to the form and'.
+      ' Look for a link to "Customize the form" below the form.</li><li> Once the form is '.
+      'loaded into formbuilder, you can also edit it from this page next time you want to edit it. </li></ul>'.
+      'NOTE:<p> Formbuilder in "Simple" mode is recommended if you want to create '.
+      'simple forms. "formbuilderpage.module" provides a nice GUI for using the forms created using formbuilder.'.
+      '</p><hr></div>'
+      .'<br />';
+      return $output;
+    
+	case 'admin/build/modules#description':
+      return t('Client-side UI for building and editing Drupal $forms.');
+    
+	case 'admin/settings/formbuilder':
+      $output = '<div id="formbuilder_introduction"><hr> '.t('Formbuilder is a web-based GUI form ').
+      '<span class="formbuilder_bold">'.t('creator and editor').'</span>'.t(' for Drupal. The forms created/edited using Form builder are listed below.').'<br />';
+      $output .= t('You are currently using ').'<span class="formbuilder_bold">' . ((variable_get('formbuilder_formType', 1) == 0)?t('Simple'):'') . "</span> " . t("mode.").'</div>';
+      return $output;
+  }
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function formbuilder_perm() {
+  return array('formbuilder load forms', 'formbuilder save forms');
+}
+
+/**
+ * Implementation of hook_form_alter().
+ *
+ * Redirect a page request to output only a given form in JSON format.
+ *
+ * This method depends on a form_alter done in jstools.module, where the
+ * variable 'jstools_forms_options' is populated with an array of available
+ * forms in the format 'form_id' => 'path'. If desired, relevant code could
+ * be copied from jstools_form_alter() to remove this dependency.
+ *
+ * To use this method, a javascript call needs to issue an AJAX page request
+ * appending a 'formbuilder_form' form_id value to the URL in GET encoding.
+ * The corresponding form will be returned in JSON encoding.
+ */
+function formbuilder_form_alter(&$form, $form_state, $form_id) {
+  $form_alter = db_result(
+  db_query("SELECT form FROM {formbuilder_form} WHERE form_id = '%s'", $form_id));
+  // If there is an alter, merge it in.
+  if ($form_alter) {
+    $form = array_merge($form, unserialize($form_alter));
+  }
+
+  if (!empty($_GET['formbuilder_form']) &&
+   ($_GET['formbuilder_form'] == $form_id) && (user_access('formbuilder load forms'))) {
+    if (is_array($form['#pre_render'])) {
+      $form['#pre_render'][] = 'formbuilder_dispatch';
+    }
+    else {
+      $form['#pre_render'] = array('formbuilder_dispatch');
+    }
+  }
+  elseif (!isset($form['hideFormbuilderCustomization'])) {
+   /* $form['formbuilder'] = array(
+        '#type' => 'markup',
+        '#value' => t('<br /><a href="?q=formbuilder/edit&form_url='.
+        urlencode($_GET['q']).'&formbuilder_form=' .$form_id.
+		'">Customize this form.</a> '),
+        '#weight' => 1000,
+    );*/
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function formbuilder_menu() {
+  $items = array();
+  
+  $items['formbuilder/receive'] = array(
+    'title' => t('Form builder receive'),
+    'access arguments' => array('formbuilder save forms'),
+    'type' => MENU_CALLBACK,
+    'page callback' => 'formbuilder_receive'
+  );
+  $items['formbuilder/action'] = array(
+    'title' => t('Manipulate forms'),
+    'access arguments' => array('formbuilder load forms'),
+    'type' => MENU_CALLBACK,
+    'page callback' => 'formbuilder_action'
+  );
+  $items['formbuilder/list'] = array(
+    'title' => t('Form builder list'),
+    'access arguments' => array('formbuilder load forms'),
+    'type' => MENU_CALLBACK,
+    'page callback' => 'formbuilder_list'
+  );
+  $items['formbuilder/views'] = array(
+    'title' => t('Form builder views'),
+    'access arguments' => array('formbuilder load forms'),
+    'type' => MENU_CALLBACK,
+    'page callback' => 'formbuilder_views'
+  );
+  $items['formbuilder/defaults'] = array(
+    'title' => t('Default values for Form widgets'),
+    'access arguments' => array('formbuilder load forms'),
+    'type' => MENU_CALLBACK,
+    'page callback' => 'formbuilder_defaults'
+  );
+  $items['formbuilder/new'] = array(
+    'title' => t('Create a new Form'),
+    'access arguments' => array('formbuilder save forms'),
+    'type' => MENU_CALLBACK,
+    'page callback' => 'formbuilder_page'
+  );
+  $items['formbuilder/edit'] = array(
+    'title' => t('Create a new Form'),
+    'access arguments' => array('formbuilder save forms'),
+    'type' => MENU_CALLBACK,
+    'page callback' => 'formbuilder_page'
+  );
+  
+  return $items;
+}
+
+/**
+ * Menu callback. Display UI for loading, editing, and saving forms.
+ */
+function formbuilder_page() {
+  // Load required files.
+  return formbuilder_load();
+  // Do whatever else!
+}
+
+/**
+ * Load needed files.
+ *
+ *  - Call this function as appropriate when formbuilder UI is loaded.
+ */
+function formbuilder_load() {
+  //redirect the user to the home page if no form is selected
+  if (arg(3)=="") {
+    drupal_set_message(t('Please select a form to customize'));
+    drupal_goto("");
+  }//ends here
+
+  $path = drupal_get_path('module', 'formbuilder');
+  
+  if ($_SERVER['HTTPS'] == 'on') $s = 's';
+  $tmp = 'var formbuilder = {};  ' . 'formbuilder.basePath = "'.base_path().$path.'"; var homeurl ="http'.$s.'://'.$_SERVER['HTTP_HOST'].base_path().'";' ;
+
+  drupal_set_html_head('<script type="text/javascript"> '.$tmp.'</script>');
+  drupal_add_js($path . '/js/interface.js','module');
+  
+  //We need this before the js but using drupal_add_js(..,'inline') puts it after all the files are called.
+  $tmp = '';
+  if($_GET['q'] == "formbuilder/edit" ) {
+    if (!empty($_GET['formbuilder_form']) && !empty($_GET['form_url']) ) {
+      $tmp .= ' $(document).ready(function(){ formbuilder.forms.openForm(\''.$_GET['form_url']
+      .'\',\''. $_GET['formbuilder_form'] . '\')})';
+    }
+    else {
+      $tmp .= '$(document).ready(function(){ formbuilder.forms.manageForms()})';
+    }
+  }
+  elseif ($_GET['q'] == "formbuilder/new") {
+    $tmp .= '$(document).ready(function(){ formbuilder.UI.createFormbuilderUI()})';
+  }
+  else {
+    $tmp .= '$(document).ready(function(){formbuilder.forms.manageForms(\''.formbuilder_list(false).'\')}); ';
+  }
+  drupal_add_js($tmp,'inline'); 
+
+  //Do the task based on the settings: Simple or Expert Mode.
+  if(variable_get('formbuilder_formType',1) == 1) {
+    drupal_add_js($path . '/js/formbuilder.js');
+    $tmp = " formbuilder.properties = " .drupal_to_js(formbuilder_element_types());
+    drupal_add_js($tmp,'inline');
+  }
+  else {
+    $browser = detect_browser();
+    if ($browser == 'Firefox')
+      drupal_add_js($path . '/js/formbuilder_simple.js');
+    else
+      drupal_add_js($path . '/js/formbuilder_simple_ie.js');
+
+    //removed fieldset and added label field
+    $components= array("label", "textfield", "textarea", "checkbox", "checkboxes", "radios", "select", 
+      "date", "password", "file", "submit", "button");
+	//removed fieldset and added label field
+    $components_description= array(
+	  "label" => t("Add a label to your Form"),
+      "textfield" => t("Add a input box having one line"),
+      "textarea" => t("Adds multiple lines of input"),
+	  "checkbox" => t("Creates a single checkbox"),
+      "checkboxes" => t("Creates a set of one or more checkboxes"),
+      "radios" => t("Creates a set of one or more radios"),
+      "select" =>  t("Creates a set of one or more options"), 
+      "date" => t("Creates a set of three dropdowns to select a date"),
+      "password" => t("Creates a masked textfield appropriate for passwords"),
+      "file" => t("Creates a field for file uploads"), 
+      "submit" => t("Creates a button to submit the form"),
+      "button" => t("Creates a cancel or reset button"));
+	  
+    $components_description_hint = array(
+	  "label" => t("Add a label to your form"),
+      "textfield" => t("Add a input box having one line"),
+      "textarea" => t("Adds multiple lines of input"),
+	  "checkbox" => t("Creates a single checkbox"),
+      "checkboxes" => t("Creates a set of one or more checkboxes"),
+      "radios" => t("Creates a set of one or more radios"),
+      "select" =>  t("Creates a set of one or more options"), 
+      "date" => t("Creates a set of three dropdowns to select a date"),
+      "password" => t("Creates a masked textfield appropriate for passwords"),
+      "file" => t("Creates a field for file uploads"), 
+      "submit" => t("Creates a button to submit the form"),
+      "button" => t("Creates a cancel or reset button"));	  
+
+    $properties = array();
+    foreach ($components as $widget) {
+      $properties = array_merge_recursive($properties, formbuilder_defaults($widget)) ;
+    }
+    
+		$tmp = " formbuilder.properties = " .drupal_to_js($properties);
+		$tmp .= "; formbuilder.components_description = " .drupal_to_js($components_description);
+		$tmp .= "; formbuilder.components_description_hint = " .drupal_to_js($components_description_hint);
+		
+    drupal_add_js($tmp,'inline');
+  }
+  drupal_add_css(drupal_get_path('module', 'formbuilder') .'/css/firefox.css');
+  drupal_set_html_head('<!--[if IE]><link rel="stylesheet" type="text/css" media="screen" href="'.base_path().$path.'/css/ie.css"><![endif]-->');
+
+  //Main Menu
+  $output .= '<div id="formbuilder_mainMenu1" title="Click here to create a new form" style="padding-top: 25px;">'.
+    '<a class="formbuilder_link1" href="#" onclick="formbuilder.forms.createRequest(); return false;"  >Create New Form </a>'.
+    '</div><div class="formbuilder_link1" id="formbuilder_displayPane"></div>'.
+    '<div id="formbuilder_wrapper"></div><p>&nbsp;  </p>'.
+    '<div id="formbuilder_loadingAnimation">'.
+    '<img id="formbuilder_loadingImage" src="'.base_path().$path.'/images/loading.gif" alt="Loading..."/></div>';
+  
+  //Hidden fields to store form id and current argument
+  $output .= '<input type="hidden" name="hidden_form_id" id="hidden_form_id" value="'.arg(3).'_'.time().'_form">
+    <input type="hidden" name="hidden_argument" id="hidden_argument" value="'.arg(3).'"><input type="hidden" name="edit_hidden_form_id" id="edit_hidden_form_id" value="">';
+  
+  return $output;
+}
+
+function formbuilder_defaults($str) {
+  //create a custom array for label field as there is no field type called label
+  if ($str == "label") {
+    $def = array();
+    $def['#title'] = $str;
+		$def['#value'] = '';
+    $def['#prefix'] = '';
+    $def['#suffix'] = '';
+		$def['#label'] = 1;
+  }//ends here
+  else {
+    $def = '';
+    $def['#type'] = $str;
+    $def['#prefix'] = '';
+    $def['#suffix'] = '';
+		$def['#dontshow'] = '';
+		if ($str == "textfield" || $str == "textarea" ) {
+			$def['#validations'] = '';
+		}
+    $def['#after_build'] = array();
+    $def['#attributes'] = null;
+
+    $def['#title'] = ''; // Set default value for all the labels to "Edit"
+    if ($str == "checkboxes" || $str == "select" ) {
+      $def['#options'] = array('Option 1' => 'Option 1', 'Option 2' => 'Option 2');
+    }
+    elseif ($str == "radios") {
+      $def['#options'] = array('Option 1', 'Option 2');
+    }
+
+    if ($str == "submit" ) {
+      $def['#value'] = 'submit';
+    }
+		elseif ($str == "button") {
+		  $def['#value'] = '';
+		}
+		else if($str != "password" && $str != "date" && $str != "file") {//removed default value for password and date fields
+      $def['#default_value'] = '';
+    }
+
+    if ($str == "submit" ) {
+      $def['#submit'] = true;
+    }
+   	
+    $def = array_merge_recursive($def, _element_info($str,true));
+    $def['#description'] = '';    //Override Default as default causes it to be an Object object in js
+    unset($def['#parents']);
+		if ($str == "password") {
+			$def['#encryption'] = true;
+		}
+		else {
+			$def['#encryption'] = false;
+		}
+    unset($def['#tree']);
+	
+	//remove required for type file
+	if ($str == "file" || $str == "submit" || $str == "button") {
+      unset($def['#required']);
+	}
+
+	//remove the autocomplete for textfield
+	if ($str == "textfield") {
+	  unset($def['#autocomplete_path']);
+	}
+  }
+  $temp[$str] = $def;
+  
+  return $temp;
+}
+
+/** 
+* Retrieve data on all defined element types. 
+*/ 
+function formbuilder_element_types() { 
+  $types = array(); 
+  $basic_defaults = array(
+    '#title' => '',   // Set default value for all the labels to "Edit"
+    '#description' => '', 
+    '#required' => FALSE, 
+	'#encryption' => FALSE, 
+    '#tree' => TRUE, 
+    '#parents' => array(),
+    '#prefix' => '',
+    '#suffix' => '',
+    '#after_build' => array(),
+    '#attributes' => null,
+  );
+
+  foreach (module_implements('elements') as $module) { 
+    $elements = module_invoke($module, 'elements'); 
+    if (isset($elements) && is_array($elements)) { 
+      $types = array_merge_recursive($types, $elements); 
+    } 
+  } 
+  if (sizeof($types)) { 
+    foreach ($types as $element_type => $info) { 
+      $types[$element_type] = array_merge_recursive($basic_defaults, $info); 
+      $types[$element_type]['#type'] = $element_type;
+      //Some Default types to make the formbuilder work better :)
+      if ($element_type == "checkboxes" || $element_type == "select" ) {
+        $types[$element_type]['#options'] = array('Key 1' => 'Option 1', 'Key 2' => 'Option 2');
+      }
+      elseif ($element_type == "radios") {
+        $types[$element_type]['#options'] = array('Option 1', 'Option 2');
+      }
+
+      if ($element_type == "button" || $element_type == "submit" ) {
+        $types[$element_type]['#value'] = 'submit';
+      }
+      else {
+        $types[$element_type]['#default_value'] = '';
+      }
+      if ($element_type == "submit" ) {
+        $types[$element_type]['#submit'] = true;
+      }
+    } 
+  } 
+  return $types; 
+}
+
+
+/**
+ * Send a form as a Javascript object in JSON notation.
+ */
+function formbuilder_dispatch($form_id = NULL, $form = NULL) {
+  if (user_access('formbuilder load forms')) {
+    drupal_set_header('Content-Type: text/javascript');
+    $tempArr = $form['#pre_render'];
+    foreach($tempArr as $key=>$value) {
+    	if($value == "formbuilder_dispatch") {
+    		unset($form['#pre_render'][$key]);
+    	}
+    }
+    print $form_id .' = '. drupal_to_js($form) .";\n";
+  }
+  exit();
+}
+
+/**
+ * Receive a form as a Javascript object in JSON notation and save it.
+ *
+ * To use this method, a javascript call needs to issue an AJAX
+ * request to the url 'formbuilder/receive' with the POST variables
+ * 'form' as a JSON form array and 'form_id' as the id to save the
+ * form under.
+ */
+function formbuilder_receive() {
+  //Prepare the fields
+  $form = $_POST['form'];
+  $oldformid = $_POST['oldformid'];
+  $form_name = $_POST['formName']; 
+  $form_id = $_POST['formId'];
+  $form_type = $_POST['argument'];
+  $duplicate_check = $_POST['duplicate_check'];
+  $mode = $_POST['mode'];
+  
+  //Code to check for duplication in form name
+  if ($duplicate_check == 'check') {
+    if (isset($oldformid) && $oldformid != "") {
+      $check_form_name = db_fetch_object(db_query("SELECT COUNT(*) as Avail FROM {formbuilder_form} WHERE form_name = '%s' AND form_type = '%s'", $form_name, $form_type));
+			if($check_form_name->Avail != 0){
+				$get_form_name = db_fetch_object(db_query("SELECT form_name FROM formbuilder_form WHERE form_id = '%s'", $oldformid));
+				if ($get_form_name->form_name != $form_name) {
+					echo "exist";
+					exit;
+				}
+			}  
+		} 
+		else {
+			$check_form_name = db_fetch_object(db_query("SELECT COUNT(*) as Avail FROM {formbuilder_form} WHERE form_name = '%s' AND form_type = '%s'", $form_name, $form_type));
+			if($check_form_name->Avail != 0){
+				echo "exist";
+				exit;
+			}  
+		}
+  }
+  if(!class_exists('Services_JSON')){
+	  require_once 'JSON/JSON.php';
+	  require_once 'JSON/class.json.php';
+  }
+
+
+  $json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
+
+  $form = $json->decode($_POST['form']);
+  
+  //Load the status initially if available
+  $load_status = db_fetch_object(db_query("SELECT active, default_form FROM {formbuilder_form} WHERE form_id = '%s'", $form_id));
+  if ($load_status->active != "") {
+    $active = $load_status->active;
+  } 
+  else {
+    //Chech whether the form is the first for the module and update the status to active is first
+    $check_new_form = db_fetch_object(db_query("SELECT COUNT(form_id) as avail FROM {formbuilder_form} WHERE form_type = '%s'", $form_type));
+    if ($check_new_form->avail < 1) {
+	  $active = 1;
+    } 
+	else {
+	  $active = 0;
+	}
+  }//Ends Here
+	
+	//code to reframe the element type based on the dontshow option chosen
+	//print "<pre>"; print_r($form); print "</pre>";
+	foreach ($form as $form_key => $form_element) {
+		if ($form_element['#dontshow'] == 1) {
+			if ($form[$form_key]['#type'] == "checkboxes" || $form[$form_key]['#type'] == "radios") {
+				$form[$form_key]['#default_value'] = $form[$form_key]['#default_value']['key'];
+			}
+			$form[$form_key]['#element_type'] = $form[$form_key]['#type'];
+			$form[$form_key]['#type'] = "hidden";
+		}
+	}//ends here
+
+  db_query("REPLACE INTO {formbuilder_form} (form_type, form_name, form, form_id, active, default_form) VALUES ('%s', '%s', '%s', '%s', %d, %d)", $form_type, $form_name, stripslashes(serialize($form)), $form_id, $active, $load_status->default_form);
+  
+  echo $form_id;
+  exit;
+}
+
+/**
+* Send a list of available forms as a Javascript object in JSON notation.
+*/
+function formbuilder_list($doExit = true, $argument = "") {
+  if ($argument == "") {
+    $argument = arg(3);
+  }
+  drupal_set_header('Content-Type: text/html');
+
+  $num_forms = db_result(db_query('SELECT COUNT(*) FROM {formbuilder_form} WHERE form_type = "%s"', $argument));//Modified to fetch the form id based on the current argument
+  $output = '<table width="100%">';
+ 
+  // If there is an alter, merge it in.
+  if($num_forms > 0 ) {
+    $result = db_query("SELECT form_name, form_id, active, default_form FROM {formbuilder_form} WHERE form_type = '%s' AND default_form = %d", $argument, 1); //Modified to fetch the form id based on the current argument and default status
+    
+	while ($form = db_fetch_object($result)) {
+      $output .= '<tr id="row_'.$form->form_id.'">';
+      $output .= '<td width="35%" >'.$form->form_name.' (Default)</td>'; //Modified to display the form name
+      $output .= '<td width="14%" style="cursor:pointer; border-right:1px solid; border-left:1px solid;">';
+      $output .= '<a href="#" onclick="formbuilder.forms.rename(\''.$form->form_id.'\', \''.$form->form_name.'\'); return false;">';
+      $output .= t('Rename');
+      $output .= '</a></td><td width="14%" style="cursor:pointer; border-right:1px solid;">';
+      $output .= '<a href="#" onclick="formbuilder.forms.editRequest(\''.$form->form_id.'\'); return false;">';
+      $output .= t('Edit');
+	  
+			if ($form->active != 1) {
+					$output .= '</a></td><td width="14%" style="cursor:pointer; border-right:1px solid;">';
+					$output .= t('Delete');
+					$output .= '</td><td width="23%" style="cursor:pointer;">';
+					$output .= '<a href="#" onclick="formbuilder.forms.activateForm(\''.$form->form_id.'\'); return false;">';
+					$output .= t('Set as Current Form');
+			}
+			else {
+					$output .= '</a></td><td width="14%" style="border-right:1px solid;">';
+					$output .= t('Delete');
+					$output .= '</a></td><td width="23%">';
+					$output .= t('Current Form');
+			}
+      $output .= '</a></td></tr>';
+  }
+	
+  $result = db_query("SELECT form_name, form_id, active, default_form FROM {formbuilder_form} WHERE form_type = '%s' AND default_form = %d", $argument, 0); //Modified to fetch the form id based on the current argument and default status
+    
+	while ($form = db_fetch_object($result)) {
+      $output .= '<tr id="row_'.$form->form_id.'">';
+      $output .= '<td width="35%" >'.$form->form_name.'</td>'; //Modified to display the form name
+      $output .= '<td width="14%" style="cursor:pointer; border-right:1px solid; border-left:1px solid;">';
+      $output .= '<a href="#" onclick="formbuilder.forms.rename(\''.$form->form_id.'\', \''.$form->form_name.'\'); return false;">';
+      $output .= t('Rename');
+      $output .= '</a></td><td width="14%" style="cursor:pointer; border-right:1px solid;">';
+      $output .= '<a href="#" onclick="formbuilder.forms.editRequest(\''.$form->form_id.'\'); return false;">';
+      $output .= t('Edit');
+	  
+			if ($form->default_form == 1) {
+					$output .= '</a></td><td width="14%" style="border-right:1px solid;">';
+					$output .= t('Delete');
+					$output .= '</a></td><td width="23%">';
+					$output .= t('Default Form');
+			}
+			else if ($form->active != 1) {
+					$output .= '</a></td><td width="14%" style="cursor:pointer; border-right:1px solid;">';
+					$output .= '<a href="#" onclick="formbuilder.forms.deleteForm(\''.$form->form_id.'\'); return false;">';
+					$output .= t('Delete');
+					$output .= '</a></td><td width="23%" style="cursor:pointer;">';
+					$output .= '<a href="#" onclick="formbuilder.forms.activateForm(\''.$form->form_id.'\'); return false;">';
+					$output .= t('Set as Current Form');
+			}
+			else {
+					$output .= '</a></td><td width="14%" style="border-right:1px solid;">';
+					$output .= t('Delete');
+					$output .= '</a></td><td width="23%">';
+					$output .= t('Current Form');
+			}
+      $output .= '</a></td></tr>';
+    }
+	
+    $output .= "</table>";
+
+    //Hidden fields to store form id and current argument
+	$output .= '<input type="hidden" name="edit_hidden_form_id" id="edit_hidden_form_id" value="" size="50"><input type="hidden" name="edit_hidden_argument" id="edit_hidden_argument" value="'.$argument.'">';	
+  }
+  else {
+    $output = "<span>Error: No forms were found! Total forms: ".$num_forms."</span>";
+  }
+  if($doExit) {
+    print $output;
+    exit();
+  }
+  else {
+    return addslashes($output);
+  }
+
+}
+
+/**
+ * Delete, rename, activate, edit
+ */
+function formbuilder_action() {
+  $output = $_POST['formId'];
+  if($_POST['action'] == 'delete') {
+    drupal_set_header('Content-Type: text/javascript');
+    //Delete the form
+    db_query("DELETE FROM {formbuilder_form} where form_id='%s'", $output);
+    //Print new list
+    formbuilder_list(true, $_POST['argument']);
+  }
+	else if($_POST['action'] == 'rename') {
+    drupal_set_header('Content-Type: text/javascript');
+    $form_name = $_POST['newFormName'];
+		$form_type = $_POST['argument'];
+
+		//Code to check for duplication in form name
+		$check_form_name = db_fetch_object(db_query("SELECT COUNT(*) as Avail FROM {formbuilder_form} WHERE form_name = '%s' AND form_type = '%s'", $form_name, $form_type));
+		if($check_form_name->Avail != 0){
+			$get_form_name = db_fetch_object(db_query("SELECT form_name FROM formbuilder_form WHERE form_id = '%s'", $output));
+			if ($get_form_name->form_name != $form_name) {
+				echo "exist";
+				exit;
+			}
+			else {
+				//Rename the form
+				$form = unserialize(db_result(db_query("SELECT form FROM {formbuilder_form} where form_id='%s'", $output)));
+				$form['#id'] = $form_name;
+				//Modified to rename the form name instead of form id
+				db_query("UPDATE {formbuilder_form} SET form_name='%s', form = '%s' where form_id='%s'",$form_name, serialize($form), $output);
+			}
+		} 
+		else {
+			//Rename the form
+			$form = unserialize(db_result(db_query("SELECT form FROM {formbuilder_form} where form_id='%s'", $output)));
+			$form['#id'] = $form_name;
+			//Modified to rename the form name instead of form id
+			db_query("UPDATE {formbuilder_form} SET form_name='%s', form = '%s' where form_id='%s'",$form_name, serialize($form), $output);
+		} 
+   	echo "success";
+		exit;
+  }
+	else if ($_POST['action'] == 'rename_listing') {
+		//reload the listing after renaming
+		formbuilder_list(true, $_POST['argument']);
+	}
+  else if ($_POST['action'] == 'activate') {
+    $argument = $_POST['argument'];
+    
+	//Deactive all the forms and active the selected form alone
+	db_query("UPDATE {formbuilder_form} SET active = %d where form_type = '%s'", 0, $argument);
+	db_query("UPDATE {formbuilder_form} SET active = %d where form_id = '%s'", 1, $output);
+    
+    //Print new list
+    formbuilder_list(true, $_POST['argument']);
+  }
+  else if($_POST['action'] == 'edit') {
+    drupal_set_header('Content-Type: text/javascript');
+    $form = unserialize(db_result(db_query("SELECT form FROM {formbuilder_form} where form_id='%s'", $output)));
+    if(!$form) {
+      print "Error: No form with the id ".$output." found!";
+    }
+    else {
+			//code to reframe the element type based on the dontshow option chosen
+			foreach ($form as $form_key => $form_element) {
+				if ($form_element['#dontshow'] == 1) {
+					if  ($form[$form_key]['#element_type'] == "checkboxes" || $form[$form_key]['#element_type'] == "radios") {
+						$form[$form_key]['#default_value']['key'] = $form[$form_key]['#default_value'];
+					}
+					$form[$form_key]['#type'] = $form[$form_key]['#element_type'];
+				}
+			}//ends here
+		
+      print drupal_to_js($form).";";
+    }
+  }
+	elseif ($_POST['action'] == 'create') {
+		drupal_set_header('Content-Type: text/javascript');
+		//Add the default fields to the new form
+		$form = unserialize(db_result(db_query("SELECT form FROM {formbuilder_form} where form_type = '%s' AND default_form = %d", $_POST['module'], 1)));
+		foreach ($form as $key => $value) {
+			if ($value['#dontdelete'] == 1) {
+				$default_fields[$key] = $value;
+			}
+		}	
+	  print drupal_to_js($default_fields).";";
+	}
+  exit();
+}
+
+/**
+* Function used by uasort in form_render() to sort form by weight.
+*/
+function formbuilder_form_sort($a, $b) {
+  $a_weight = (is_array($a) && isset($a['#weight'])) ? $a['#weight'] : 0;
+  $b_weight = (is_array($b) && isset($b['#weight'])) ? $b['#weight'] : 0;
+  if ($a_weight == $b_weight) {
+    return 0;
+  }
+  return ($a_weight < $b_weight) ? -1 : 1;
+}
+
+function formbuilder_views() {
+  if(!class_exists('Services_JSON')){
+	  require_once 'JSON/JSON.php';
+	  require_once 'JSON/class.json.php';
+  }
+	
+  drupal_set_header('Content-Type: text/javascript');
+  
+  if(isset($_POST['form'])) {
+    $json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
+    $form = $json->decode($_POST['form']);
+  }
+  else {
+    print "Error: Invalid parameters passed with the url";
+    exit();
+  }
+  
+  if($_POST['action'] == 'phpCode') {
+    if ($form) {
+      print drupal_get_form('formbuilder_view_phpCode', $form);
+    }
+    else {
+      print "Error: No form was found!";
+    }
+  }
+  else if($_POST['action'] == 'htmlPrev') {
+    if(!$form) {
+      print "Error: No form was found!";
+    }
+    else {
+			//code added by dinesh to check the after build functions exists before rendering the form
+			foreach ($form as $form_key => $form_element) {
+				if ($form_element['#dontshow'] == 1) {
+					unset($form[$form_key]);
+				}
+				if ($form_element['#title'] == "label") {
+					unset($form[$form_key]['#type']);
+				}
+				if (is_array($form_element) && count($form_element['#after_build']) > 0) {
+					foreach ($form_element['#after_build'] as $key => $build_fn) {
+						if (!function_exists ($build_fn)) {
+							unset($form[$form_key]['#after_build'][$key]);
+						}
+					}
+				}
+			}//ends here
+      print drupal_get_form('formbuilder_view_htmlPrev', $form);
+    }
+  }
+  exit();
+}
+
+function formbuilder_view_phpCode($form, $form_state)
+{
+    $temp['code'] = array(
+      '#type' => 'textarea',
+      '#default_value' => formbuilder_php_code(formbuilder_remove_defaults($form_state)),  
+      '#title' => t('Code'),
+      '#rows' => 20,   //Cant get the grippie to come in this textarea. HELP!!!!!
+      '#cols' => 50,
+      '#description' => t('NOTE: You can only view the php code. Modifications will not be saved.'),
+    );
+	
+  $temp['hideFormbuilderCustomization'] = array(
+      '#type' => 'hidden',
+      '#value' => 'hidden',
+    );
+
+  return $temp;
+}
+
+function formbuilder_view_htmlPrev(&$form, $form_state)
+{
+  $form_state['hideFormbuilderCustomization'] = array(
+    '#type' => 'hidden',
+    '#value' => 'hidden',
+  );
+  
+  return $form_state;
+}
+/**
+ * Convert a Drupal Forms API $form array into text output.
+ *
+ * We use this in place of a simple var_export() in order to format nested form
+ * elements in a way familiar to Drupal form authors. The function recursively
+ * processes form elements and their properties.
+ *
+ * @param $form
+ *   The form array.
+ * @param $keys
+ *   Array of keys representing the nesting of form elements. This is used
+ *   internally and should not normally be passed in.
+ * @return
+ *   A text string representing the form.
+ */
+function formbuilder_php_code($form, $keys = array()) {
+  $children = '';
+  foreach (element_children($form) as $key) {
+    $keys[] = $key;
+    if (is_array($form[$key]['#attributes'][0])) {
+    unset($form[$key]['#attributes']);
+    }
+    //else {
+      $children .= formbuilder_php_code($form[$key], $keys);
+    //}
+    // Remove the child from the form's array so it isn't output here.
+    unset($form[$key]);
+    // Remove the key we added above, since it isn't applicable to subsequent children.
+    unset($keys[array_search($key, $keys)]);
+  }
+
+  $output = '$form'. (count($keys) ? "['" . implode("']['", $keys) . "']": '') .
+   '  = '. var_export($form, TRUE) .";\n". $children;
+   
+  return $output;
+}
+
+
+
+function formbuilder_remove_defaults($form) {
+  $defaults = formbuilder_element_types();
+
+  foreach (element_children($form) as $key) {
+    $form[$key] = formbuilder_remove_defaults($form[$key]);
+  }
+  
+  if(isset($form['#type'])) {
+    foreach ($defaults[$form['#type']] as $key=>$value) {
+	  if ( $defaults[$form['#type']][$key] == $form[$key]) {
+      //Do not unset the bare minimum properties: 
+        if(!($key == '#title') && !($key == '#type')) {
+          unset($form[$key]);
+        }
+      }
+    }
+  }
+  
+  return $form;
+}
+
+function formbuilder_admin_settings() {
+  $form['formbuilder_formType'] = array(
+  '#title' => 'Choose the type of formbuilder to be shown ',
+  '#type' => 'radios',  '#default_value' => variable_get('formbuilder_formType', 0), 
+  '#options' => array(t('Simple')),
+  '#description' => t('The simple mode comes with a set of predefined form elements and a easy to understand interface.'),
+  );
+  return system_settings_form($form);
+}
+
+function detect_browser() {
+  if ( strpos($_SERVER['HTTP_USER_AGENT'], 'Gecko') ){
+     if ( strpos($_SERVER['HTTP_USER_AGENT'], 'Netscape') )   {
+       $browser = 'Netscape';
+     }
+     else if ( strpos($_SERVER['HTTP_USER_AGENT'], 'Firefox') )   {
+       $browser = 'Firefox';
+     }
+     else   {
+       $browser = 'Mozilla';
+     }
+  }
+  else if ( strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') ){
+     if ( strpos($_SERVER['HTTP_USER_AGENT'], 'Opera') )   {
+       $browser = 'Opera';
+     }
+     else   {
+       $browser = 'Internet Explorer';
+     }
+  }
+  else{
+     $browser = 'Others browsers';
+  }
+  return $browser;
+}

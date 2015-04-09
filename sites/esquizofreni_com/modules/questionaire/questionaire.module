@@ -1,0 +1,169 @@
+<?php
+// $Id: custom_override.module,v 1.250.2.2 2008/04/09 21:11:49 goba Exp $
+
+/**
+ * @file
+ * To override base site functions..
+ */
+
+
+  /**
+ * Implementation of hook_init().
+ */
+ function questionaire_init() {
+   
+ }
+ function questionaire_menu() {
+		// Admin settings
+		
+		$items['questionaire_form/print'] = array(
+						'page callback' => 'questionaire_print',
+						'access callback' => TRUE
+		);
+		return $items;
+}
+function questionaire_print(){
+		
+		unset($_SESSION['questionaire']);
+		
+		$_SESSION['questionaire'] = array();
+		foreach($_REQUEST as $key=>$value){
+			if (preg_match("/^question_(.*)/i", trim($key)) > 0) {
+				$str_key = str_replace('question_','',$key);
+				$_SESSION['questionaire'][$str_key] = $value;
+			}
+		}
+		echo !empty($_SESSION['questionaire'])?'success':'failure';
+}
+
+ /*
+ * Implementation of hook_form_alter
+ */
+function questionaire_form_alter(&$form, &$form_state, $form_id){
+	
+  	switch($form_id){  		
+		case 'questionaire_node_form':
+			
+			if(isset($_SESSION['questionaire']) && substr_count($_SERVER['REQUEST_URI'],'print')==0){
+				
+				unset($_SESSION['questionaire']);
+			}
+			
+			$form['#attributes']['class']="questionaries-form";
+			$form['title']['#required']=0;
+			$form['title']['#access']=FALSE;
+			$form['body_field']['#access']=FALSE;
+			$form['author']['#access']=FALSE;
+			$form['options']['#access']=FALSE;
+			$form['buttons']['preview']['#access']=FALSE;
+			$form['menu']['#access']=FALSE;
+			$form['revision_information']['#access']=FALSE;
+			$form['path']['#access']=FALSE;
+			$form['nodewords']['#access']=FALSE;
+			$form['print']['#access']=FALSE;
+			$form['xmlsitemap']['#access'] = FALSE;
+			$form['buttons']['reset']['#value'] = '<input class="btn" type="button" id="questionaire-reset" value="'.t('Reset').'" />';
+			$form['buttons']['reset']['#weight'] = 96;
+			
+			$form['buttons']['print']['#value'] = '<input class="btn" type="button" id="btn_submit_print" value="'.t('Save my results').'" />';
+			$form['buttons']['print']['#weight'] = 97;
+			
+			/*$form['buttons']['submit']['#attributes']['class'] = 'btn';
+			$form['buttons']['submit']['#weight'] = 99;
+			$form['buttons']['submit']['#value'] = t('Save my results');*/
+			$form['buttons']['submit']['#access'] = FALSE;
+			
+			$_REQUEST['destination'] = 'listado-mantenerse-bien';
+			//$form['field_submitted_date'][0]['#default_value']['value'] = date('Y-m-d H:i:s');
+			$form['#submit'][] = 'questionaire_save_submitted_date';
+			$form['buttons']['submit']['#submit'] = array('questionaire_save');
+			break;
+		case 'content_field_overview_form':
+			$form['_add_new_field']['label']['#maxlength'] = 256;
+			break;
+		case 'content_field_edit_form':
+			$form['basic']['label']['#maxlength'] = 256;
+			break;
+  	}
+}
+
+function questionaire_save_submitted_date($form,&$form_state){
+	$form_state['values']['field_submitted_date'][0]['value'] = date('Y-m-d H:i:s');
+	$form_state['values']['field_submitted_date'][0]['value2'] = date('Y-m-d H:i:s');
+	$form_state['values']['field_submitted_date'][0]['timezone'] = $form['field_submitted_date'][0]['#date_timezone'];
+	$form_state['values']['field_submitted_date'][0]['offset'] = 3600;
+	$form_state['values']['field_submitted_date'][0]['offset2'] = 3600;
+	//echo "<pre>";print_r($form_state['values']['field_submitted_date']);exit;
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function questionaire_block($op = 'list', $delta = 0, $edit = array()) {
+global $user;
+  switch ($op) {
+    case 'list':
+      $blocks = array();
+      $blocks[0] = array('info' => t('Questionaire block'), 'cache' => BLOCK_NO_CACHE);	 
+	  return $blocks;
+	  break;
+	
+    case 'view':
+      switch ($delta) {
+        case 0:
+		  $block = array('subject' => t(''), 'content' => display_questionaire_form());
+          
+		  return $block;
+		  
+		  }
+	  }
+}
+/**
+ * Implementation of hook_theme().
+ 
+function questionaire_theme() {
+  return array(
+    'questionaire_node_form' => array(
+      'template' => 'questionaire_node_form',
+      'arguments' => array('form' => NULL)
+    ),
+  );
+}
+*/
+function display_questionaire_form(){
+	$node = new stdClass();
+	$node->type = 'questionaire';
+	module_load_include('inc', 'node', 'node.pages');
+
+	return drupal_get_form('questionaire_node_form', $node);
+}
+
+function questionaire_save($form, &$form_state) {
+  global $user;
+
+  $node = node_form_submit_build_node($form, $form_state);
+  $insert = empty($node->nid);
+  node_save($node);
+  $node_link = l(t('view'), 'node/'. $node->nid);
+  $watchdog_args = array('@type' => $node->type, '%title' => $node->title);
+  $t_args = array('@type' => node_get_types('name', $node), '%title' => $node->title);
+
+  if ($insert) {
+    watchdog('content', '@type: added %title.', $watchdog_args, WATCHDOG_NOTICE, $node_link);
+    drupal_set_message(t('Thank you for completing the questionnaire.'));
+  }
+  else {
+    watchdog('content', '@type: updated %title.', $watchdog_args, WATCHDOG_NOTICE, $node_link);
+    drupal_set_message(t('@type %title has been updated.', $t_args));
+  }
+  if ($node->nid) {
+    unset($form_state['rebuild']);
+    $form_state['nid'] = $node->nid;
+    $form_state['redirect'] = 'node/'. $node->nid;
+  }
+  else {
+    // In the unlikely case something went wrong on save, the node will be
+    // rebuilt and node form redisplayed the same way as in preview.
+    drupal_set_message(t('The post could not be saved.'), 'error');
+  }
+}

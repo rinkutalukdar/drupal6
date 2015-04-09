@@ -1,0 +1,13 @@
+; $Id: extlink.info,v 1.2 2008/02/23 03:53:10 quicksketch Exp $
+name = JnJ Site Exit
+description = When exiting the current site to go to an external domain, this module warns the user accordingly
+package = Itrinno Framework
+core = 6.x
+; Information added by drupal.org packaging script on 2008-02-23
+version = "Itrinno-Beta1.7 (6.3)"
+core = "6.x"
+project = "jnj_siteexit"
+datestamp = "1203739506"
+
+; Framework info
+;fwk_module_type= Customized

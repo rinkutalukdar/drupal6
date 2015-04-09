@@ -1,0 +1,115 @@
+<?php
+
+/**
+ * @file
+ * Installer for the SEO Compliance Checker
+ */
+
+/**
+ * Implementation of hook_requirements().
+ * @param string $phase
+ */
+function seo_checker_requirements($phase) {
+  $t = get_t();
+  $requirements = array();
+
+  if ($phase == 'runtime') {
+    $ok = FALSE;
+    foreach (node_get_types('names') as $type => $name) {
+      $ok |= variable_get('seo_checker_'. $type, 0);
+    }
+    if (!$ok) {
+      $requirements['content_types']['title'] = $t('SEO Compliance Checker');
+      $requirements['content_types']['value'] = $t('No Content Types Enabled');
+      $requirements['content_types']['description'] = $t("In order for the SEO Compliance Checker to work you have to enable it for at least one content type.");
+      $requirements['content_types']['severity'] = REQUIREMENT_WARNING; 
+    }
+  }
+  return $requirements;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function seo_checker_uninstall() {
+  drupal_uninstall_schema('seo_checker');
+  /* delete variables for types */
+  $types = node_get_types();
+  foreach ($types as $type) {
+    variable_del('seo_checker_'. $type->type);
+  }
+
+  variable_del('seo_checker_allow_failures');
+}
+
+/**
+ * This function should be called by modules that implement SEO rules
+ * when they are uninstalled. It cleans up their variables.
+ * @param string $module
+ *   The name of the submodule.
+ */
+function seo_checker_submodule_uninstall($modulename) {
+  /* delete variables holding thresholds */
+  $rules = module_invoke($modulename, 'register_seo_rules');
+  foreach ($rules as $rid => $rule) {
+    variable_del('seo_threshold_'. $rid);
+  }
+}
+
+/**
+ * Implementation of hook_update_N().
+ */
+function seo_checker_update_6100() {
+  $allow_failures = variable_get('seo_checker_allow_failures', 1);
+  if ($allow_failures == 0) {
+    variable_set('seo_checker_allow_failures', 'no-failures');
+  }
+  elseif ($allow_failures == 1) {
+    variable_set('seo_checker_allow_failures', 'show-preview-only');
+  }
+  return array();
+}
+function seo_checker_schema() {
+  $schema['seo_compliance_data'] = array(
+    'fields' => array(
+      'seoid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'nodeid'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,  'disp-width' => '10'), 
+      'nodetitle' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE ),
+      'nodetype' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE ),
+      'nodepercentage'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,  'disp-width' => '10'),
+    ),
+     'primary key' => array('seoid'),
+  );
+  $schema['seo_rules_data'] = array(
+    'fields' => array(
+      'seoruleid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,  'disp-width' => '10'),
+      'nodeid'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,  'disp-width' => '10'),
+      'seorulename' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'seorulemessage' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+        ),
+    'primary key' => array('seoruleid'),
+  );
+  $schema['seo_siteurls'] = array(
+      'fields' => array(
+      'locid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE),
+      'nodeloc' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+       ),
+    'primary key' => array('locid'),
+  );
+   $schema['seo_compliance_custom_data'] = array(
+      'fields' => array(
+      'seoid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE),
+      'nodetitle' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE ),
+      'nodetype' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE ),
+      'nodepercentage'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,  'disp-width' => '10'),
+     ),
+     'primary key' => array('seoid'),
+  );
+  return $schema;
+}
+/**
+ * Implementation of hook_install().
+ */
+function seo_checker_install() {
+  drupal_install_schema('seo_checker');
+}

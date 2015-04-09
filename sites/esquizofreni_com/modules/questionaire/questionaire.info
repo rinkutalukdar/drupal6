@@ -1,0 +1,5 @@
+; $Id: custom_override.info,v 1.4 2007/06/08 05:50:55 dries Exp $
+name = Questionaire
+description = "Custom module for the Questionaire."
+core = 6.x
+version = 6.x

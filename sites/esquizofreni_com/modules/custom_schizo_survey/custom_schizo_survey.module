@@ -1,0 +1,324 @@
+<?php  
+
+function custom_schizo_survey_init() {
+	global $user;
+	drupal_add_css('misc/farbtastic/farbtastic.css', 'module', 'all', FALSE);
+	drupal_add_js('misc/farbtastic/farbtastic.js');
+	//drupal_add_js(drupal_get_path('module', 'custom_schizo_survey') .'/js/color_picker.js');
+    drupal_add_css(drupal_get_path('module', 'custom_schizo_survey') . '/custom_schizo_survey.css');
+    $sql = db_query("SELECT uid from survey");
+	$uid = array();
+    while($result = db_fetch_array($sql)){
+        $uid[$result['uid']] = $result['uid'];
+            }
+			
+			if(!isset($_COOKIE['anonymous_user'])) {
+				
+	if((!(array_key_exists($user->uid, $uid))  && $user->uid > 0) || ($user->uid  == 0 && !isset($_COOKIE['anonymous_user'])) ){
+	$my_settings = array('time' => variable_get('survey_popup_duration', ''));
+	if(isset($_COOKIE['cookie-compliance-user-response'])){
+	drupal_add_js(array('custom_schizo_survey' => $my_settings), 'setting');	
+    drupal_add_js(drupal_get_path('module', 'custom_schizo_survey') . '/custom_schizo_survey.js');
+	}
+	}
+
+	}
+}	
+//hook_permission
+function custom_schizo_survey_perm() {
+  return array('access survey','access survey result');
+}
+
+// hook_menu
+function custom_schizo_survey_menu(){
+ 
+ $items = array();
+  $items['admin/settings/survey_settings'] = array(
+    'title' => t('Survey Settings'),
+    'page callback' => 'drupal_get_form',
+     'page arguments'   => array('survey_admin_settings'),
+    'access arguments' => array('access survey'),
+    'type' => MENU_NORMAL_ITEM
+  );
+  
+    $items['survey_overview'] = array(
+    'title' => t('Survey Overview'),
+    'page callback' => 'survey_overview',
+    'access arguments' => array('access survey result'),
+	'type' => MENU_NORMAL_ITEM
+  );
+    
+  return $items;
+}
+
+function survey_overview_start_end_date_form() {
+      $form = array();
+      
+$form['start_date'] = array(
+  '#type' => 'date_popup',
+  '#title' => t('Start Date'),
+  '#date_format' => 'Y-m-d',
+  '#date_year_range' => '-100:+0',
+);
+$form['end_date'] = array(
+  '#type' => 'date_popup',
+  '#title' => t('End Date'),
+  '#date_format' => 'Y-m-d',
+  '#date_year_range' => '-100:+0',
+);
+
+$form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Apply'),
+    '#id' => 'survey_submit',
+  );
+
+return $form;
+}
+
+function survey_overview_start_end_date_form_submit($form_id, &$form_state) {
+    $temp = explode(" ",$form_state['values']['end_date']); 
+    $start_date = $form_state['values']['start_date'];
+  //  $end_date = $form_state['values']['end_date'];
+    $end_date = $temp[0]."60:60:60";
+  drupal_goto('survey_overview/'.$start_date.'/'.$end_date);
+}
+
+
+
+function survey_overview(){
+    $start_date = arg(1);
+    $end_date = arg(2);
+        $output = drupal_get_form('survey_overview_start_end_date_form');
+        $output .= "<table id='schizo_survey'>";
+        $output .= "<thead><tr>";
+        
+         $temp= explode(",",variable_get('survey_options', ''));
+      for($i=0; $i<count($temp); $i++){
+       $survey_options[$temp[$i]] = $temp[$i];
+         $output .= "<td>".$temp[$i]."</td>";
+
+      }
+      $output .="</tr></thead>";
+      $output .="<tr>";
+   
+ 
+    foreach ($survey_options as $item=>$value) {
+    
+          if(arg(1) != ''){
+        $query = 'SELECT count(*) FROM {survey} where survey_selected LIKE "%'.trim($item).'%" AND survey_date BETWEEN "'.$start_date.'" AND "'.$end_date.'"';
+          } else {
+        $query = 'SELECT count(sid ) FROM {survey} where survey_selected LIKE "%'.trim($item).'%"';
+        
+         }
+
+         $count = db_result(db_query($query));
+       //  $row = db_fetch_array($count);
+
+  $output .= "<td>".$count."</td>";
+    }
+    
+   
+     $output .="</tr>";
+        $output .= "</table>";
+    return $output;
+    
+}
+
+function survey_admin_settings(){
+
+  $form['survey_popup_duration'] = array(
+    '#type' => 'textfield',
+    '#title' => t("Time in seconds"),
+    '#description' => t("Enter time when the popup has to be triggered after certain number of duration. Enter time in seconds: Example: enter 2000 for 2 sec"),
+    '#default_value' => variable_get('survey_popup_duration', ''),
+    '#required' => TRUE,
+  );
+  
+    $form['survey_options'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Survey Options to display'),
+    '#default_value' => variable_get('survey_options', ''),
+    '#size' => 50,
+    '#description' => t('Enter options to disply in survey form. One option per line'),
+  );
+    
+      
+    $form['survey_popup_heading'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Survey popup title'),
+    '#default_value' => variable_get('survey_popup_heading', ''),
+    '#size' => 50,
+    '#description' => t('Enter title for survey popup'),
+  );
+    
+    
+      $form['visitor_tracker'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('visitor Tracker Settings'),
+  ); 
+    $form['visitor_tracker']['url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Tracker url'),
+    '#default_value' => variable_get('url', ''),
+    '#size' => 50,
+    '#description' => t('Enter the tracker url'),
+  );
+    
+    $form['visitor_tracker']['height'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Popup Height'),
+    '#default_value' => variable_get('height', ''),
+    '#size' => 50,
+    '#description' => t('Enter the height of the survey'),
+  );
+    
+    $form['visitor_tracker']['width'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Popup width'),
+    '#default_value' => variable_get('width', ''),
+    '#size' => 50,
+    '#description' => t('Enter the width of the survey'),
+  );   
+    
+/*
+  $total_option_color = 1;  
+        // Default 15 colors mentioned in the LibChart class file.
+        $defult10_color = array('0,0,0','2, 78, 0','148, 170, 36','233, 191, 49','240, 127, 41','243, 63, 34','190, 71, 47','135, 81, 60','128, 78, 162','121, 75, 255','142, 165, 250','162, 254, 239','137, 240, 166','104, 221, 71','98, 174, 35','93, 129, 1');
+        for( $option_count = 1; $option_count <= $total_option_color; $option_count++ ) {
+            $existing_color = variable_get('background', rgb2html($defult10_color[$option_count]));
+            $existing_color = $existing_color == '' ? rgb2html($defult10_color[$option_count]):$existing_color;
+
+            $form['visitor_tracker']['background'] = array(
+                '#type' => 'textfield',
+                '#description' => t("Click the text box to choose color for survey popup"),
+                '#title' => t('Popup background '),
+                '#id' => 'chart_color_option_'.$option_count,
+                '#size' => 10,
+                '#maxlength' => 7,
+                '#default_value' => $existing_color,
+                '#suffix' =>'<div id=\'picker_'.$option_count.'\'></div>',
+                '#attributes' => array('onClick'=>'load_color_picker(\''.$option_count.'\');', 'style'=>'background-color:'.$existing_color),
+            );
+            
+    }
+    
+*/
+
+ 
+return system_settings_form($form); 
+}
+
+
+function schizo_survey_form() {
+    global $user;
+      $form = array();
+	  
+	       $userrole=implode(',',$user->roles);
+    
+      $form['#attributes']=array("onsubmit"=>"onSubmit('".$userrole."');");
+      
+      $temp= explode(",",variable_get('survey_options', ''));
+	
+      for($i=0; $i<count($temp); $i++){
+       $survey_options[$temp[$i]] = $temp[$i];
+ 
+      }
+    $form['survey_selected'] = array(
+    '#type' => 'radios',
+    '#title' => variable_get('survey_popup_heading', ''),
+    '#options' => $survey_options,
+    
+ 
+  );
+  
+$form['uid'] = array(
+    '#type' => 'hidden',
+    '#value' => $user->uid,
+  );
+
+$form['user_role'] = array(
+    '#type' => 'hidden',
+    '#value' => implode(', ', $user->roles),
+  );
+
+$form['survey_date'] = array(
+    '#type' => 'hidden',
+    '#value' => date('Y-m-d H:i:s'),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Send'),
+  );
+  return $form; 
+
+}
+
+function schizo_survey_form_submit($form_id, &$form_state) {
+
+    $sql = "INSERT INTO {survey} VALUES ('%d', ".$form_state['values']['uid'].", '".$form_state['values']['user_role']."', '".$form_state['values']['survey_selected']."', '".$form_state['values']['survey_date']."')";
+   $update_survey = db_query($sql);
+   if ($update_survey) {
+     //drupal_set_message('Thanks for your time. Survey has been updated');
+            if($form_state['values']['uid'] == 0 && $form_state['values']['user_role'] == 'anonymous user'){
+              //$_SESSION['anonymous_user']="anonymous_user";
+			  
+				setcookie('anonymous_user', 'anonymous_user', time()+60*60*24*90, '/');
+           }
+   }
+}
+
+
+function visitor_tracker_block(){
+//Issue : Issue fix in print page
+    if(request_uri() != '/print/node'){
+      $url = variable_get('url', '');
+      $height = variable_get('height', '');
+      $width = variable_get('width', '');
+      $background = variable_get('background', '');
+
+//$path = drupal_get_path('module', 'custom_schizo_survey') . '/survey-schizofreniait.js';
+//$output = '<script type="text/javascript" src="'.$path.'"> </script>';
+//$output = drupal_add_js(drupal_get_path('module', 'custom_schizo_survey') . '/citsurvey.js');
+//$output = '<script type="text/javascript" src="http://www.a-cross.com/cit2012/survey-schizofreniait.js"> </script>';
+$output = '<script type="text/javascript"> var cit_goals = [];
+
+ loadSurvy("'.$url.'",3,0,0,"citve_v1",'.$width.','.$height.',0.4,"rightabove","'.$background.'","#000000",cit_goals); </script>';
+//print $output;
+return $output;
+}
+}
+/*
+* hook_block()
+*/
+
+function custom_schizo_survey_block($op = 'list', $delta = 0, $edit = array()){
+   
+   if ($op == 'list') {
+    $blocks[0] = array('info' => t('visitor tracking block'),
+                       'weight' => 0,
+                       'status' => 1,
+                       'region' => 'footer');
+
+    return $blocks;
+  
+  } else if ($op == 'configure' && $delta == 0) {
+     
+ 
+  } else if ($op == 'save' && $delta == 0) {
+    
+  
+  }  else if ($op == 'view') {
+
+    switch($delta) {
+      case 0:
+            $block = array('subject' => t('visitor tracking block'),
+                          'content' => visitor_tracker_block()   ); 
+        break;
+      
+    }
+    return $block;
+  }
+}
+

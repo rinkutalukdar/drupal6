@@ -1,0 +1,10 @@
+; $Id$
+name = "ITrInno Form Filter"
+description = "Checks form submitted values and URL's to prevent vulnerabilities exploitation."
+
+core = 6.x
+
+version = "6.x-1.2"
+project = "itrinno_form_filter"
+package = "ITrInno Framework"
+datestamp = 1365082640

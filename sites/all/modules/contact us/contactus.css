@@ -1,0 +1,154 @@
+@charset "utf-8";
+/* CSS Document */
+
+div#contactus-remove-wrapper {
+  text-align: right;
+}
+
+#textarea {
+  width: 350px;
+}
+
+div.contactus-user-title {
+  color: #000;
+}
+
+.contactus-dynamic-fields {
+  color: #000;
+}
+
+.contactus-subject {
+  color: #000;
+}
+
+.contactus-name {
+  color: #000;
+}
+
+.contactus-email {
+  color: #000;
+}
+
+#mandatory {
+  text-align: right;
+}
+
+div.contactus-result {
+  color: #000;
+  font-family: verdana;
+  font-size: 12px;
+  /*background-color: #e6e6e6;*/
+}
+
+div.contactus-top-middle {
+  color: #000;
+}
+
+div.contactus-bottom {
+  color: #000fff;
+}
+div.contactus-top-middle {
+  color: #000fff;
+}
+div.contactus-result-top-middle {
+  color: #000;
+}
+
+div.contactus-result-bottom-middle {
+  color: #000;
+}
+
+div.contactus-result-bottom {
+  color: #000;
+}
+.smallText {
+  font-size:11px;
+}
+#contactUs label{
+float:left;
+padding-left:10px;
+text-align:right;
+width:150px;
+}
+
+#contactUs input{ text-align:left; width:300px; margin-top:0!important; }
+#contactUs textarea{ width:240px; border:1px solid #DDDDDD; color:#000000; }
+#contactUs .resizable-textarea .grippie{width:240px;display:none;}
+#contactUs .form-checkbox{ float:left; margin-left:180px; width:15px!important;}
+#edit-Date-wrapper {
+float:left;
+width:700px;
+}
+
+#edit-Day-wrapper {
+margin-left: 274px;
+margin-top: -32px;
+float:left;
+width:700px;
+}
+#edit-Day {
+width:55px;
+}
+#edit-Date{
+width : 65px;
+}
+#edit-Year {
+width:55px;
+}
+#edit-Year-wrapper {
+margin-left: 335px;
+margin-top: -32px;
+float:left;
+width:700px;
+}
+
+
+#contactUs .resizable-textarea {
+display:block;
+float:left;
+margin-top:0px;
+width:316px;
+}
+
+#contactUs  .form-item label.option {
+/*display:inline;*/
+font-weight:normal;
+/*padding:0px 0 0 0px;*/
+/*width:541px;*/
+width:auto;
+float:left;
+text-align:left;
+font-size:11px;
+}
+
+#contactus_form #edit-contact-ok {
+float:left;
+margin-left:209px;
+margin-top:8px;
+}
+#contactUs { width:100%; float:left; font-size:9pt; font-weight:bold; }
+
+
+/*added by nag border:#006600 thin solid; */
+/*.form-item{clear:none;width:auto;height:auto;}*/
+/*.option{border:#006600 thin solid;float:left;}*/
+#contactUs .description{clear:both; float:left; width:691px; margin:0;}
+#contactUs .form-radios, .form-radio ,label.option, .form-checkboxes, .form-item, .form-checkboxes .form-item label, .form-checkbox{margin:0;padding:0;}
+label{margin:0;padding:0;
+}
+contactus.css?U (line 137)
+Inh}
+#contactUs .form-item{ float:left; }
+#contactUs .form-radios .form-item{clear:none;margin:0;padding:0;width:auto;float:left;}
+#contactUs .form-checkboxes .form-item{clear:none;margin:0;padding:0;width:auto;float:left;}
+#contactUs .form-submit{margin-top:8px; width:70px!important; width:28px; margin-left:198px; height:26px!important; font-size:13px!important; width:auto!important; text-align:center;}
+#contactUs .form-item .reqd .form-required{ float:none;}
+
+.captcha label{clear:none;  float:left; }
+.captcha .form-item{display:inherit;   clear:none;}
+
+
+
+
+
+

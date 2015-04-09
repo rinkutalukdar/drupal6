@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function google_search_admin_uninstall() {
+  variable_del('search_limit_per_page');
+  variable_del('search_categorize');
+  variable_del('search_rss_subscription');
+  variable_del('search_rss_frequency');
+  variable_del('search_auto_complete');
+  variable_del('search_auto_complete_location');
+}

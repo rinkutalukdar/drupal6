@@ -1,0 +1,144 @@
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, font, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td {
+	margin:0;
+	padding:0;
+}
+.login-content, .my-progress-content {
+	background:url(/sites/all/modules/walking_log/images/login-bg.png) no-repeat;
+	height:739px;
+	width:512px;
+	position:relative;
+}
+.login-content {
+	background:url(/sites/all/modules/walking_log/images/login-bg-monthly-plan.png) no-repeat;
+}
+.my-progress-content {
+	background:url(/sites/all/modules/walking_log/images/my-progress-bg.png) no-repeat;
+}
+.nav-buttons {
+	float:left;
+	margin-right:5px;
+}
+.walking-log-nav {
+	left:38px;
+	position: absolute;
+	top: 163px;
+	width: 460px;
+}
+.login-buttons {
+	background-color:#aa9663;
+	color:#fff;
+	font-size:15px;
+	font-weight:bold;
+	font-family:Arial, Helvetica, sans-serif;
+	border:0;
+	cursor:pointer;
+	height:31px;
+	padding:6px;
+}
+.login-container p, .login-monthly-container p, .login-walk-container p {
+	color:#000;
+	font-weight:bold;
+	font-size:12px;
+	font-family:Arial, Helvetica, sans-serif;
+	padding-bottom: 100px;
+}
+.login-walk-container p {
+	margin-top: 20px;
+	padding: 0;
+}
+.login-monthly-container p {
+	padding-bottom:20px;
+}
+.login-container, .login-monthly-container, .login-walk-container {
+	float:left;
+	margin-top:30px;
+	width:450px;
+}
+.login-walk-container {
+	margin-top: 20px;
+	padding: 0;
+}
+.login-content label, .my-progress-content label {
+	font-size:15px;
+	font-family:Arial;
+	font-weight:800;
+	display: block;
+	margin: 15px 0 7px;
+}
+.login-walk-container label {
+	margin:20px 0 7px;
+}
+.login-content span, .my-progress-content span {
+	font-size:15px;
+	font-family:Arial;
+	font-weight:800;
+}
+.login-monthly-container img {
+	margin-bottom: 14px;
+}
+.add-monthly-plan {
+	display: block;
+	margin-bottom: -15px;
+	margin-top: 29px;
+}
+.feel-content span {
+	float: left;
+	margin:25px 0 0;
+	width: 262px;
+}
+.feel-content img {
+	margin: 19px 0 0;
+	padding-right:10px;
+}
+div img.weather-smily {
+	margin-bottom:5px;
+}
+.add-log-walk {
+	display: block;
+	margin-top: -13px;
+}
+.my-progress-print {
+	float:right;
+	width:103px;
+}
+.miles-left a, .minutes-left {
+	bottom: 27px;
+	color: #FFFFFF;
+	font-family:Arial;
+	font-size: 15px;
+	position: absolute;
+	right: 20px;
+	width: 69px;
+}
+.minutes-left {
+	bottom: 7px;
+	height: 65px;
+	left:78px;
+	width: 52px;
+}
+.minutes-left img {
+	margin-right: -5px;
+}
+.month-navigation {
+	bottom: 0;
+	left:140px;
+	position: absolute;
+}
+.progress-title {
+	float:left;
+	width:149px;
+}
+.month-prev, .month-next {
+	width:11px;
+	height:12px;
+	float:left;
+	margin:0px 7px;
+}
+.month-slctd {
+	width:60px;
+	height:25px;
+	float:left;
+}
+.login-walk-container a {
+    padding-right: 15px;
+}

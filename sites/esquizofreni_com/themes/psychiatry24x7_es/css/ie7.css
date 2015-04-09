@@ -1,0 +1,18 @@
+
+#ftmenu_container #ftmenu_right {
+    float: right;
+    margin-right: -10px;
+    overflow: hidden;
+    width: 195px;
+}
+.ui-dialog .ui-dialog-titlebar-close {
+    background-image: url("sites/stage-esquizofrenia24x7-com.emea.cl.datapipe.net/files/icon_close_survey.gif");
+}
+.ui-dialog-titlebar-close {
+    height: 38px;
+    right: 0;
+    width: 38px;
+}
+#body_container{
+	padding-bottom: 0px;
+}

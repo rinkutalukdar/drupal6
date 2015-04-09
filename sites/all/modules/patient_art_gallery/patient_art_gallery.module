@@ -1,0 +1,244 @@
+<?php
+// $Id: patient_art_gallery.module,v 1.0 2010/12/06 14:00:10 Exp $
+/**
+ * @file
+ * Allows to manage patient art gallery.
+ */
+
+define('ART_OF_THE_DAY', 6);
+define('GALLERY', 7);
+
+/*
+ * Implementation of hook_menu()
+ */
+function patient_art_gallery_menu(){
+	$items = array();
+
+	$items['patientartgallery'] = array(
+		'page callback' => 'patient_art_gallery',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+
+  	$items['artoftheday/print'] = array(
+		'page callback' => 'print_art_of_the_day',
+  		'page arguments' => array(2),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK,
+  	);
+
+  	return $items;
+}
+
+function patient_art_gallery(){
+	$output = '';
+	$output .= art_of_the_day();
+	$output .= gallery_view();
+	return $output;
+}
+
+
+/*
+ * Implementation of hook_theme()
+ */
+function patient_art_gallery_theme(){
+	return array(
+      'gallery_view' => array(
+        'arguments' => array('gallery' => NULL),
+      ),
+      'art_of_the_day' => array(
+        'arguments' => array('items' => NULL),
+      ),
+    );
+}
+
+/*
+ * Helper function to fetch all the gallery images
+ */
+function getGalleryimages(){
+  module_load_include('inc', 'aggregator', 'aggregator.pages');
+  drupal_add_js(drupal_get_path('module', 'patient_art_gallery') . '/js/jquery.jcarousel.min.js');
+  $feed = new stdClass();
+  $feed->fid = GALLERY;
+  // It is safe to include the fid in the query because it's loaded from the
+  // database by aggregator_feed_load.
+  $items = aggregator_feed_items_load('SELECT * FROM {aggregator_item} WHERE fid = '. $feed->fid .' ORDER BY timestamp DESC, iid DESC');
+return $items;
+}
+
+/*
+ * Art Gallery.
+ * Fetch the records of the feed from database.
+ */
+function gallery_view(){
+	$items = getGalleryimages();
+	drupal_add_js('$(document).ready(function() {
+    				$("#mycarousel").jcarousel();
+				});', 'inline');
+	foreach( $items as $key => $item){
+		$gallery[] = $item->link;
+	} 
+	return theme('gallery_view', $gallery);
+}
+
+
+/*
+ * Implementation of theme function
+ */
+function theme_gallery_view($gallery){
+	$output .= '<ul id="mycarousel" class="jcarousel-skin-tango">';
+	foreach($gallery as $key => $image_path){
+		$thumbnail_image_path = $image_path.'&asThumbnail=true';
+		$image_arr = explode('pictureId=', $image_path);
+		$li_output .= '<li><img width="113px" height="94px" src="'.$thumbnail_image_path.'" alt="" onClick="setArtofthedayImage(\''.$image_arr[1].'\')"/></li>';
+	}
+	
+	//$li_output .= $li_output;	
+	//$li_output .= $li_output;
+	$output .= $li_output.'</ul>';
+	/*$("#artoftheday").attr("src", image);*/
+	/*
+	 * Adding inline JS script for showing or hiding the full images when the thumbnail is clicked.
+	 */
+	drupal_add_js('function setArtofthedayImage(image) {
+     	 			 $(".gallery_images").css("display", "none");
+					 $("." + image).css("display", "block");
+     				 $("#art").css("display", "none");
+     				 var anchorhref = "print/artoftheday/print";
+     				 var newanchorhref = anchorhref + "/" + image;   
+     				 $("a.printart").attr("href", newanchorhref);
+     				 $("#image_title").html( $("#" + image + "_image_title").html() );
+     				 $("#artist_name").html( $("#" + image + "_artist_name").html() );
+     				 
+				}', 'inline');	
+	return $output;
+}
+
+/*
+ * Helper function to return the artoftheday image
+ */
+function getartofthedayImage(){
+  module_load_include('inc', 'aggregator', 'aggregator.pages');
+  $feed = new stdClass();
+  $feed->fid = ART_OF_THE_DAY;
+  // It is safe to include the fid in the query because it's loaded from the
+  // database by aggregator_feed_load.
+  $items = aggregator_feed_items_load('SELECT * FROM {aggregator_item} WHERE fid = '. $feed->fid .' ORDER BY timestamp DESC, iid DESC');
+  return $items;
+}
+
+/*
+ * Art of the day, 
+ * Fetch the records of the feed from database.
+ */
+function art_of_the_day(){
+  $items = getartofthedayImage();
+  return theme('art_of_the_day', $items);
+}
+
+/*
+ * Implementation of theme function
+ */
+function theme_art_of_the_day($items){
+	//echo "<PRE>"; print_r($items); exit;
+	//global $theme_path;
+	//echo $theme_path;//
+	drupal_set_title('');
+	$images_path = url().drupal_get_path('theme', 'psychiatry24x7').'/images/';
+	
+	foreach ($items as $key => $item){
+        $image = theme('imagecache', 'patienartgallery', patient_art_gallery_get_image($item->link), '', '',array('attributes' => array('id' => 'artoftheday')));
+        $image_output .= '<div id="art">'.$image.'</div>';
+        //extracting the description field.
+        $artist_name  = explode('&lt;Description&gt;', $item->description);
+        $artist_name  = explode('&lt;/Description&gt;', $artist_name[1]);
+        $artist_details = '<div id="artist_name"><h4>'.t($artist_name[0]).'</h4></div>';
+        $image_title	= '<div id="image_title"><h4>'.t($item->title).'</h4></div>';
+        
+	}
+	
+	$output = '<div id="newsstories_container">
+        <h1>Patient art gallery</h1>';
+   		$block = module_invoke('block', 'block', 'view', 75);
+	    $output .= $block['content'];
+        
+	    $output .= '<div class="print_details">
+          <div class="details_left">
+            <h2>Latest patient art</h2>
+            '.$artist_details.'
+            '.$image_title.'
+          </div>
+          <div class="details_right"><a title="Print art" href="print/artoftheday/print" target="_blank" class="printart"><img title="" alt="" src="'.$images_path.'btn_printart.gif"></a></div>
+        </div>';
+	$output .= $image_output.'</div>';
+	
+	/*
+	 * Loading the gallery full images on the page load to reduce the load time when the user clicks on the thumbnail.
+	 */
+	$gallery_items = getGalleryimages();
+	foreach ($gallery_items as $key => $g_item){
+		$image_arr 		= explode('pictureId=', $g_item->link);
+	    $image 			= theme('imagecache', 'patienartgallery', patient_art_gallery_get_image($g_item->link));
+	    $artist_name  = explode('&lt;Artist&gt;', $g_item->description);
+        $artist_name  = explode('&lt;/Artist&gt;', $artist_name[1]);
+	    $artist_details = '<div id="'.$image_arr[1].'_artist_name" style="display:none"><h4>'.$artist_name[0].'</h4></div>';
+        $image_title	= '<div id="'.$image_arr[1].'_image_title" style="display:none"><h4>'.$g_item->title.'</h4></div>';
+        $output .= '<div class="gallery_images '.$image_arr[1].'" style="display:none">'.$image.$artist_details.$image_title.'</div>';
+	}
+
+return $output;
+}
+
+function print_art_of_the_day($picture_id){
+/*
+ *  Write the query to fetch the record for the relvant picture id. OR If the picture_id is not present then fetch the art of the day image.
+ *	Display the image on the print window
+ *	Create a TPL page for this in theme.
+ * 
+ */
+	if($picture_id == ''){
+		$items = getartofthedayImage();
+		foreach ($items as $key => $item){
+        	$image_link = $item->link;
+		}
+	}else{
+		$image_link = db_result(db_query("SELECT link FROM {aggregator_item} WHERE link like '%%%d'", $picture_id));
+	}
+	return '<img title="" alt="" src="'.$image_link.'">';
+}
+
+// This module takes the path to a remote image and downloads it to the files directory so that you can use imagecache on the image later...
+function patient_art_gallery_get_image($path) {
+    $return = "";
+    $base_path = file_directory_path()."/patienartgallery";
+    if (!file_exists($base_path)) {
+      mkdir($base_path, 0777);
+    }
+        // The next two lines are up to you.  Basically, change the input path to what you want the image file name to be.
+        // Maybe explode on '/' and then grab the last element in the array???  Whatever works for you...
+        //$cut_path = str_ireplace("http://", "", $path);
+        //$cut_path = preg_replace("/^[^\/]*\//", "", $path);
+
+    	$originalfileName = basename($path);  // Get orignal image file name with extension
+     	$path_parts = pathinfo($path);
+    	$imageEXtension = explode('?', $path_parts['extension']); // Get image fi
+        $image_arr = explode('pictureId=', $originalfileName);
+        $image_name = $image_arr[1] . '.'.$imageEXtension[0]; 
+
+       $image_path = $base_path."/".$image_name;
+
+    if (file_exists($image_path)) { // you already downloaded that image, just return it...
+        $return = $image_path;
+    } else { // download the image...
+        $remote_image = file_get_contents($path) or die('Could not grab the file');
+        $local_image  = fopen($image_path, 'w+') or die('Could not create the file');
+
+        fputs($local_image, $remote_image) or die('Could not write to the file');
+        fclose($local_image);
+        unset($remote_image);
+       
+        $return = $image_path;
+    }
+   
+    return $return;
+}

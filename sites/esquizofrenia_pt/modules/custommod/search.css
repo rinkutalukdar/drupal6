@@ -1,0 +1,81 @@
+#header_container #header_right #right_menu{
+	padding:2px 15px 0px 0px;
+}
+/*
+#bottomNavClose {
+    top: -448px;
+}*/
+#header_country_selector {
+	z-index:1;
+}
+.latest_news_block {
+	width: 180px;
+}
+/*
+.custommod-tell-a-friend-form #lightbox #imageDataContainer #bottomNavClose {
+    top: -424px;
+}
+
+.custommod-tell-a-friend-form #bottomNavClose {
+	background: url("../images/close.gif") no-repeat scroll left center transparent;
+    display: block;
+    height: 40px;
+    position: absolute;
+    right: 15px;
+    top: 17px;
+    width: 40px;
+    z-index: 200;
+}*/
+.country_selector-form #lightbox #imageDataContainer #bottomNavClose, .popup_continue_survey #lightbox #imageDataContainer #bottomNavClose , .popup_stayin_survey #lightbox #imageDataContainer #bottomNavClose{
+    top: -283px;
+}
+
+
+
+span.customStyleSelectBox.changed {
+}
+
+span.customStyleSelectBox {
+    background: url("../images/language-selector-bg.gif") no-repeat scroll right top transparent;
+    border-bottom: 1px solid #CCCCCC;
+    border-left: 1px solid #CCCCCC;
+    font-size: 11px;
+    padding: 5px 7px;
+    position: absolute;
+    right: 70px;
+    top: 5px;
+}
+#webform-component-sometimes-i-forget-to-take-my-medication .form-item label{
+     line-height: 19px;
+    width: 374px;
+}
+
+#gtb-wrapper {
+    -moz-background-clip: border;
+    -moz-background-origin: padding;
+    -moz-background-size: auto auto;
+    background-attachment: scroll;
+    background-color: transparent;
+    background-image: url("../images/input_search.gif");
+    background-position: left top;
+    background-repeat: no-repeat;
+    float: left;
+    width: 120px;
+}
+
+.search_box{
+height:25px;
+}
+
+#internetsearch-form .search_button {
+    margin-top: 0px;
+    padding-left: 0px;
+    width: 0px;
+}
+#gtb-wrapper {
+	margin-top: 0.6em;
+}
+#gtb-wrapper .search_box{
+	height:22px;
+}
+

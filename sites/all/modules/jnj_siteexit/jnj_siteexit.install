@@ -1,0 +1,58 @@
+<?php
+// $Id: extlink.install,v 1.1 2008/09/01 08:39:40 Exp $
+
+function jnj_siteexit_uninstall() {
+	switch(variable_get('extlink_prompt_type', 0)) {
+		case '1':
+			if(variable_get('extlink_prompt_type_dhtml', 'dhtml_button') == 'dhtml_image') {
+				variable_del('extlink_dhtml_image_ok');
+				variable_del('extlink_dhtml_image_cancel');
+			}
+			variable_del('extlink_prompt_type_dhtml');
+			variable_del('extlink_dhtml_width');
+			variable_del('extlink_dhtml_height');
+			variable_del('extlink_dhtml_title');
+			break;
+		case '2':
+			if(variable_get('extlink_prompt_type_web', 'web_button') == 'web_image') {
+				variable_del('extlink_web_image_ok');
+				variable_del('extlink_web_image_cancel');
+			}
+			variable_del('extlink_prompt_type_web');
+			break;
+		case '3':
+			if(variable_get('extlink_prompt_type_newwindow', 'newwindow_button') == 'newwindow_image') {
+				variable_del('extlink_newwindow_image_ok');
+				variable_del('extlink_newwindow_image_cancel');
+			}
+			variable_del('extlink_prompt_type_newwindow');
+			break;
+		case '4':
+			if(variable_get('extlink_prompt_type_hover', 'hover_button') == 'hover_image') {
+				variable_del('extlink_hover_image_ok');
+				variable_del('extlink_hover_image_cancel');
+			}
+			variable_del('extlink_prompt_type_hover');
+			variable_del('extlink_prompt_type_hover_backgroundimage');
+			variable_del('extlink_prompt_type_hover_timeout');
+			variable_del('extlink_prompt_type_hover_backgroundwidth');
+			variable_del('extlink_prompt_type_hover_backgroundheight');
+			break;
+	
+	}
+	variable_del('extlink_prompt_type');
+	variable_del('extlink_window');
+	variable_del('extlink_class');
+	variable_del('no_extlink_class');
+	variable_del('extlink_white_list');
+	variable_del('extlink_additional_list');
+	variable_del('exit_disclaimer_message');
+
+
+	db_query("UPDATE {blocks} SET pages='%s' WHERE pages='%s'", '', 'extlink');
+}
+
+function jnj_siteexit_install() {
+	variable_set('extlink_prompt_type', 0);
+	variable_set('exit_disclaimer_message', 'You are now leaving the Johnson & Johnson website onto an external website. <br />Please be informed that the privacy policy of the external website may be different from that of J&J.<br /><br />Are you sure to continue?');
+}

@@ -1,0 +1,7 @@
+; $Id: survey.info,v 1.1 2012/11/06 08:57:49 swapna.v Exp $
+name = Custom schizo survey
+description = Custom survey.  
+core = 6.x
+package = custom_survey
+php = 5.0
+version = "6.x-1.1"
