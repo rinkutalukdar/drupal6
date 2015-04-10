@@ -1,5 +1,4 @@
 <?php
-// $Id: views_slideshow_thumbnailhover.theme.inc,v 1.1.2.1.2.35 2010/05/18 05:16:07 redndahead Exp $
 
 /**
  * @file
@@ -14,18 +13,58 @@ function template_preprocess_views_slideshow_thumbnailhover(&$vars) {
   $view = $vars['view'];
   $rows = $vars['rows'];
   $vss_id = $view->name . '-' . $view->current_display;
+  $settings = $options['views_slideshow_thumbnailhover'];
+  
+  // Cast the strings into int or bool as necessary.
+  $new_settings = array();
+  foreach ($settings as $key => $value) {
+    if (is_string($value)) {
+      $value = trim($value);
+
+      if (is_numeric($value)) {
+        $value = (int)$value;
+      }
+      elseif (strtolower($value) == 'true') {
+        $value = TRUE;
+      }
+      elseif (strtolower($value) == 'false') {
+        $value = FALSE;
+      }
+    }
+    
+    $new_settings[$key] = $value;
+  }
 
   $settings = array_merge(
     array(
       'num_divs' => sizeof($vars['rows']),
-      'teasers_last' => ($options['thumbnailhover']['teasers_last']) ? TRUE : FALSE,
+      'teasers_last' => (isset($options['thumbnailhover']['teasers_last']) && $options['thumbnailhover']['teasers_last']) ? TRUE : FALSE,
       'id_prefix' => '#views_slideshow_thumbnailhover_main_',
       'div_prefix' => '#views_slideshow_thumbnailhover_div_',
       'vss_id' => $vss_id,
       'view_id' => $vss_id,
     ),
-    $options['views_slideshow_thumbnailhover']
+    $new_settings
   );
+
+  // We need to go through the current js setting values to make sure the one we
+  // want to add is not already there. If it is already there then append -[num]
+  // to the id to make it unique.
+  $slideshow_count = 1;
+  $current_settings = drupal_add_js();
+  foreach ($current_settings['setting'] AS $current_setting) {
+    if (isset($current_setting['viewsSlideshowThumbnailHover'])) {
+      $current_keys = array_keys($current_setting['viewsSlideshowThumbnailHover']);
+      if (stristr($current_keys[0], '#views_slideshow_thumbnailhover_main_' . $vss_id)) {
+        $slideshow_count++;
+      }
+    }
+  }
+
+  if ($slideshow_count > 1) {
+    $vss_id .= '-' . $slideshow_count;
+    $settings['vss_id'] = $vss_id;  
+  }
 
   drupal_add_js(array('viewsSlideshowThumbnailHover' => array(
     "#views_slideshow_thumbnailhover_main_" . $vss_id => $settings)), 'setting');
@@ -50,6 +89,8 @@ function template_preprocess_views_slideshow_thumbnailhover(&$vars) {
   $thumbnailhover = $vars['options']['views_slideshow_thumbnailhover'];
 
   // Only show controls when there is more than one result.
+  $vars['controls_top'] = '';
+  $vars['controls_bottom'] = '';
   if ($settings['num_divs'] > 1) {
     if ($thumbnailhover['controls'] == 1) {
       $vars['controls_top'] = theme('views_slideshow_thumbnailhover_controls', $vss_id, $view, $options);
@@ -59,6 +100,8 @@ function template_preprocess_views_slideshow_thumbnailhover(&$vars) {
     }
   }
 
+  $vars['breakout_top'] = '';
+  $vars['breakout_bottom'] = '';
   if (!$thumbnailhover['teasers_last']) {
     $vars['breakout_top'] = theme('views_slideshow_thumbnailhover_breakout_teasers', $view, $rows, $vss_id, $options);
   }
@@ -66,6 +109,8 @@ function template_preprocess_views_slideshow_thumbnailhover(&$vars) {
     $vars['breakout_bottom'] = theme('views_slideshow_thumbnailhover_breakout_teasers', $view, $rows, $vss_id, $options);
   }
 
+  $vars['image_count_top'] = '';
+  $vars['image_count_bottom'] = '';
   if ($thumbnailhover['image_count'] == 1) {
     $vars['image_count_top'] = theme('views_slideshow_thumbnailhover_image_count', $vss_id, $view, $options);
   }

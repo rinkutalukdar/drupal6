@@ -1,5 +1,4 @@
 <?php
-// $Id: pear.install,v 1.9 2008/05/06 23:06:39 mepcotterell Exp $
 
 /**
  * @file
@@ -21,19 +20,233 @@
 /**
  * Define the installer revision
  */
-define('PEAR_INSTALLER_REVISION', '$Revision: 1.9 $');
+define('PEAR_INSTALLER_REVISION', '$Revision$');
 
 /**
  * Install the Pear module
  */
 function pear_install() {
-	$installer_target_path = 'sites/all/modules/pear/pear/';
-	variable_set('pear_pear_path', $installer_target_path);
-	drupal_set_message(t('The path to PEAR is @path', array('@path' => $pear_path)));
-	db_query("UPDATE system SET weight = '-50' WHERE NAME = 'pear'");
+	
+  pear_install_log(t('Beginning installation.'));
+	
+  /**
+   * Try to disable PHP's time limit
+   * 
+   * If PHP is not in safe mode then disable its time limit.
+   */
+  if (!((bool)ini_get('safe_mode'))) {
+  	pear_install_log(t('Disabling the PHP time limit.'));
+    set_time_limit(0);
+  }
+  
+  /**
+   * The type of interface between the web server and PHP
+   * 
+   * @todo may not be needed. check to see if any of the downloading function behave differently under different interfaces.
+   */
+  $sapi_name = php_sapi_name();
+  
+  /**
+   * Enable appropriate error reporting
+   * 
+   * @todo make sure this doesn't conflict with drupal core
+   */
+  error_reporting( E_ALL & ~E_NOTICE);
+  
+  /**
+   * The path of the Pear module directory
+   */
+  $pear_module_path = drupal_get_path('module', 'pear');
+  
+  /**
+   * The path where the installer will store temporary files
+   */
+  $installer_temp_path = file_directory_temp();
+  
+  /**
+   * The path where the PEAR environment will be installed
+   */
+  $installer_target_path = file_directory_path() . DIRECTORY_SEPARATOR . 'pear';
+  
+  /**
+   * The path where the PEAR packages bundled with the installer will be placed
+   */
+  $installer_bundle_path = $installer_target_path . DIRECTORY_SEPARATOR . 'installer-bundle';
+  
+  /**
+   * The PEAR packages bundled with the installer
+   * 
+   * We can't actually include them with the module because they're not licesnsed
+   * under the GPL, and that means they can be hosted on cvs.drupal.org. To get
+   * around this, the files are downloaded durring module installation.
+   * 
+   * These files will not be part of the target PEAR installation. Instead, they
+   * are included so that the installer can extract the PEAR package tarball.
+   * 
+   * @todo should we remove these files durring installation cleanup?
+   */
+  $installer_bundle = array(
+    'PEAR.php' => 'http://cvs.php.net/viewcvs.cgi/pear-core/PEAR.php?view=co',
+    'Archive/Tar.php' => 'http://cvs.php.net/viewcvs.cgi/pear/Archive_Tar/Archive/Tar.php?view=co',
+    'Console/Getopt.php' => 'http://cvs.php.net/viewcvs.cgi/pear-core/Console/Getopt.php?view=co',
+  );
+  
+  /**
+   * The PEAR packages to install into the target PEAR installation.
+   * 
+   * There should only be one package, "PEAR", here. This is because all additional
+   * packages should be added using the Pear module.
+   */
+  $installer_packages = array(
+    'PEAR' => 'stable', // release states: alpha, beta, stable
+  );
+  
+  pear_install_log(t('Preparing to fetch the installer-bundle.'));
+  
+  /**
+   * Download the installer bundle
+   */
+  foreach ($installer_bundle as $package => $source) {
+    
+  	pear_install_log(t('Fetching @package...', array('@package'=>$package)));
+  	
+    $destination = $installer_bundle_path . DIRECTORY_SEPARATOR . $package;
+    
+    pear_install_download($source, $destination);
+    
+    if (!file_exists($destination)) {
+      die("Installation failed: $target not found");
+    }
+    
+  }
+  
+  pear_install_log(t('Successfuly fetched the installer-bundle.'));
+  
+  /**
+   * Let PHP know that it can include files from the bundle directory
+   */
+  $include_path = array(
+    $installer_bundle_path,
+    get_include_path(),
+  );
+  
+  set_include_path(implode(PATH_SEPARATOR, $include_path));
+
+  /**
+   * Include the PEAR tarball class 
+   */
+  include_once 'Archive/Tar.php';
+  
+  pear_install_log(t('Preparing to fetch the installer packages.'));
+  
+  /**
+   * Download and extract the installer packages
+   */
+  foreach ($installer_packages as $package => $release) {
+  	
+  	pear_install_log(t('Fetching @package...', array('@package'=>$package)));
+  	
+  	$package_name = str_replace('/', '_', $package);
+  	
+	/**
+  	 * Fetch version information
+  	 */
+  	
+  	$source = 'http://pear.php.net/rest/r/' . strtolower($package_name) . '/' . $release . '.txt';
+  	$destination = $installer_temp_path . DIRECTORY_SEPARATOR . $package_name . '.txt';
+  	
+  	pear_install_download($source, $destination);
+  	
+  	$version = trim(file_get_contents($destination));
+  	
+  	pear_install_log(t('Deleting @file...', array('@file'=>$destintion)));
+  	
+  	unlink($destination);  	
+
+  	$tar_remove_path = $package_name . '-' . $version;
+  	
+  	/**
+  	 * Fetch the tarball
+  	 */
+        
+    $source = 'http://pear.php.net/get/' . $package_name . '/' . $release;
+    
+    $destination = $installer_temp_path . DIRECTORY_SEPARATOR . $package_name . '.tgz';
+    
+    pear_install_download($source, $destination);
+    
+    $tar = new Archive_Tar($destination);
+   
+    pear_install_log(t('Extracting @tar...', array('@tar'=>$destination)));
+    
+    $tar->extractModify($installer_target_path, $tar_remove_path);
+    
+    pear_install_log(t('Deleting @file...', array('@file'=>$destintion)));
+    
+    unlink($destination);
+    
+  }
+  
+  variable_set('pear_pear_path', $installer_target_path);
+  
+  pear_install_log(t('Successfuly fetched the installer packages.'));
+  
+  pear_install_log(t('Installation complete!'));
+  
 }
 
 function pear_uninstall() {
-	variable_del('pear_pear_path');
+
 }
 
+/**
+ * Download a file
+ *
+ * @param string $url
+ * @param string $destination
+ */
+function pear_install_download($url, $destination) {
+	
+	$log_vars = array(
+	  '@url' => $url,
+	  '@dest' => $destination,
+	  '@dir' => dirname($destination),
+	);
+	
+	pear_install_log(t('Preparing to download @url', $log_vars));
+	
+	/**
+	 * Make sure the destination directory exits 
+	 */
+	pear_install_log(t('Preparing directory: @dir', $log_vars));
+	$directory = dirname($destination);
+	@mkdir($directory, 0777, TRUE);
+	
+	/**
+	 * Download the file using copy()
+	 */
+	pear_install_log(t('Downloading @url to @dest', $log_vars));
+	copy($url, $destination);
+	
+	pear_install_log(t('Download of @url completed!', $log_vars));
+	
+}
+
+/**
+ * Log a message to watchdog
+ *
+ * @param string $message
+ * @param watchdog_mask $error_mask
+ */
+function pear_install_log($message, $error_mask = FALSE) {
+  
+  $messages = array(
+    $message,
+    t('(pear.install @revision)', array('@revision' => PEAR_INSTALLER_REVISION)),
+  );
+  
+  $output = implode(' ', $messages);
+  
+  watchdog('pear.install', $output, NULL, ($error_mask) ? WATCHDOG_DEBUG : $error_mask);
+  
+}

@@ -1,5 +1,4 @@
 <?php
-// $Id: filters.encryption.inc,v 1.1.2.6 2010/03/24 04:02:58 ronan Exp $
 
 
 /**
@@ -18,7 +17,7 @@ class backup_migrate_filter_encryption extends backup_migrate_filter {
   /**
    * This function is called on a backup file after the backup has been completed.
    */
-  function backup($file, $settings) {
+  function backup($file, &$settings) {
     return $this->file_encrypt($file, $settings);
   }
 
@@ -33,7 +32,7 @@ class backup_migrate_filter_encryption extends backup_migrate_filter {
    * Get the form for the settings for this filter.
    */
   function backup_settings_default() {
-    return array('compression' => 'none');
+    return array('encryption' => 'none');
   }
 
   /**

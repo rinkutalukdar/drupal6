@@ -1,12 +1,11 @@
-; $Id: pear.info,v 1.6 2008/05/06 23:05:58 mepcotterell Exp $
 name = Pear
-description = A Drupal frontend for managing a PEAR installations.
+description = A Drupal frontend for managing a PEAR installation.
 core = 6.x
 package = "Pear"
-php = 5.x.x
-; Information added by drupal.org packaging script on 2008-05-07
+php = 5.2.x
+; Information added by drupal.org packaging script on 2013-10-01
 version = "6.x-0.x-dev"
 core = "6.x"
 project = "pear"
-datestamp = "1210119160"
+datestamp = "1380622791"
 

@@ -1,5 +1,4 @@
 <?php
-// $Id: views_slideshow_singleframe.views_slideshow.inc,v 1.1.2.1.2.22 2010/05/10 05:35:39 redndahead Exp $
 
 /**
  * @file
@@ -26,12 +25,16 @@ function views_slideshow_singleframe_views_slideshow_option_definition() {
       'random' => array('default' => 0),
       'pause' => array('default' => 1),
       'pause_on_click' => array('default' => 0),
+      'pause_when_hidden' => array('default' => 0),
+      'pause_when_hidden_type' => array('default' => 'full'),
+      'amount_allowed_visible' => array('default' => ''),
       'remember_slide' => array('default' => 0),
       'remember_slide_days' => array('default' => 1),
       'controls' => array('default' => 0),
+      'items_per_slide' => array('default' => 1),
       'pager' => array('default' => 0),
       'pager_type' => array('default' => 0),
-      'page_hover' => array('default' => 2),
+      'pager_hover' => array('default' => 2),
       'pager_click_to_page' => array('default' => 0),
       'image_count' => array('default' => 0),
       'nowrap' => array('default' => 0),
@@ -54,7 +57,7 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
     '#type' => 'textfield',
     '#title' => t('Timer delay'),
     '#default_value' => $view->options['views_slideshow_singleframe']['timeout'],
-    '#description' => t('Amount of time in milliseconds between transitions.')
+    '#description' => t('Amount of time in milliseconds between transitions. Set the value to 0 to not rotate the slideshow automatically.')
   );
   $form['views_slideshow_singleframe']['delay'] = array(
     '#type' => 'textfield',
@@ -77,7 +80,7 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
   $form['views_slideshow_singleframe']['fixed_height'] = array(
     '#type' => 'select',
     '#title' => t('Make the slide window height fit the largest slide'),
-    '#options' => array(1 => t('Yes'),0 => t('No')),
+    '#options' => array(1 => t('Yes'), 0 => t('No')),
     '#default_value' => $view->options['views_slideshow_singleframe']['fixed_height'],
     '#description' => t('If this is set to no then if the slides are different sizes the height of the slide area will change as the slides change.'),
   );
@@ -91,7 +94,7 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
   $form['views_slideshow_singleframe']['pause'] = array(
     '#type' => 'radios',
     '#title' => t('Pause'),
-    '#options' => array(1 => t('Yes'),2 => t('No')),
+    '#options' => array(1 => t('Yes'), 2 => t('No')),
     '#default_value' => $view->options['views_slideshow_singleframe']['pause'],
     '#description' => t('Pause when hovering on the slideshow image.'),
   );
@@ -101,6 +104,43 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
     '#options' => array(1 => t('Yes'), 0 => t('No')),
     '#default_value' => $view->options['views_slideshow_singleframe']['pause_on_click'],
     '#description' => t('Pause when the slide is clicked.'),
+  );
+  $form['views_slideshow_singleframe']['pause_when_hidden'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Pause When the Slideshow is Not Visible'),
+    '#default_value' => $view->options['views_slideshow_singleframe']['pause_when_hidden'],
+    '#description' => t('When the slideshow is scrolled out of view or when a window is resized that hides the slideshow, this will pause the slideshow.'),
+  );
+  $form['views_slideshow_singleframe']['pause_when_hidden_type'] = array(
+    '#type' => 'select',
+    '#title' => t('How to Calculate Amount of Slide that Needs to be Shown'),
+    '#options' => array(
+      'full' => t('Entire slide'),
+      'vertical' => t('Set amount of vertical'),
+      'horizontal' => t('Set amount of horizontal'),
+      'area' => t('Set total area of the slide'),
+    ),
+    '#default_value' => $view->options['views_slideshow_singleframe']['pause_when_hidden_type'],
+    '#description' => t('Choose how to calculate how much of the slide has to be shown. Entire Slide: All the slide has to be shown. Vertical: Set amount of height that has to be shown. Horizontal: Set amount of width that has to be shown. Area: Set total area that has to be shown.'),
+    '#process' => array('views_process_dependency'),
+    '#dependency' => array('edit-style-options-views-slideshow-singleframe-pause-when-hidden' => array(1)),
+  );
+  $form['views_slideshow_singleframe']['amount_allowed_visible'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Amount of Slide Needed to be Shown'),
+    '#default_value' => $view->options['views_slideshow_singleframe']['amount_allowed_visible'],
+    '#description' => t("The amount of the slide that needs to be shown to have it rotate. You can set the value in percentage (ex: 50%) or in pixels (ex: 250). The slidehsow will not rotate until it's height/width/total area, depending on the calculation method you have chosen above, is less than the value you have entered in this field."),
+    '#size' => 4,
+    '#process' => array('views_process_dependency'),
+    '#dependency_count' => 2,
+    '#dependency' => array(
+      'edit-style-options-views-slideshow-singleframe-pause-when-hidden' => array(1),
+      'edit-style-options-views-slideshow-singleframe-pause-when-hidden-type' => array(
+        'vertical',
+        'horizontal',
+        'area',
+      ),
+    ),
   );
   $form['views_slideshow_singleframe']['remember_slide'] = array(
     '#type' => 'checkbox',
@@ -120,21 +160,21 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
   $form['views_slideshow_singleframe']['controls'] = array(
     '#type' => 'select',
     '#title' => t('Controls'),
-    '#options' => array(0 => t('None'),1 => t('Top'),2 => t('Bottom')),
+    '#options' => array(0 => t('None'), 1 => t('Top'), 2 => t('Bottom')),
     '#default_value' => $view->options['views_slideshow_singleframe']['controls'],
     '#description' => t('Determine if controls for the slideshow (start/stop/next/previous) should appear, and if so whether they should appear before or after the slideshow.'),
   );
   $form['views_slideshow_singleframe']['pager'] = array(
     '#type' => 'select',
     '#title' => t('Pager'),
-    '#options' => array(0 => t('None'),1 => t('Top'),2 => t('Bottom')),
+    '#options' => array(0 => t('None'), 1 => t('Top'), 2 => t('Bottom')),
     '#default_value' => $view->options['views_slideshow_singleframe']['pager'],
     '#description' => t('Determine if a pager for the slideshow (1|2|3) should appear, and if so whether they should appear before or after the slideshow.'),
   );
   $form['views_slideshow_singleframe']['pager_type'] = array(
     '#type' => 'select',
     '#title' => t('Pager Type'),
-    '#options' => array('Numbered' => t('Numbered'),'Thumbnails' => t('Thumbnails')),
+    '#options' => array('Numbered' => t('Numbered'), 'Thumbnails' => t('Thumbnails')),
     '#default_value' => $view->options['views_slideshow_singleframe']['pager_type'],
     '#description' => t('What the pager should look like.  Thumbnails grabs the first image in each slideshow item.'),
     '#process' => array('views_process_dependency'),
@@ -143,7 +183,7 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
   $form['views_slideshow_singleframe']['pager_hover'] = array(
     '#type' => 'select',
     '#title' => t('Activate Slide and Pause on Pager Hover'),
-    '#options' => array(1 => t('Yes'),2 => t('No')),
+    '#options' => array(1 => t('Yes'), 2 => t('No')),
     '#default_value' => $view->options['views_slideshow_singleframe']['pager_hover'],
     '#description' => t('Should the slide be activated and paused when hovering over a pager item.'),
     '#process' => array('views_process_dependency'),
@@ -160,9 +200,16 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
   $form['views_slideshow_singleframe']['image_count'] = array(
     '#type' => 'select',
     '#title' => t('Image Counter'),
-    '#options' => array(0 => t('None'),1 => t('Top'),2 => t('Bottom')),
+    '#options' => array(0 => t('None'), 1 => t('Top'), 2 => t('Bottom')),
     '#default_value' => $view->options['views_slideshow_singleframe']['image_count'],
     '#description' => t('Determine if the Image Counter (1 of 4) should be displayed and if so whether they should appear before or after the slideshow.'),
+  );
+  $form['views_slideshow_singleframe']['items_per_slide'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Items per slide'),
+    '#default_value' => $view->options['views_slideshow_singleframe']['items_per_slide'],
+    '#description' => t('The number of items per slide'),
+    '#size' => 4,
   );
   $options = array(
     'none' => 'none',
@@ -199,7 +246,7 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
     '#title' => t('Effect'),
     '#options' => $options,
     '#default_value' => $view->options['views_slideshow_singleframe']['effect'],
-    '#description' => t('The transition effect that will be used to change between images. Not all options below may be relevant depending on the effect.'),
+    '#description' => t('The transition effect that will be used to change between images. Not all options below may be relevant depending on the effect. ' . l('Follow this link to see examples of each effect.', 'http://jquery.malsup.com/cycle/browser.html', array('attributes' => array('target' => '_blank')))),
   );
   $form['views_slideshow_singleframe']['sync'] = array(
     '#type' => 'radios',
@@ -219,7 +266,7 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
     '#type' => 'textarea',
     '#title' => t('Advanced Options'),
     '#default_value' => $view->options['views_slideshow_singleframe']['advanced'],
-    '#description' => t('Add other jQuery cycle options one per line.  Ex. height: 350  !url', array('!url' => l('Click here for the additional options to add.', 'http://malsup.com/jquery/cycle/options.html'))),
+    '#description' => t('Add other jQuery cycle options one per line.  Ex. height: 350  !url', array('!url' => l(t('Click here for the additional options to add.'), 'http://malsup.com/jquery/cycle/options.html'))),
   );
   $form['views_slideshow_singleframe']['ie'] = array(
     '#type' => 'fieldset',
@@ -245,12 +292,12 @@ function views_slideshow_singleframe_views_slideshow_options_form(&$form, &$form
 
 function views_slideshow_singleframe_views_slideshow_options_form_validate(&$form, &$form_state, &$view) {
   if (!is_numeric($form_state['values']['style_options']['views_slideshow_singleframe']['speed'])) {
-    form_error($form['views_slideshow_singleframe']['speed'], t('!setting must be numeric!',array('Speed')));
+    form_error($form['views_slideshow_singleframe']['speed'], t('Speed must be numeric!'));
   }
   if (!is_numeric($form_state['values']['style_options']['views_slideshow_singleframe']['timeout'])) {
-    form_error($form['views_slideshow_singleframe']['timeout'], t('!setting must be numeric!',array('Timeout')));
+    form_error($form['views_slideshow_singleframe']['timeout'], t('Timeout must be numeric!'));
   }
   if (!is_numeric($form_state['values']['style_options']['views_slideshow_singleframe']['remember_slide_days'])) {
-    form_error($form['views_slideshow_singleframe']['remember_slide_days'], t('!setting must be numeric!',array('Slide days')));
+    form_error($form['views_slideshow_singleframe']['remember_slide_days'], t('Slide days must be numeric!'));
   }
 }

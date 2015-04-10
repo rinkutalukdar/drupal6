@@ -1,10 +1,16 @@
-/* $Id: backup_migrate.css,v 1.1.2.1.2.1 2009/06/01 03:32:44 ronan Exp $ */
 .schedule-list-disabled {
   filter:alpha(opacity=50);
   -moz-opacity: .50;
   opacity: .50;
 }
 
+.backup-migrate-cache-time {
+  font-size: 0.85em;
+}
+
+.backup-migrate-tables-checkboxes .form-item {
+  margin: 0;
+}
 .backup-migrate-tables-checkboxes .form-item label {
   width: 15em;
   float: left;
@@ -17,7 +23,7 @@
   background-color: #eee;
 }
 div.backup-migrate-tables-checkboxes {
-  height: 20em;
+  max-height: 40em;
   overflow: auto;
 }
 

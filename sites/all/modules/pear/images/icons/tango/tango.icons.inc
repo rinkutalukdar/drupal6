@@ -1,5 +1,4 @@
 <?php
-// $Id: tango.icons.inc,v 1.2 2008/05/02 18:55:10 mepcotterell Exp $
 
 $pear_icons = array (
 	'add' 			=> 'actions/list-add.png',
